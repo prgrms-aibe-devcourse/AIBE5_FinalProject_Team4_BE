@@ -21,25 +21,25 @@
 <table align="center">
   <tr align="center">
     <td>
-      <a href="위키링크#1-getting-started">
+      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#1-getting-started">
         <img src="https://img.shields.io/badge/Setup-⚙️-blue?style=for-the-badge" alt="Setup"/>
       </a>
     </td>
     <td>
-      <a href="위키링크#2-branch-strategy">
+      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#2-branch-strategy">
         <img src="https://img.shields.io/badge/Strategy-🌳-green?style=for-the-badge" alt="Strategy"/>
       </a>
     </td>
     <td>
-      <a href="위키링크#3-team-convention">
+      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#3-team-convention">
         <img src="https://img.shields.io/badge/Convention-✅-orange?style=for-the-badge" alt="Convention"/>
       </a>
     </td>
   </tr>
   <tr align="center">
-    <td><a href="위키링크#1-getting-started"><strong>개발환경 세팅</strong></a></td>
-    <td><a href="위키링크#2-branch-strategy"><strong>브랜치 전략</strong></a></td>
-    <td><a href="위키링크#3-team-convention"><strong>팀 컨벤션</strong></a></td>
+    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#1-getting-started"><strong>개발환경 세팅</strong></a></td>
+    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#2-branch-strategy"><strong>브랜치 전략</strong></a></td>
+    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#3-team-convention"><strong>팀 컨벤션</strong></a></td>
   </tr>
 </table>
 
