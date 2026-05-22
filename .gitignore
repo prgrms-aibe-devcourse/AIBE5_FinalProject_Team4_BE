@@ -39,6 +39,9 @@ node_modules/
 .env.*
 .local/
 
+# Sensitive config
+application-prod.yml
+
 # Runtime uploads
 uploads/
 
