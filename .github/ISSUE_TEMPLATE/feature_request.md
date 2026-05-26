@@ -1,7 +1,7 @@
 ---
 name: "✨ 기능 개발"
 about: "새로운 기능 구현 및 작업 내용을 기록합니다"
-title: "feat/#0 "
+title: "feat/ "
 labels: "feat"
 assignees: ""
 ---
