@@ -1,4 +1,4 @@
-<h1 align="center"> <프로젝트 이름> </h1>
+<h1 align="center"> 옷장..난감! </h1>
 
 
 <p align="center">
@@ -7,7 +7,7 @@
 </p>
 <h2 align="center"> 🗂️ Project Overview </h2> 
 <p align="center">
-  <프로젝트>은/는 사용자의 체형을 토대로 <프로젝트>만의 알고리즘을 적용해<br/>
+  옷장난감🧸은/는 사용자의 체형을 토대로 알고리즘을 적용해<br/>
   <strong>사용자 맞춤형 스타일을 추천해주는 서비스를 제공하는 플랫폼입니다. </strong> <br/>
   <br />
   개발 기간 : 2026.05.19 ~ 2026.06.26 (39일)  
@@ -114,15 +114,6 @@
     </tr>
   </tbody>
 </table>
-
-<h2 align="center"> 📂 Structure </h2>
-
-~~~text
-```
-폴더 구조를 작성해주세요
-```
-~~~
-
 
 <h2 align="center"> 🦖 "Team 우주최강 공룡" 🚀</h2>
 
