@@ -13,8 +13,8 @@ public class SecurityConfig {
 
     // 인증 없이 접근 허용할 URL 목록
     private static final String[] PUBLIC_URLS = {
+            "/swagger-ui.html",
             "/swagger-ui/**",
-            "/swagger-ui/index.html",
             "/v3/api-docs/**",
             "/swagger-resources/**",
             "/webjars/**",
