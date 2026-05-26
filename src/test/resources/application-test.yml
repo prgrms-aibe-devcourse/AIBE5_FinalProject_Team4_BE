@@ -62,3 +62,13 @@ cloud:
 
 jwt:
   secret: ${JWT_SECRET}
+
+gemini:
+  api-key: test-gemini-key
+  base-url: https://generativelanguage.googleapis.com/v1beta
+  model: gemini-2.0-flash
+
+weather:
+  api:
+    key: test-weather-key
+    url: https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
