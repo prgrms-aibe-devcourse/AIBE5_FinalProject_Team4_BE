@@ -2,6 +2,7 @@ package com.closetnangam.be.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -30,9 +31,7 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_URLS).permitAll()  // 위 URL은 누구나 접근 가능
                         .anyRequest().authenticated()              // 나머지는 인증 필요
                 )
-                .oauth2Login(oauth2 -> oauth2
-                        .loginPage("/login")
-                );
+                .oauth2Login(Customizer.withDefaults());  // 기본 OAuth2 로그인 설정 사용
 
         return http.build();
     }
