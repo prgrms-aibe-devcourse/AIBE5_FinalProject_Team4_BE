@@ -35,11 +35,17 @@
         <img src="https://img.shields.io/badge/Convention-✅-orange?style=for-the-badge" alt="Convention"/>
       </a>
     </td>
+	<td>
+      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/Folder%E2%80%90structure">
+        <img src="https://img.shields.io/badge/Structure-📂-purple?style=for-the-badge" alt="Structure"/>
+      </a>
+    </td>
   </tr>
   <tr align="center">
     <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#1-getting-started"><strong>개발환경 세팅</strong></a></td>
     <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#2-branch-strategy"><strong>브랜치 전략</strong></a></td>
     <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#3-team-convention"><strong>팀 컨벤션</strong></a></td>
+	<td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/Folder%E2%80%90structure"><strong>폴더 구조</strong></a></td>
   </tr>
 </table>
 
