@@ -21,17 +21,17 @@
 <table align="center">
   <tr align="center">
     <td>
-      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#1-getting-started">
+      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/BE%E2%80%90GettingStarted">
         <img src="https://img.shields.io/badge/Setup-⚙️-blue?style=for-the-badge" alt="Setup"/>
       </a>
     </td>
     <td>
-      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#2-branch-strategy">
+      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/BranchRule">
         <img src="https://img.shields.io/badge/Strategy-🌳-green?style=for-the-badge" alt="Strategy"/>
       </a>
     </td>
     <td>
-      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#3-team-convention">
+      <a href="https://www.notion.so/35d3550b7b55811a912dca65f0d0fedd#35d3550b7b5581619fdef191421a3252">
         <img src="https://img.shields.io/badge/Convention-✅-orange?style=for-the-badge" alt="Convention"/>
       </a>
     </td>
@@ -46,13 +46,36 @@
 <h2 align="center"> 📚 Stacks </h2>
 <table align="center">
   <thead>
-    <tr>
-      <th>작성예정</th>
-      <th>작성예정</th>
-    </tr>
+	  <tr>
+		<th>언어</th>
+		<th>설명</th>
+	  </tr>
   </thead>
   <tbody>
-   
+	  <tr>
+		<td>Language</td>
+   		<td>Java 21</th> 
+	</tr>
+	<tr>
+		<td>Framework</td>
+   		<td>SpringBoot 3.5.14</th> 
+	</tr>
+	<tr>
+		<td>Project</td>
+   		<td>Gradle-Groovy</th> 
+	</tr>
+	<tr>
+		<td>Database</td>
+   		<td>MySQL 8.4</th> 
+	</tr>
+	<tr>
+		<td>Cache</td>
+   		<td>Redis 7</th> 
+	</tr>
+	<tr>
+		<td>Deployment</td>
+   		<td>EC2 / RDS / Docker</th> 
+	</tr>
   </tbody>
 </table>
 
