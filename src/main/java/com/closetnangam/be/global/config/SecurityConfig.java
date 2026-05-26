@@ -1,0 +1,39 @@
+package com.closetnangam.be.global.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    // 인증 없이 접근 허용할 URL 목록
+    private static final String[] PUBLIC_URLS = {
+            "/swagger-ui/**",
+            "/swagger-ui/index.html",
+            "/v3/api-docs/**",
+            "/swagger-resources/**",
+            "/webjars/**",
+            "/login/**",
+            "/oauth2/**"
+    };
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(PUBLIC_URLS).permitAll()  // 위 URL은 누구나 접근 가능
+                        .anyRequest().authenticated()              // 나머지는 인증 필요
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .loginPage("/login")
+                );
+
+        return http.build();
+    }
+}
