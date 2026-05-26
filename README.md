@@ -42,9 +42,9 @@
     </td>
   </tr>
   <tr align="center">
-    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#1-getting-started"><strong>개발환경 세팅</strong></a></td>
-    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#2-branch-strategy"><strong>브랜치 전략</strong></a></td>
-    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#3-team-convention"><strong>팀 컨벤션</strong></a></td>
+    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/BE%E2%80%90GettingStarted"><strong>개발환경 세팅</strong></a></td>
+    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/BranchRule"><strong>브랜치 전략</strong></a></td>
+    <td><a href="https://www.notion.so/35d3550b7b55811a912dca65f0d0fedd#35d3550b7b5581619fdef191421a3252"><strong>팀 컨벤션</strong></a></td>
 	<td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/Folder%E2%80%90structure"><strong>폴더 구조</strong></a></td>
   </tr>
 </table>
