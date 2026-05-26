@@ -37,5 +37,15 @@ jwt:
     access: 3600000
     refresh: 604800000
 
+gemini:
+  api-key: ${GEMINI_API_KEY:}
+  base-url: https://generativelanguage.googleapis.com/v1beta
+  model: gemini-3.5-flash
+
+weather:
+  api:
+    key: ${WEATHER_API_KEY:}
+    url: ${WEATHER_API_URL:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
+
 kind: Application
 
