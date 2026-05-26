@@ -6,11 +6,6 @@ on:
   pull_request:
     branches: [ main, develop ]
 
-permissions:
-  contents: read
-  checks: write
-  pull-requests: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -59,7 +54,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run tests
-        run: ./gradlew test
+        run: ./gradlew test --stacktrace
         env:
           SPRING_PROFILES_ACTIVE: test
           DB_USERNAME: root
@@ -71,6 +66,21 @@ jobs:
           GOOGLE_CLIENT_SECRET: test
           NAVER_CLIENT_ID: test
           NAVER_CLIENT_SECRET: test
+          GEMINI_API_KEY: test-gemini-key
+          WEATHER_API_KEY: test-weather-key
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-report
+          path: build/reports/tests/test/
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: build/test-results/test/**/*.xml
 
       - name: Build
         run: ./gradlew build -x test
@@ -85,9 +95,5 @@ jobs:
           GOOGLE_CLIENT_SECRET: test
           NAVER_CLIENT_ID: test
           NAVER_CLIENT_SECRET: test
-
-      - name: Publish test results
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
-        with:
-          files: build/test-results/test/**/*.xml
+          GEMINI_API_KEY: test-gemini-key
+          WEATHER_API_KEY: test-weather-key
