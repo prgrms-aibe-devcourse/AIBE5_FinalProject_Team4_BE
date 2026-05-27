@@ -82,6 +82,76 @@ jobs:
         with:
           files: build/test-results/test/**/*.xml
 
+      - name: Post Korean test summary
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 << 'PYTHON'
+          import os
+          import glob
+          import xml.etree.ElementTree as ET
+
+          xml_files = glob.glob("build/test-results/test/**/*.xml", recursive=True)
+
+          total = 0
+          passed = 0
+          failed = 0
+          skipped = 0
+          errors = 0
+          failed_tests = []
+
+          for xml_file in xml_files:
+              try:
+                  tree = ET.parse(xml_file)
+                  root = tree.getroot()
+                  suites = [root] if root.tag == 'testsuite' else root.findall('testsuite')
+                  for suite in suites:
+                      total    += int(suite.get('tests', 0))
+                      failed   += int(suite.get('failures', 0))
+                      errors   += int(suite.get('errors', 0))
+                      skipped  += int(suite.get('skipped', 0))
+                      for tc in suite.findall('testcase'):
+                          if tc.find('failure') is not None or tc.find('error') is not None:
+                              failed_tests.append(f"- `{tc.get('classname')}.{tc.get('name')}`")
+              except Exception:
+                  pass
+
+          passed = total - failed - errors - skipped
+          all_passed = (failed + errors) == 0
+
+          if all_passed:
+              icon = "✅"
+              status = "모든 테스트 통과"
+          else:
+              icon = "❌"
+              status = "테스트 실패"
+
+          lines = [
+              f"## {icon} 테스트 결과: {status}",
+              "",
+              f"| 항목 | 수 |",
+              f"|---|---|",
+              f"| 전체 | {total} |",
+              f"| 통과 | {passed} |",
+              f"| 실패 | {failed + errors} |",
+              f"| 건너뜀 | {skipped} |",
+          ]
+
+          if failed_tests:
+              lines += ["", "### 실패한 테스트"] + failed_tests[:10]
+              if len(failed_tests) > 10:
+                  lines.append(f"_... 외 {len(failed_tests) - 10}건_")
+
+          body = "\n".join(lines)
+
+          pr_number = os.environ.get("PR_NUMBER", "")
+          with open("/tmp/test_summary.md", "w") as f:
+              f.write(body)
+          PYTHON
+
+          gh pr comment ${{ github.event.number }} --body "$(cat /tmp/test_summary.md)"
+
       - name: Build
         run: ./gradlew build -x test
         env:
