@@ -1,4 +1,4 @@
-<h1 align="center"> <프로젝트 이름> </h1>
+<h1 align="center"> 옷장..난감! </h1>
 
 
 <p align="center">
@@ -7,7 +7,7 @@
 </p>
 <h2 align="center"> 🗂️ Project Overview </h2> 
 <p align="center">
-  <프로젝트>은/는 사용자의 체형을 토대로 <프로젝트>만의 알고리즘을 적용해<br/>
+  옷장난감🧸은/는 사용자의 체형을 토대로 알고리즘을 적용해<br/>
   <strong>사용자 맞춤형 스타일을 추천해주는 서비스를 제공하는 플랫폼입니다. </strong> <br/>
   <br />
   개발 기간 : 2026.05.19 ~ 2026.06.26 (39일)  
@@ -21,38 +21,67 @@
 <table align="center">
   <tr align="center">
     <td>
-      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#1-getting-started">
+      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/BE%E2%80%90GettingStarted">
         <img src="https://img.shields.io/badge/Setup-⚙️-blue?style=for-the-badge" alt="Setup"/>
       </a>
     </td>
     <td>
-      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#2-branch-strategy">
+      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/BranchRule">
         <img src="https://img.shields.io/badge/Strategy-🌳-green?style=for-the-badge" alt="Strategy"/>
       </a>
     </td>
     <td>
-      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#3-team-convention">
+      <a href="https://www.notion.so/35d3550b7b55811a912dca65f0d0fedd#35d3550b7b5581619fdef191421a3252">
         <img src="https://img.shields.io/badge/Convention-✅-orange?style=for-the-badge" alt="Convention"/>
+      </a>
+    </td>
+	<td>
+      <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/Folder%E2%80%90structure">
+        <img src="https://img.shields.io/badge/Structure-📂-purple?style=for-the-badge" alt="Structure"/>
       </a>
     </td>
   </tr>
   <tr align="center">
-    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#1-getting-started"><strong>개발환경 세팅</strong></a></td>
-    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#2-branch-strategy"><strong>브랜치 전략</strong></a></td>
-    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki#3-team-convention"><strong>팀 컨벤션</strong></a></td>
+    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/BE%E2%80%90GettingStarted"><strong>개발환경 세팅</strong></a></td>
+    <td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/BranchRule"><strong>브랜치 전략</strong></a></td>
+    <td><a href="https://www.notion.so/35d3550b7b55811a912dca65f0d0fedd#35d3550b7b5581619fdef191421a3252"><strong>팀 컨벤션</strong></a></td>
+	<td><a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_BE/wiki/Folder%E2%80%90structure"><strong>폴더 구조</strong></a></td>
   </tr>
 </table>
 
 <h2 align="center"> 📚 Stacks </h2>
 <table align="center">
   <thead>
-    <tr>
-      <th>작성예정</th>
-      <th>작성예정</th>
-    </tr>
+	  <tr>
+		<th>언어</th>
+		<th>설명</th>
+	  </tr>
   </thead>
   <tbody>
-   
+	  <tr>
+		<td>Language</td>
+   		<td>Java 21</th> 
+	</tr>
+	<tr>
+		<td>Framework</td>
+   		<td>SpringBoot 3.5.14</th> 
+	</tr>
+	<tr>
+		<td>Project</td>
+   		<td>Gradle-Groovy</th> 
+	</tr>
+	<tr>
+		<td>Database</td>
+   		<td>MySQL 8.4</th> 
+	</tr>
+	<tr>
+		<td>Cache</td>
+   		<td>Redis 7</th> 
+	</tr>
+	<tr>
+		<td>Deployment</td>
+   		<td>EC2 / RDS / Docker</th> 
+	</tr>
   </tbody>
 </table>
 
@@ -85,15 +114,6 @@
     </tr>
   </tbody>
 </table>
-
-<h2 align="center"> 📂 Structure </h2>
-
-~~~text
-```
-폴더 구조를 작성해주세요
-```
-~~~
-
 
 <h2 align="center"> 🦖 "Team 우주최강 공룡" 🚀</h2>
 
