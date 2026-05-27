@@ -136,6 +136,15 @@ public class CategoryCatalogService {
         ClothesColor.fromCode(colorCode);
     }
 
+    public void validateStyleCodes(List<String> styleCodes) {
+        if (styleCodes == null || styleCodes.isEmpty()) {
+            throw new IllegalArgumentException("스타일은 1개 이상 선택해야 합니다.");
+        }
+        for (String styleCode : styleCodes) {
+            StyleCode.fromCode(styleCode);
+        }
+    }
+
     private java.util.List<CategoryGroupResponse> getCategoryGroups() {
         return Arrays.stream(ClothesCategory.values())
                 .map(category -> new CategoryGroupResponse(
