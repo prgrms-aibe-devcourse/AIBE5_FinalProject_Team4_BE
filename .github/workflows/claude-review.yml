@@ -1,0 +1,86 @@
+name: Claude Multi-Agent Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "src/**/*.java"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed Java files
+        id: changed-files
+        run: |
+          FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep '\.java$' | tr '\n' ' ')
+          COUNT=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep '\.java$' | wc -l)
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+
+      - name: Skip if no Java files changed
+        if: steps.changed-files.outputs.count == '0'
+        run: echo "변경된 Java 파일이 없어 리뷰를 건너뜁니다."
+
+      - name: Skip large PR
+        if: steps.changed-files.outputs.count > '10'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.number }} \
+            --body "⚠️ 변경된 파일이 너무 많습니다 (${{ steps.changed-files.outputs.count }}개). Claude 리뷰를 건너뜁니다. 변경 파일을 10개 이하로 분리하는 것을 권장합니다."
+
+      - name: Set up Node.js
+        if: steps.changed-files.outputs.count > '0' && steps.changed-files.outputs.count <= '10'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code
+        if: steps.changed-files.outputs.count > '0' && steps.changed-files.outputs.count <= '10'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run Claude Multi-Agent Review
+        if: steps.changed-files.outputs.count > '0' && steps.changed-files.outputs.count <= '10'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.files }}
+        run: |
+          mkdir -p /tmp/review
+          claude --headless \
+            --allowedTools "Read,Glob,Grep,Bash,Write" \
+            -p "다음 Java 파일들을 security-reviewer, performance-reviewer, style-reviewer 세 에이전트로 병렬 분석해줘.
+
+          변경된 파일 목록:
+          $CHANGED_FILES
+
+          분석 완료 후 세 에이전트의 결과를 취합하여 심각도 순(🔴→🟡→🟢)으로 정렬하고,
+          중복된 이슈는 하나로 합쳐서 /tmp/review/final.md 에 저장해줘.
+
+          최종 리포트 맨 앞에 다음 헤더를 추가해줘:
+          ## 🤖 Claude Multi-Agent Code Review
+          > security-reviewer, performance-reviewer, style-reviewer 3개 에이전트가 병렬 분석한 결과입니다.
+          "
+
+      - name: Post review comment
+        if: always() && steps.changed-files.outputs.count > '0' && steps.changed-files.outputs.count <= '10'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f /tmp/review/final.md ]; then
+            gh pr comment ${{ github.event.number }} --body "$(cat /tmp/review/final.md)"
+          else
+            gh pr comment ${{ github.event.number }} --body "⚠️ Claude 리뷰 생성 중 문제가 발생했습니다. Actions 로그를 확인해 주세요."
+          fi
