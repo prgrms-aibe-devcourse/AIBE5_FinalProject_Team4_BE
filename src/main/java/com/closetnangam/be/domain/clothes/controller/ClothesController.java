@@ -30,6 +30,7 @@ public class ClothesController {
 
     private final ClothesService clothesService;
 
+    // TODO: JWT 인증 구현 후 @PreAuthorize 또는 SecurityContextHolder로 userId 소유권 검증 추가 필요
     @Operation(summary = "보유 옷 목록 조회", description = "사용자 옷장의 보유 옷(OWNED) 목록을 조회합니다.")
     @GetMapping("/api/users/{userId}/clothes")
     public ResponseEntity<ApiResponse<List<ClothesResponse>>> getOwnedClothes(@PathVariable Long userId) {

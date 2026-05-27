@@ -140,12 +140,8 @@ public class CategoryCatalogService {
         if (styleCodes == null || styleCodes.isEmpty()) {
             throw new IllegalArgumentException("스타일은 1개 이상 선택해야 합니다.");
         }
-
         for (String styleCode : styleCodes) {
             StyleCode.fromCode(styleCode);
-            if (!styleRepository.existsByCode(styleCode)) {
-                throw new IllegalArgumentException("존재하지 않는 스타일 코드입니다: " + styleCode);
-            }
         }
     }
 

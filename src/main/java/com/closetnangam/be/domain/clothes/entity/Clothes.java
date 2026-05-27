@@ -22,7 +22,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Getter
@@ -136,8 +139,19 @@ public class Clothes extends BaseEntity {
     }
 
     public void replaceStyleTags(List<ClothesStyleTag> newStyleTags) {
-        this.styleTags.clear();
-        this.styleTags.addAll(newStyleTags);
+        Set<Long> newStyleIds = newStyleTags.stream()
+                .map(tag -> tag.getStyle().getId())
+                .collect(Collectors.toSet());
+
+        this.styleTags.removeIf(existing -> !newStyleIds.contains(existing.getStyle().getId()));
+
+        Set<Long> existingStyleIds = this.styleTags.stream()
+                .map(tag -> tag.getStyle().getId())
+                .collect(Collectors.toSet());
+
+        newStyleTags.stream()
+                .filter(tag -> !existingStyleIds.contains(tag.getStyle().getId()))
+                .forEach(this.styleTags::add);
     }
 
     public void addStyleTag(ClothesStyleTag styleTag) {

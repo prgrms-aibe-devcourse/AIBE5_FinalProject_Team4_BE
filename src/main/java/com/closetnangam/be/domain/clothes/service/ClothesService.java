@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.clothes.service;
 
+import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesCreateRequest;
@@ -129,11 +130,11 @@ public class ClothesService {
     }
 
     private List<ClothesStyleTag> buildStyleTags(Clothes clothes, List<String> styleCodes) {
-        return styleCodes.stream()
-                .map(styleRepository::findByCode)
-                .map(optionalStyle -> optionalStyle.orElseThrow(
-                        () -> new IllegalArgumentException("존재하지 않는 스타일 코드입니다.")
-                ))
+        List<Style> styles = styleRepository.findByCodeIn(styleCodes);
+        if (styles.size() != styleCodes.size()) {
+            throw new IllegalArgumentException("존재하지 않는 스타일 코드가 포함되어 있습니다.");
+        }
+        return styles.stream()
                 .map(style -> ClothesStyleTag.create(clothes, style))
                 .toList();
     }
