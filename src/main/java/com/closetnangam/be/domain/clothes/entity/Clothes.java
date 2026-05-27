@@ -76,6 +76,9 @@ public class Clothes extends BaseEntity {
     @Column(name = "is_verified", nullable = false)
     private Boolean isVerified;
 
+    @Column(name = "is_favorite", nullable = false)
+    private Boolean isFavorite = false;
+
     @OneToMany(mappedBy = "clothes", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ClothesStyleTag> styleTags = new ArrayList<>();
 
@@ -93,7 +96,8 @@ public class Clothes extends BaseEntity {
             String externalSource,
             String externalProductId,
             String externalProductUrl,
-            Boolean isVerified
+            Boolean isVerified,
+            Boolean isFavorite
     ) {
         this.wardrobe = wardrobe;
         this.name = name;
@@ -108,6 +112,7 @@ public class Clothes extends BaseEntity {
         this.externalProductId = externalProductId;
         this.externalProductUrl = externalProductUrl;
         this.isVerified = isVerified;
+        this.isFavorite = isFavorite != null ? isFavorite : false;
     }
 
     public void update(
@@ -137,5 +142,9 @@ public class Clothes extends BaseEntity {
 
     public void addStyleTag(ClothesStyleTag styleTag) {
         this.styleTags.add(styleTag);
+    }
+
+    public void updateFavorite(Boolean isFavorite) {
+        this.isFavorite = isFavorite;
     }
 }

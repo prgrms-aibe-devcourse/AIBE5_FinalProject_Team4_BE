@@ -25,6 +25,7 @@ public record ClothesResponse(
         String externalProductId,
         String externalProductUrl,
         Boolean isVerified,
+        Boolean isFavorite,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -62,6 +63,7 @@ public record ClothesResponse(
                 clothes.getExternalProductId(),
                 clothes.getExternalProductUrl(),
                 clothes.getIsVerified(),
+                clothes.getIsFavorite(),
                 clothes.getCreatedAt(),
                 clothes.getUpdatedAt()
         );

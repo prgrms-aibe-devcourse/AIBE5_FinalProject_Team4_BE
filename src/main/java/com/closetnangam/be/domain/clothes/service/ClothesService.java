@@ -3,6 +3,7 @@ package com.closetnangam.be.domain.clothes.service;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesCreateRequest;
+import com.closetnangam.be.domain.clothes.dto.request.ClothesFavoriteRequest;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesUpdateRequest;
 import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
@@ -35,6 +36,12 @@ public class ClothesService {
                 .toList();
     }
 
+    public List<ClothesResponse> getFavoriteOwnedClothes(Long userId) {
+        return clothesRepository.findFavoritesByUserIdAndSourceType(userId, SourceType.OWNED).stream()
+                .map(ClothesResponse::from)
+                .toList();
+    }
+
     public ClothesResponse getClothes(Long clothesId) {
         Clothes clothes = getClothesWithDetails(clothesId);
         return ClothesResponse.from(clothes);
@@ -60,6 +67,7 @@ public class ClothesService {
                 .externalProductId(EXTERNAL_NONE)
                 .externalProductUrl(EXTERNAL_NONE)
                 .isVerified(request.isVerified())
+                .isFavorite(false)
                 .build();
 
         applyStyleTags(clothes, request.styles());
@@ -85,6 +93,13 @@ public class ClothesService {
         );
 
         clothes.replaceStyleTags(buildStyleTags(clothes, request.styles()));
+        return ClothesResponse.from(clothes);
+    }
+
+    @Transactional
+    public ClothesResponse updateFavorite(Long clothesId, ClothesFavoriteRequest request) {
+        Clothes clothes = getClothesWithDetails(clothesId);
+        clothes.updateFavorite(request.isFavorite());
         return ClothesResponse.from(clothes);
     }
 
