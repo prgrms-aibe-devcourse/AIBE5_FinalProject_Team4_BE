@@ -43,7 +43,7 @@ public class ClothesController {
         return ResponseEntity.ok(ApiResponse.ok(clothesService.getFavoriteOwnedClothes(userId)));
     }
 
-    @Operation(summary = "옷 상세 조회", description = "옷 이미지, 이름, 브랜드, 카테고리, 타입, 색상, 스타일 정보를 조회합니다.")
+    @Operation(summary = "옷 상세 조회", description = "보유/미보유 옷의 상세 정보(이미지, 이름, 브랜드, 카테고리, 타입, 색상, 스타일)를 조회합니다.")
     @GetMapping("/api/clothes/{clothesId}")
     public ResponseEntity<ApiResponse<ClothesResponse>> getClothes(@PathVariable Long clothesId) {
         return ResponseEntity.ok(ApiResponse.ok(clothesService.getClothes(clothesId)));
@@ -60,7 +60,7 @@ public class ClothesController {
                 .body(ApiResponse.ok(clothesService.createOwnedClothes(userId, request)));
     }
 
-    @Operation(summary = "옷 즐겨찾기 설정", description = "옷의 즐겨찾기 상태를 등록/해제합니다.")
+    @Operation(summary = "옷 즐겨찾기 설정", description = "보유/미보유 옷의 즐겨찾기 상태를 등록/해제합니다.")
     @PatchMapping("/api/clothes/{clothesId}/favorite")
     public ResponseEntity<ApiResponse<ClothesResponse>> updateFavorite(
             @PathVariable Long clothesId,
@@ -69,7 +69,7 @@ public class ClothesController {
         return ResponseEntity.ok(ApiResponse.ok(clothesService.updateFavorite(clothesId, request)));
     }
 
-    @Operation(summary = "옷 정보 수정", description = "등록된 보유 옷 정보를 수정합니다.")
+    @Operation(summary = "옷 정보 수정", description = "등록된 보유/미보유 옷 정보를 수정합니다.")
     @PatchMapping("/api/clothes/{clothesId}")
     public ResponseEntity<ApiResponse<ClothesResponse>> updateClothes(
             @PathVariable Long clothesId,
@@ -78,7 +78,7 @@ public class ClothesController {
         return ResponseEntity.ok(ApiResponse.ok(clothesService.updateClothes(clothesId, request)));
     }
 
-    @Operation(summary = "옷 삭제", description = "등록된 보유 옷을 삭제합니다. 삭제 확인은 프론트에서 처리합니다.")
+    @Operation(summary = "옷 삭제", description = "등록된 보유/미보유 옷을 삭제합니다. 삭제 확인은 프론트에서 처리합니다.")
     @DeleteMapping("/api/clothes/{clothesId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> deleteClothes(@PathVariable Long clothesId) {

@@ -33,6 +33,8 @@ import java.util.stream.Collectors;
 @Table(name = "clothes")
 public class Clothes extends BaseEntity {
 
+    private static final String EXTERNAL_NONE = "NONE";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "clothes_id")
@@ -160,5 +162,17 @@ public class Clothes extends BaseEntity {
 
     public void updateFavorite(Boolean isFavorite) {
         this.isFavorite = isFavorite;
+    }
+
+    public void convertToOwned(String productCode, Boolean isVerified) {
+        if (this.sourceType != SourceType.WISHLIST) {
+            throw new IllegalArgumentException("미보유 옷만 보유 옷으로 전환할 수 있습니다.");
+        }
+        this.sourceType = SourceType.OWNED;
+        this.externalSource = EXTERNAL_NONE;
+        this.externalProductId = EXTERNAL_NONE;
+        this.externalProductUrl = EXTERNAL_NONE;
+        this.productCode = productCode;
+        this.isVerified = isVerified;
     }
 }

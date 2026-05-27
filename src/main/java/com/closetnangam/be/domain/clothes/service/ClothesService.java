@@ -3,9 +3,11 @@ package com.closetnangam.be.domain.clothes.service;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
+import com.closetnangam.be.domain.clothes.dto.request.ClothesConvertToOwnedRequest;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesCreateRequest;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesFavoriteRequest;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesUpdateRequest;
+import com.closetnangam.be.domain.clothes.dto.request.WishlistClothesCreateRequest;
 import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
@@ -43,6 +45,18 @@ public class ClothesService {
                 .toList();
     }
 
+    public List<ClothesResponse> getWishlistClothes(Long userId) {
+        return clothesRepository.findAllByUserIdAndSourceType(userId, SourceType.WISHLIST).stream()
+                .map(ClothesResponse::from)
+                .toList();
+    }
+
+    public List<ClothesResponse> getFavoriteWishlistClothes(Long userId) {
+        return clothesRepository.findFavoritesByUserIdAndSourceType(userId, SourceType.WISHLIST).stream()
+                .map(ClothesResponse::from)
+                .toList();
+    }
+
     public ClothesResponse getClothes(Long clothesId) {
         Clothes clothes = getClothesWithDetails(clothesId);
         return ClothesResponse.from(clothes);
@@ -74,6 +88,41 @@ public class ClothesService {
         applyStyleTags(clothes, request.styles());
         Clothes saved = clothesRepository.save(clothes);
         return ClothesResponse.from(saved);
+    }
+
+    @Transactional
+    public ClothesResponse createWishlistClothes(Long userId, WishlistClothesCreateRequest request) {
+        validateClassification(request.category(), request.itemType(), request.color(), request.styles());
+
+        Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
+
+        Clothes clothes = Clothes.builder()
+                .wardrobe(wardrobe)
+                .name(request.name())
+                .brandName(request.brandName())
+                .productCode(request.productCode())
+                .imageUrl(request.imageUrl())
+                .category(request.category())
+                .itemType(request.itemType())
+                .color(request.color())
+                .sourceType(SourceType.WISHLIST)
+                .externalSource(request.externalSource())
+                .externalProductId(request.externalProductId())
+                .externalProductUrl(request.externalProductUrl())
+                .isVerified(false)
+                .isFavorite(false)
+                .build();
+
+        applyStyleTags(clothes, request.styles());
+        Clothes saved = clothesRepository.save(clothes);
+        return ClothesResponse.from(saved);
+    }
+
+    @Transactional
+    public ClothesResponse convertToOwned(Long clothesId, ClothesConvertToOwnedRequest request) {
+        Clothes clothes = getClothesWithDetails(clothesId);
+        clothes.convertToOwned(request.productCode(), request.isVerified());
+        return ClothesResponse.from(clothes);
     }
 
     @Transactional
