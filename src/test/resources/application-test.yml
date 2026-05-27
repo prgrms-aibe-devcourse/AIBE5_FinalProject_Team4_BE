@@ -29,7 +29,7 @@ spring:
             client-secret: ${KAKAO_CLIENT_SECRET}
             redirect-uri: http://localhost:8080/login/oauth2/code/kakao
             authorization-grant-type: authorization_code
-            scope: profile_nickname
+            scope: account_email
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
