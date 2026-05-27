@@ -91,8 +91,8 @@ publish_description_as_comment = false
 add_original_user_description = true
 
 [pr_code_suggestions]
-# 코드 개선 제안 활성화
-automatic_code_suggestions = true
+# 코드 개선 제안 - 수동으로만 실행 (/improve 코멘트로 트리거)
+automatic_code_suggestions = false
 max_code_suggestions = 5
 extra_instructions = """
 제안은 단순 수정이 아닌 학습 관점에서 작성해 주세요.
