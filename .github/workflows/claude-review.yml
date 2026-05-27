@@ -59,7 +59,7 @@ jobs:
           CHANGED_FILES: ${{ steps.changed-files.outputs.files }}
         run: |
           mkdir -p /tmp/review
-          claude \
+          claude --dangerously-skip-permissions \
             -p "다음 Java 파일들을 security-reviewer, performance-reviewer, style-reviewer 세 에이전트로 병렬 분석해줘.
 
           변경된 파일 목록:
