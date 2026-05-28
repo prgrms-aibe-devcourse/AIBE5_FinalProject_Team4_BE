@@ -20,7 +20,7 @@ public class StorageProperties {
     @Setter
     public static class Local {
         private String basePath = "uploads";
-        private String baseUrl = "http://localhost:8080/uploads";
+        private String baseUrl = "http://localhost:8080/api/v1/images";
     }
 
     @Getter

@@ -129,9 +129,14 @@ public class AiService {
                 || result.styles().isEmpty()) {
             throw new IllegalStateException("AI 판별 결과가 충분하지 않습니다.");
         }
-        categoryCatalogService.validateCategoryAndItemType(result.category(), result.itemType());
-        categoryCatalogService.validateClothesColors(result.primaryColor(), normalizeSecondaryColors(result.secondaryColors()));
-        categoryCatalogService.validateStyleCodes(result.styles());
+        try {
+            categoryCatalogService.validateCategoryAndItemType(result.category(), result.itemType());
+            categoryCatalogService.validateClothesColors(result.primaryColor(), normalizeSecondaryColors(result.secondaryColors()));
+            categoryCatalogService.validateStyleCodes(result.styles());
+        } catch (IllegalArgumentException e) {
+            // AI가 유효하지 않은 category/color/style 코드를 반환한 경우
+            throw new IllegalStateException("AI가 유효하지 않은 분류 결과를 반환했습니다: " + e.getMessage(), e);
+        }
     }
 
     private List<String> normalizeSecondaryColors(List<String> secondaryColors) {
