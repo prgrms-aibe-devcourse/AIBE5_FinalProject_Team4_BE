@@ -1,10 +1,10 @@
-package com.closetnangam.be.domain.ai.dto.response;
+package com.closetnangam.be.domain.clothes.dto.response;
 
 import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
 
 import java.util.List;
 
-public record AiAnalyzeResponse(
+public record PhotoClothesDraftResponse(
         Long photoId,
         AiAnalysisStatus analysisStatus,
         String previewUrl,
