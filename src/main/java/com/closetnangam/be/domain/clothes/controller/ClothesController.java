@@ -9,7 +9,6 @@ import com.closetnangam.be.domain.clothes.service.ClothesRegistrationService;
 import com.closetnangam.be.domain.clothes.service.ClothesService;
 import com.closetnangam.be.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +35,6 @@ public class ClothesController {
     private final ClothesRegistrationService clothesRegistrationService;
 
     @Operation(summary = "옷 등록 방식 조회", description = "옷장 화면 등록 모달에서 구매내역/사진 기반 등록 방식을 선택할 때 사용합니다.")
-    @SecurityRequirements
     @GetMapping("/clothes/registration-methods")
     public ResponseEntity<ApiResponse<ClothesRegistrationMethodsResponse>> getRegistrationMethods() {
         return ResponseEntity.ok(ApiResponse.ok(clothesRegistrationService.getRegistrationMethods()));

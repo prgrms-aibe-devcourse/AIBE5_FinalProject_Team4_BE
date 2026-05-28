@@ -21,7 +21,8 @@ public class SecurityConfig {
             "/webjars/**",
             "/login/**",
             "/oauth2/**",
-            "/api/categories/**"
+            "/api/categories/**",
+            "/api/v1/clothes/registration-methods"
     };
 
     @Bean

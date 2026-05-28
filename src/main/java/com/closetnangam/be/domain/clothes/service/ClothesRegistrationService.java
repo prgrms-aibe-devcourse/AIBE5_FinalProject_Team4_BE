@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.clothes.service;
 
+import com.closetnangam.be.domain.clothes.constant.ClothesRegistrationMessages;
 import com.closetnangam.be.domain.clothes.dto.response.ClothesRegistrationMethodResponse;
 import com.closetnangam.be.domain.clothes.dto.response.ClothesRegistrationMethodsResponse;
 import com.closetnangam.be.domain.clothes.enums.ClothesRegistrationMethod;
@@ -14,8 +15,8 @@ public class ClothesRegistrationService {
 
     public ClothesRegistrationMethodsResponse getRegistrationMethods() {
         return new ClothesRegistrationMethodsResponse(
-                "등록 방식 선택",
-                "원하는 등록 방식을 선택해 주세요.",
+                ClothesRegistrationMessages.MODAL_TITLE,
+                ClothesRegistrationMessages.MODAL_DESCRIPTION,
                 Arrays.stream(ClothesRegistrationMethod.values())
                         .map(ClothesRegistrationMethodResponse::from)
                         .toList()

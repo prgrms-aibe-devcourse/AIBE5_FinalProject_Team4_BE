@@ -9,9 +9,6 @@ public record ClothesRegistrationMethodResponse(
 ) {
 
     public static ClothesRegistrationMethodResponse from(ClothesRegistrationMethod method) {
-        if (method == null) {
-            throw new IllegalArgumentException("ClothesRegistrationMethod은 null일 수 없습니다.");
-        }
         return new ClothesRegistrationMethodResponse(
                 method.name(),
                 method.getLabel(),
