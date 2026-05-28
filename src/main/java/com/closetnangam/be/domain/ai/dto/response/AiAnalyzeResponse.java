@@ -14,7 +14,8 @@ public record AiAnalyzeResponse(
         String brandName,
         String category,
         String itemType,
-        String color,
+        String primaryColor,
+        List<String> secondaryColors,
         List<String> styles
 ) {
 }

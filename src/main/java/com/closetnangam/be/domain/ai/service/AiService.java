@@ -94,7 +94,8 @@ public class AiService {
                         finalResult.brandName(),
                         finalResult.category(),
                         finalResult.itemType(),
-                        finalResult.color(),
+                        finalResult.primaryColor(),
+                        toColorsJson(finalResult.secondaryColors()),
                         toStylesJson(finalResult.styles()),
                         toRawJson(finalResult)
                 );
@@ -123,13 +124,26 @@ public class AiService {
         if (!StringUtils.hasText(result.name())
                 || !StringUtils.hasText(result.category())
                 || !StringUtils.hasText(result.itemType())
-                || !StringUtils.hasText(result.color())
+                || !StringUtils.hasText(result.primaryColor())
                 || result.styles() == null
                 || result.styles().isEmpty()) {
             throw new IllegalStateException("AI 판별 결과가 충분하지 않습니다.");
         }
-        categoryCatalogService.validateClothesClassification(result.category(), result.itemType(), result.color());
+        categoryCatalogService.validateCategoryAndItemType(result.category(), result.itemType());
+        categoryCatalogService.validateClothesColors(result.primaryColor(), normalizeSecondaryColors(result.secondaryColors()));
         categoryCatalogService.validateStyleCodes(result.styles());
+    }
+
+    private List<String> normalizeSecondaryColors(List<String> secondaryColors) {
+        return secondaryColors == null ? Collections.emptyList() : secondaryColors;
+    }
+
+    private String toColorsJson(List<String> secondaryColors) {
+        try {
+            return objectMapper.writeValueAsString(normalizeSecondaryColors(secondaryColors));
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("AI 판별 결과를 저장하지 못했습니다.");
+        }
     }
 
     private String toStylesJson(List<String> styles) {
@@ -150,6 +164,7 @@ public class AiService {
 
     private AiAnalyzeResponse toAnalyzeResponse(ClothingAiPhoto photo) {
         List<String> styles = parseStyles(photo.getDraftStylesJson());
+        List<String> secondaryColors = parseColors(photo.getDraftSecondaryColorsJson());
         boolean aiFailed = photo.getAnalysisStatus() == AiAnalysisStatus.FAILED;
 
         return new AiAnalyzeResponse(
@@ -162,9 +177,24 @@ public class AiService {
                 photo.getDraftBrandName(),
                 photo.getDraftCategory(),
                 photo.getDraftItemType(),
-                photo.getDraftColor(),
+                photo.getDraftPrimaryColor(),
+                secondaryColors,
                 styles
         );
+    }
+
+    private List<String> parseColors(String draftSecondaryColorsJson) {
+        if (!StringUtils.hasText(draftSecondaryColorsJson)) {
+            return Collections.emptyList();
+        }
+        try {
+            return objectMapper.readValue(
+                    draftSecondaryColorsJson,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
+            );
+        } catch (JsonProcessingException exception) {
+            return Collections.emptyList();
+        }
     }
 
     private List<String> parseStyles(String draftStylesJson) {
