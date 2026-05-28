@@ -12,8 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,9 +51,15 @@ public class CategoryCatalogService {
                                 "SHORT_SLEEVE"
                         ),
                         new GuideFieldResponse(
-                                "color",
-                                "컬러",
-                                "색상 코드(code)를 DB에 저장하고, 화면에는 hex 값으로 색상 원(swatch)을 표시합니다.",
+                                "primaryColor",
+                                "주 색상",
+                                "색상 코드(code)를 clothing_colors 테이블 PRIMARY 역할로 저장합니다.",
+                                "WHITE"
+                        ),
+                        new GuideFieldResponse(
+                                "secondaryColors",
+                                "보조 색상",
+                                "색상 코드 배열입니다. clothing_colors 테이블 SECONDARY 역할로 저장합니다.",
                                 "NAVY"
                         ),
                         new GuideFieldResponse(
@@ -73,7 +81,8 @@ public class CategoryCatalogService {
                         Map.of(
                                 "category", "TOP",
                                 "item_type", "SHORT_SLEEVE",
-                                "color", "WHITE",
+                                "primaryColor", "WHITE",
+                                "secondaryColors", List.of("NAVY"),
                                 "styles", List.of("CASUAL", "MINIMAL")
                         ),
                         "colorDisplay",
@@ -120,7 +129,8 @@ public class CategoryCatalogService {
                 {
                   "category": "TOP",
                   "item_type": "SHORT_SLEEVE",
-                  "color": "WHITE",
+                  "primaryColor": "WHITE",
+                  "secondaryColors": ["NAVY"],
                   "styles": ["CASUAL", "MINIMAL"]
                 }
                 """);
@@ -129,19 +139,48 @@ public class CategoryCatalogService {
     }
 
     public void validateClothesClassification(String categoryCode, String itemTypeCode, String colorCode) {
+        validateCategoryAndItemType(categoryCode, itemTypeCode);
+        validateColorCode(colorCode);
+    }
+
+    public void validateCategoryAndItemType(String categoryCode, String itemTypeCode) {
         ClothesCategory.fromCode(categoryCode);
         if (!ClothesItemType.matchesCategory(categoryCode, itemTypeCode)) {
             throw new IllegalArgumentException("item_type이 category와 일치하지 않습니다.");
         }
+    }
+
+    public void validateColorCode(String colorCode) {
         ClothesColor.fromCode(colorCode);
+    }
+
+    public void validateClothesColors(String primaryColor, List<String> secondaryColors) {
+        validateColorCode(primaryColor);
+        if (secondaryColors == null || secondaryColors.isEmpty()) {
+            return;
+        }
+        Set<String> seen = new HashSet<>();
+        for (String secondaryColor : secondaryColors) {
+            validateColorCode(secondaryColor);
+            if (primaryColor.equals(secondaryColor)) {
+                throw new IllegalArgumentException("주 색상과 보조 색상은 같을 수 없습니다.");
+            }
+            if (!seen.add(secondaryColor)) {
+                throw new IllegalArgumentException("보조 색상에 중복된 값이 있습니다: " + secondaryColor);
+            }
+        }
     }
 
     public void validateStyleCodes(List<String> styleCodes) {
         if (styleCodes == null || styleCodes.isEmpty()) {
             throw new IllegalArgumentException("스타일은 1개 이상 선택해야 합니다.");
         }
+        Set<String> seen = new HashSet<>();
         for (String styleCode : styleCodes) {
             StyleCode.fromCode(styleCode);
+            if (!seen.add(styleCode)) {
+                throw new IllegalArgumentException("스타일에 중복된 값이 있습니다: " + styleCode);
+            }
         }
     }
 

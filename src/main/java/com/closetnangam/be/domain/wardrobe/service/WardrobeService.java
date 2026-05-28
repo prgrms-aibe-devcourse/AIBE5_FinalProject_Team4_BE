@@ -25,6 +25,9 @@ public class WardrobeService {
 
     @Transactional
     public WardrobeResponse createWardrobe(Long userId) {
+        if (wardrobeRepository.existsByUser_Id(userId)) {
+            throw new IllegalStateException("이미 옷장이 존재합니다.");
+        }
         return WardrobeResponse.from(createWardrobeEntity(userId));
     }
 
@@ -37,11 +40,6 @@ public class WardrobeService {
     private Wardrobe createWardrobeEntity(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-
-        if (wardrobeRepository.existsByUser_Id(userId)) {
-            throw new IllegalStateException("이미 옷장이 존재합니다.");
-        }
-
         return wardrobeRepository.save(Wardrobe.create(user));
     }
 }
