@@ -14,8 +14,11 @@ public record ClothesCreateRequest(
         @NotBlank @Size(max = 500) String imageUrl,
         @NotBlank @Size(max = 50) String category,
         @NotBlank @Size(max = 50) String itemType,
-        @NotBlank @Size(max = 50) String color,
-        @NotEmpty List<@NotBlank String> styles,
+        @NotBlank @Size(max = 50) String primaryColor,
+        @Size(max = 10) List<@NotBlank String> secondaryColors,
+        @NotEmpty @Size(max = 10) List<@NotBlank String> styles,
+        @NotBlank @Size(max = 50) String size,
+        @Size(max = 50) String season,
         @NotNull Boolean isVerified
 ) {
 }

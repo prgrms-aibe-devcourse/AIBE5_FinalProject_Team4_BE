@@ -79,4 +79,21 @@ public class WardrobeClothes extends BaseEntity {
         this.registrationSource = registrationSource;
         this.userImageUrl = userImageUrl;
     }
+
+    public void updateFavorite(Boolean favorite) {
+        this.favorite = favorite;
+    }
+
+    public void updateWardrobeDetails(String size, String season, String userImageUrl) {
+        this.size = size;
+        this.season = season;
+        this.userImageUrl = userImageUrl;
+    }
+
+    public void convertToOwned(String size, String season, String userImageUrl) {
+        this.ownershipStatus = OwnershipStatus.OWNED;
+        this.size = size;
+        this.season = season;
+        this.userImageUrl = userImageUrl;
+    }
 }
