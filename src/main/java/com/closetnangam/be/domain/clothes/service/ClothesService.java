@@ -21,6 +21,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * 옷 CRUD 서비스.
+ * <p>
+ * {@link ClothesResponse} 매핑은 {@code wardrobe}, {@code user}, {@code styleTags.style} 연관 관계가
+ * 로딩된 {@link Clothes} 엔티티를 전제로 합니다. 목록/상세 조회는
+ * {@link com.closetnangam.be.domain.clothes.repository.ClothesRepository}의 join fetch 쿼리에 의존합니다.
+ * <p>
+ * 등록(create) 직후 응답은 영속성 컨텍스트 내 lazy loading으로 처리됩니다.
+ * 조회 API와 동일한 fetch 전략이 필요하면 DTO 프로젝션 또는 save 후 재조회로 전환을 검토하세요.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -87,7 +97,8 @@ public class ClothesService {
 
         applyStyleTags(clothes, request.styles());
         Clothes saved = clothesRepository.save(clothes);
-        return ClothesResponse.from(saved);
+        // save 직후 join fetch 재조회로 N+1 방지 (wardrobe.user, styleTags.style lazy 로딩 차단)
+        return ClothesResponse.from(getClothesWithDetails(saved.getId()));
     }
 
     @Transactional
@@ -115,7 +126,8 @@ public class ClothesService {
 
         applyStyleTags(clothes, request.styles());
         Clothes saved = clothesRepository.save(clothes);
-        return ClothesResponse.from(saved);
+        // save 직후 join fetch 재조회로 N+1 방지 (wardrobe.user, styleTags.style lazy 로딩 차단)
+        return ClothesResponse.from(getClothesWithDetails(saved.getId()));
     }
 
     @Transactional

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Category", description = "공용 카테고리 API")
 @SecurityRequirements
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping({"/api/v1/categories", "/api/categories"})
 @RequiredArgsConstructor
 public class CategoryController {
 

@@ -66,7 +66,7 @@ public class CategoryCatalogService {
                         "colors.hex는 UI 표시용입니다. DB에는 colors.code만 저장합니다.",
                         "WHITE 색상 원은 밝은 배경에서 border가 필요할 수 있습니다.",
                         "item_type은 반드시 선택한 category 하위 코드만 사용할 수 있습니다.",
-                        "AI 분류 프롬프트가 필요하면 GET /api/categories/ai-guide 를 사용하세요."
+                        "AI 분류 프롬프트가 필요하면 GET /api/v1/categories/ai-guide 를 사용하세요."
                 ),
                 Map.of(
                         "clothesRegistration",

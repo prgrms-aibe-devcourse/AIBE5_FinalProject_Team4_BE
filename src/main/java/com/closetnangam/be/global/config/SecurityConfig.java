@@ -13,6 +13,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     // 인증 없이 접근 허용할 URL 목록
+    // API 경로는 /api/v1 prefix 기준으로 통일합니다.
     private static final String[] PUBLIC_URLS = {
             "/swagger-ui.html",
             "/swagger-ui/**",
@@ -21,7 +22,9 @@ public class SecurityConfig {
             "/webjars/**",
             "/login/**",
             "/oauth2/**",
-            "/api/categories/**"
+            "/api/v1/categories/**",
+            "/api/categories/**",   // TODO: FE /api/v1 마이그레이션 완료 후 제거 필요
+            "/api/v1/clothes/registration-methods"
     };
 
     @Bean
