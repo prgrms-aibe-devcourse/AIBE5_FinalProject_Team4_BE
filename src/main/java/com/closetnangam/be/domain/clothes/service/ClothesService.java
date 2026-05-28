@@ -97,7 +97,8 @@ public class ClothesService {
 
         applyStyleTags(clothes, request.styles());
         Clothes saved = clothesRepository.save(clothes);
-        return ClothesResponse.from(saved);
+        // save 직후 join fetch 재조회로 N+1 방지 (wardrobe.user, styleTags.style lazy 로딩 차단)
+        return ClothesResponse.from(getClothesWithDetails(saved.getId()));
     }
 
     @Transactional
@@ -125,7 +126,8 @@ public class ClothesService {
 
         applyStyleTags(clothes, request.styles());
         Clothes saved = clothesRepository.save(clothes);
-        return ClothesResponse.from(saved);
+        // save 직후 join fetch 재조회로 N+1 방지 (wardrobe.user, styleTags.style lazy 로딩 차단)
+        return ClothesResponse.from(getClothesWithDetails(saved.getId()));
     }
 
     @Transactional
