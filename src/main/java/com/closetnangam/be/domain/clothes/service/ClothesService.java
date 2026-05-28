@@ -47,25 +47,25 @@ public class ClothesService {
     private final WardrobeService wardrobeService;
 
     public List<ClothesResponse> getOwnedClothes(Long userId) {
-        return wardrobeClothesRepository.findAllByUserIdAndSourceType(userId, SourceType.OWNED).stream()
+        return wardrobeClothesRepository.findAllByUserIdAndOwnershipStatus(userId, OwnershipStatus.OWNED).stream()
                 .map(entry -> ClothesResponse.from(entry.getClothes(), entry))
                 .toList();
     }
 
     public List<ClothesResponse> getFavoriteOwnedClothes(Long userId) {
-        return wardrobeClothesRepository.findFavoritesByUserIdAndSourceType(userId, SourceType.OWNED).stream()
+        return wardrobeClothesRepository.findFavoritesByUserIdAndOwnershipStatus(userId, OwnershipStatus.OWNED).stream()
                 .map(entry -> ClothesResponse.from(entry.getClothes(), entry))
                 .toList();
     }
 
     public List<ClothesResponse> getWishlistClothes(Long userId) {
-        return wardrobeClothesRepository.findAllByUserIdAndSourceType(userId, SourceType.WISHLIST).stream()
+        return wardrobeClothesRepository.findAllByUserIdAndOwnershipStatus(userId, OwnershipStatus.WISHLIST).stream()
                 .map(entry -> ClothesResponse.from(entry.getClothes(), entry))
                 .toList();
     }
 
     public List<ClothesResponse> getFavoriteWishlistClothes(Long userId) {
-        return wardrobeClothesRepository.findFavoritesByUserIdAndSourceType(userId, SourceType.WISHLIST).stream()
+        return wardrobeClothesRepository.findFavoritesByUserIdAndOwnershipStatus(userId, OwnershipStatus.WISHLIST).stream()
                 .map(entry -> ClothesResponse.from(entry.getClothes(), entry))
                 .toList();
     }
@@ -226,7 +226,7 @@ public class ClothesService {
     }
 
     private Clothes getClothesWithDetails(Long clothesId) {
-        return clothesRepository.findByIdWithDetails(clothesId)
+        return clothesRepository.findById(clothesId)
                 .orElseThrow(() -> new IllegalArgumentException("옷을 찾을 수 없습니다."));
     }
 

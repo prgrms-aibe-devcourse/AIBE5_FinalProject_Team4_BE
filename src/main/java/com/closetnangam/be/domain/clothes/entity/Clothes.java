@@ -15,6 +15,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.annotations.BatchSize;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -75,10 +76,12 @@ public class Clothes extends BaseEntity {
     @Column(nullable = false)
     private Long version;
 
+    @BatchSize(size = 100)
     @OrderBy("sortOrder ASC")
     @OneToMany(mappedBy = "clothes", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ClothingColor> colorTags = new ArrayList<>();
 
+    @BatchSize(size = 100)
     @OrderBy("sortOrder ASC")
     @OneToMany(mappedBy = "clothes", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ClothesStyleTag> styleTags = new ArrayList<>();
