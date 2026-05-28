@@ -11,6 +11,10 @@ import java.util.Optional;
 
 public interface ClothesRepository extends JpaRepository<Clothes, Long> {
 
+    /**
+     * ClothesResponse 매핑을 위해 wardrobe, user, styleTags, style을 join fetch합니다.
+     * fetch 대상 변경 시 {@link com.closetnangam.be.domain.clothes.dto.response.ClothesResponse#from}도 함께 검토하세요.
+     */
     @Query("""
             select distinct c from Clothes c
             join fetch c.wardrobe w

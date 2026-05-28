@@ -34,7 +34,10 @@ public class ClothesController {
     private final ClothesService clothesService;
     private final ClothesRegistrationService clothesRegistrationService;
 
-    @Operation(summary = "옷 등록 방식 조회", description = "옷장 화면 등록 모달에서 구매내역/사진 기반 등록 방식을 선택할 때 사용합니다.")
+    @Operation(
+            summary = "옷 등록 방식 조회",
+            description = "보유 옷 등록 시 선택 가능한 방식(구매내역 기반, 사진 기반) 목록을 반환합니다."
+    )
     @GetMapping("/clothes/registration-methods")
     public ResponseEntity<ApiResponse<ClothesRegistrationMethodsResponse>> getRegistrationMethods() {
         return ResponseEntity.ok(ApiResponse.ok(clothesRegistrationService.getRegistrationMethods()));
@@ -89,8 +92,8 @@ public class ClothesController {
 
     @Operation(summary = "옷 삭제", description = "등록된 보유/미보유 옷을 삭제합니다. 삭제 확인은 프론트에서 처리합니다.")
     @DeleteMapping("/clothes/{clothesId}")
-    public ResponseEntity<Void> deleteClothes(@PathVariable Long clothesId) {
+    public ResponseEntity<ApiResponse<Void>> deleteClothes(@PathVariable Long clothesId) {
         clothesService.deleteClothes(clothesId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }
