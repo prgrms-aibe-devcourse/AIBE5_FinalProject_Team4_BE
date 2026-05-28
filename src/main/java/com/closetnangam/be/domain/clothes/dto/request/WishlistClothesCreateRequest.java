@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.clothes.dto.request;
 
+import com.closetnangam.be.domain.catalog.constants.CatalogLimits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
@@ -14,8 +15,8 @@ public record WishlistClothesCreateRequest(
         @NotBlank @Size(max = 50) String category,
         @NotBlank @Size(max = 50) String itemType,
         @NotBlank @Size(max = 50) String primaryColor,
-        @Size(max = 10) List<@NotBlank String> secondaryColors,
-        @NotEmpty @Size(max = 10) List<@NotBlank String> styles,
+        @Size(max = CatalogLimits.MAX_SECONDARY_COLORS) List<@NotBlank String> secondaryColors,
+        @NotEmpty @Size(max = CatalogLimits.MAX_STYLES) List<@NotBlank String> styles,
         @NotBlank @Size(max = 50) String size,
         @Size(max = 50) String season,
         @NotBlank @Size(max = 50) String externalSource,

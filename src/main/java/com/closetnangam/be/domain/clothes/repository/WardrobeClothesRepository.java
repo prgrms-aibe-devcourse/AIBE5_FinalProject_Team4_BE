@@ -16,9 +16,6 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             join fetch wc.wardrobe w
             join fetch w.user
             join fetch wc.clothes c
-            left join fetch c.colorTags
-            left join fetch c.styleTags st
-            left join fetch st.style
             where wc.id = :wardrobeClothesId
             """)
     Optional<WardrobeClothes> findByIdWithDetails(@Param("wardrobeClothesId") Long wardrobeClothesId);

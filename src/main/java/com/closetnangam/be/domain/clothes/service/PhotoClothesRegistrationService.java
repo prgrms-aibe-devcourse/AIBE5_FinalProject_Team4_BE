@@ -3,15 +3,12 @@ package com.closetnangam.be.domain.clothes.service;
 import com.closetnangam.be.domain.ai.entity.ClothingAiPhoto;
 import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
 import com.closetnangam.be.domain.ai.repository.ClothingAiPhotoRepository;
-import com.closetnangam.be.domain.catalog.entity.Style;
-import com.closetnangam.be.domain.catalog.repository.StyleRepository;
-import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.domain.clothes.dto.request.PhotoClothesSaveRequest;
+import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.dto.response.PhotoClothesDraftResponse;
 import com.closetnangam.be.domain.clothes.dto.response.PhotoClothesRegistrationResponse;
 import com.closetnangam.be.domain.clothes.dto.response.PhotoUploadResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
-import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.RegistrationSource;
@@ -44,8 +41,7 @@ public class PhotoClothesRegistrationService {
     private final ClothingAiPhotoRepository clothingAiPhotoRepository;
     private final ClothesRepository clothesRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
-    private final StyleRepository styleRepository;
-    private final CategoryCatalogService categoryCatalogService;
+    private final ClothesTagHelper clothesTagHelper;
     private final WardrobeService wardrobeService;
     private final UserRepository userRepository;
     private final LocalImageStorageService localImageStorageService;
@@ -84,7 +80,13 @@ public class PhotoClothesRegistrationService {
             Long photoId,
             PhotoClothesSaveRequest request
     ) {
-        validateClassification(request.category(), request.itemType(), request.color(), request.styles());
+        validateClassification(
+                request.category(),
+                request.itemType(),
+                request.primaryColor(),
+                request.secondaryColors(),
+                request.styles()
+        );
 
         ClothingAiPhoto photo = getOwnedPhoto(userId, photoId);
         if (photo.isAlreadySaved()) {
@@ -94,23 +96,21 @@ public class PhotoClothesRegistrationService {
         Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
 
         Clothes clothes = Clothes.builder()
-                .wardrobe(wardrobe)
                 .name(request.name())
                 .brandName(request.brandName())
                 .productCode(request.productCode())
                 .imageUrl(photo.getImageUrl())
                 .category(request.category())
                 .itemType(request.itemType())
-                .color(request.color())
                 .sourceType(SourceType.OWNED)
                 .externalSource(EXTERNAL_NONE)
                 .externalProductId(EXTERNAL_NONE)
                 .externalProductUrl(EXTERNAL_NONE)
                 .isVerified(request.isVerified())
-                .isFavorite(request.favorite())
                 .build();
 
-        applyStyleTags(clothes, request.styles());
+        clothesTagHelper.applyColorTags(clothes, request.primaryColor(), request.secondaryColors());
+        clothesTagHelper.applyStyleTags(clothes, request.styles());
         Clothes savedClothes = clothesRepository.save(clothes);
 
         WardrobeClothes wardrobeClothes = wardrobeClothesRepository.save(WardrobeClothes.builder()
@@ -126,12 +126,9 @@ public class PhotoClothesRegistrationService {
 
         photo.markSaved(savedClothes.getId(), wardrobeClothes.getId());
 
-        Clothes loadedClothes = clothesRepository.findByIdWithDetails(savedClothes.getId())
-                .orElseThrow(() -> new IllegalArgumentException("저장된 옷을 찾을 수 없습니다."));
-
         return new PhotoClothesRegistrationResponse(
                 wardrobeClothes.getId(),
-                loadedClothes.getId(),
+                savedClothes.getId(),
                 photo.getId(),
                 wardrobeClothes.getUserImageUrl(),
                 wardrobeClothes.getOwnershipStatus(),
@@ -139,7 +136,7 @@ public class PhotoClothesRegistrationService {
                 wardrobeClothes.getSize(),
                 wardrobeClothes.getSeason(),
                 wardrobeClothes.getFavorite(),
-                com.closetnangam.be.domain.clothes.dto.response.ClothesResponse.from(loadedClothes)
+                com.closetnangam.be.domain.clothes.dto.response.ClothesResponse.from(savedClothes, wardrobeClothes)
         );
     }
 
@@ -167,34 +164,34 @@ public class PhotoClothesRegistrationService {
                 photo.getDraftBrandName(),
                 photo.getDraftCategory(),
                 photo.getDraftItemType(),
-                photo.getDraftColor(),
+                photo.getDraftPrimaryColor(),
+                parseColors(photo.getDraftSecondaryColorsJson()),
                 styles
         );
+    }
+
+    private List<String> parseColors(String draftSecondaryColorsJson) {
+        if (!StringUtils.hasText(draftSecondaryColorsJson)) {
+            return Collections.emptyList();
+        }
+        try {
+            return objectMapper.readValue(
+                    draftSecondaryColorsJson,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
+            );
+        } catch (JsonProcessingException exception) {
+            return Collections.emptyList();
+        }
     }
 
     private void validateClassification(
             String category,
             String itemType,
-            String color,
+            String primaryColor,
+            List<String> secondaryColors,
             List<String> styles
     ) {
-        categoryCatalogService.validateClothesClassification(category, itemType, color);
-        categoryCatalogService.validateStyleCodes(styles);
-    }
-
-    private void applyStyleTags(Clothes clothes, List<String> styleCodes) {
-        buildStyleTags(clothes, styleCodes).forEach(clothes::addStyleTag);
-    }
-
-    private List<ClothesStyleTag> buildStyleTags(Clothes clothes, List<String> styleCodes) {
-        List<String> uniqueCodes = styleCodes.stream().distinct().toList();
-        List<Style> styles = styleRepository.findByCodeIn(uniqueCodes);
-        if (styles.size() != uniqueCodes.size()) {
-            throw new IllegalArgumentException("존재하지 않는 스타일 코드가 포함되어 있습니다.");
-        }
-        return styles.stream()
-                .map(style -> ClothesStyleTag.create(clothes, style))
-                .toList();
+        clothesTagHelper.validateClassification(category, itemType, primaryColor, secondaryColors, styles);
     }
 
     private List<String> parseStyles(String draftStylesJson) {

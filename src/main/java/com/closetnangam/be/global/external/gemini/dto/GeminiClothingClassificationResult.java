@@ -1,5 +1,6 @@
 package com.closetnangam.be.global.external.gemini.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
@@ -10,7 +11,8 @@ public record GeminiClothingClassificationResult(
         String brandName,
         String category,
         String itemType,
-        String color,
+        @JsonAlias("color") String primaryColor,
+        List<String> secondaryColors,
         List<String> styles
 ) {
 }

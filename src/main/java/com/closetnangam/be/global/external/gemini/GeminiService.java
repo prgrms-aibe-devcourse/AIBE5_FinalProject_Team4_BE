@@ -65,7 +65,8 @@ public class GeminiService {
                   "brandName": "string",
                   "category": "TOP",
                   "itemType": "SHORT_SLEEVE",
-                  "color": "WHITE",
+                  "primaryColor": "WHITE",
+                  "secondaryColors": ["NAVY"],
                   "styles": ["CASUAL"]
                 }
                 """.formatted(classificationGuide);
