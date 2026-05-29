@@ -1,0 +1,112 @@
+package com.closetnangam.be.global.auth.oauth;
+
+import com.closetnangam.be.domain.user.entity.User;
+import com.closetnangam.be.domain.user.entity.UserAccount;
+import com.closetnangam.be.domain.user.repository.UserAccountRepository;
+import com.closetnangam.be.domain.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class OAuth2UserService extends DefaultOAuth2UserService {
+
+    private final UserRepository userRepository;
+    private final UserAccountRepository userAccountRepository;
+
+    @Override
+    @Transactional
+    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+        OAuth2User oAuth2User = super.loadUser(userRequest);
+        String provider = userRequest.getClientRegistration().getRegistrationId();
+
+        String providerId = extractProviderId(provider, oAuth2User);
+        String email = extractEmail(provider, oAuth2User);
+        String rawName = extractName(provider, oAuth2User);
+
+        UserAccount account = userAccountRepository.findByProviderAndProviderId(provider, providerId)
+                .orElseGet(() -> createAccount(provider, providerId, email, rawName));
+
+        return new CustomOAuth2User(oAuth2User, account.getUser().getId());
+    }
+
+    private UserAccount createAccount(String provider, String providerId, String email, String rawName) {
+        User user = userRepository.findByEmail(email)
+                .orElseGet(() -> userRepository.save(
+                        User.builder()
+                                .email(email)
+                                .nickname(buildUniqueNickname(rawName))
+                                .build()
+                ));
+        return userAccountRepository.save(
+                UserAccount.builder()
+                        .user(user)
+                        .provider(provider)
+                        .providerId(providerId)
+                        .build()
+        );
+    }
+
+    private String buildUniqueNickname(String base) {
+        String candidate = base.isBlank() ? "user" : base;
+        while (userRepository.existsByNickname(candidate)) {
+            candidate = base + "#" + UUID.randomUUID().toString().replace("-", "").substring(0, 4);
+        }
+        return candidate;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractProviderId(String provider, OAuth2User user) {
+        return switch (provider) {
+            case "kakao" -> String.valueOf(user.getAttributes().get("id"));
+            case "naver" -> {
+                Map<String, Object> response = (Map<String, Object>) user.getAttributes().get("response");
+                yield String.valueOf(response.get("id"));
+            }
+            default -> String.valueOf(user.getAttributes().get("sub")); // google
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractEmail(String provider, OAuth2User user) {
+        return switch (provider) {
+            case "kakao" -> {
+                Map<String, Object> account = (Map<String, Object>) user.getAttributes().get("kakao_account");
+                yield account != null ? String.valueOf(account.get("account_email")) : "kakao_" + user.getAttributes().get("id") + "@noreply.invalid";
+            }
+            case "naver" -> {
+                Map<String, Object> response = (Map<String, Object>) user.getAttributes().get("response");
+                yield String.valueOf(response.get("email"));
+            }
+            default -> String.valueOf(user.getAttributes().get("email")); // google
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractName(String provider, OAuth2User user) {
+        return switch (provider) {
+            case "kakao" -> {
+                Map<String, Object> props = (Map<String, Object>) user.getAttributes().getOrDefault("properties", Map.of());
+                Object nickname = props.get("nickname");
+                yield nickname != null ? String.valueOf(nickname) : "user";
+            }
+            case "naver" -> {
+                Map<String, Object> response = (Map<String, Object>) user.getAttributes().get("response");
+                Object name = response.get("name");
+                yield name != null ? String.valueOf(name) : "user";
+            }
+            default -> { // google
+                Object name = user.getAttributes().get("name");
+                yield name != null ? String.valueOf(name) : "user";
+            }
+        };
+    }
+}

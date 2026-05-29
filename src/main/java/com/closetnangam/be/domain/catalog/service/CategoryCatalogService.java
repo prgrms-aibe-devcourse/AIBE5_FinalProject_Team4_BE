@@ -108,7 +108,7 @@ public class CategoryCatalogService {
                     .append(" (").append(category.getLabel()).append(")\n");
         }
 
-        guide.append("\n[item_type]\n");
+        guide.append("\n[itemType]\n");
         for (ClothesCategory category : ClothesCategory.values()) {
             guide.append(category.name()).append(":\n");
             for (ClothesItemType itemType : ClothesItemType.byCategory(category)) {
@@ -137,7 +137,7 @@ public class CategoryCatalogService {
         guide.append("""
                 {
                   "category": "TOP",
-                  "item_type": "SHORT_SLEEVE",
+                  "itemType": "SHORT_SLEEVE",
                   "primaryColor": "WHITE",
                   "secondaryColors": ["NAVY"],
                   "styles": ["CASUAL", "MINIMAL"]
