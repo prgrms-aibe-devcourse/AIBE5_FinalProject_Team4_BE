@@ -33,9 +33,13 @@ public class WardrobeService {
 
     @Transactional
     public Wardrobe getOrCreateWardrobe(Long userId) {
-        // FOR UPDATE: 동일 userId로 동시 요청이 들어올 때 중복 INSERT → DataIntegrityViolationException 방지
-        return wardrobeRepository.findByUser_IdForUpdate(userId)
-                .orElseGet(() -> createWardrobeEntity(userId));
+        // User row에 FOR UPDATE lock: User는 항상 존재하므로 신규 사용자에게도 lock이 보장됨.
+        // 같은 userId로 동시 요청이 들어올 때 두 트랜잭션이 직렬화되어
+        // 중복 INSERT → DataIntegrityViolationException을 방지함.
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        return wardrobeRepository.findByUser_Id(userId)
+                .orElseGet(() -> wardrobeRepository.save(Wardrobe.create(user)));
     }
 
     private Wardrobe createWardrobeEntity(Long userId) {
