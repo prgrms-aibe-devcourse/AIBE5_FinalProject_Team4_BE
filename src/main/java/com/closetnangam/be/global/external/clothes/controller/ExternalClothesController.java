@@ -33,9 +33,6 @@ public class ExternalClothesController {
         // 1. 테스트용 유저 ID 1번 강제 주입 (로그인 구현 전까지 유지)
         Long authenticatedUserId = 1L;
 
-//        로그인 기능 구현 하면 다시 쓸 예정
-//        Long authenticatedUserId = SecurityUtils.getCurrentUserId();
-
         // 메서드명을 새로 바꾼 getOrCreateExternalClothes로 매핑하고, DTO 내부의 colors(), styles()를 넘깁니다.
         Long clothesId = externalClothesService.getOrCreateExternalClothes(
                 request, request.colors(), request.styles());

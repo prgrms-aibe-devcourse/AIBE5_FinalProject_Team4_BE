@@ -119,7 +119,6 @@ public class ExternalClothesService {
             clothes = clothesRepository.save(clothes);
         }
 
-        // 유저 옷장에 넣는 복잡한 일은 옷장 담당자에게 맡기고, 생성/조회된 옷의 고유 ID만 깔끔하게 반환!
         return clothes.getId();
     }
     private String refineCategory(String naverCategory3) {

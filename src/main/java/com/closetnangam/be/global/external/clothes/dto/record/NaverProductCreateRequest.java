@@ -12,9 +12,7 @@ import java.util.List;
 public record NaverProductCreateRequest(
         @NotBlank(message = "상품 ID는 필수입니다.")
         String productId,
-
         String brand,
-
         String category3,
 
         @JsonProperty("title")
