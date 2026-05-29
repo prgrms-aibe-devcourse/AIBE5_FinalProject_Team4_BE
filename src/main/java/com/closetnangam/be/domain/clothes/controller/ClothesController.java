@@ -7,6 +7,7 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesRegistrationMethod
 import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.service.ClothesRegistrationService;
 import com.closetnangam.be.domain.clothes.service.ClothesService;
+import com.closetnangam.be.global.auth.util.SecurityUtils;
 import com.closetnangam.be.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,23 +44,25 @@ public class ClothesController {
         return ResponseEntity.ok(ApiResponse.ok(clothesRegistrationService.getRegistrationMethods()));
     }
 
-    // TODO: JWT 인증 구현 후 @PreAuthorize 또는 SecurityContextHolder로 userId 소유권 검증 추가 필요
     @Operation(summary = "보유 옷 목록 조회", description = "사용자 옷장의 보유 옷(OWNED) 목록을 조회합니다.")
     @GetMapping("/users/{userId}/clothes")
     public ResponseEntity<ApiResponse<List<ClothesResponse>>> getOwnedClothes(@PathVariable Long userId) {
+        SecurityUtils.verifyUserIdMatch(userId);
         return ResponseEntity.ok(ApiResponse.ok(clothesService.getOwnedClothes(userId)));
     }
 
     @Operation(summary = "즐겨찾기 옷 목록 조회", description = "즐겨찾기로 표시한 보유 옷 목록을 조회합니다.")
     @GetMapping("/users/{userId}/clothes/favorites")
     public ResponseEntity<ApiResponse<List<ClothesResponse>>> getFavoriteOwnedClothes(@PathVariable Long userId) {
+        SecurityUtils.verifyUserIdMatch(userId);
         return ResponseEntity.ok(ApiResponse.ok(clothesService.getFavoriteOwnedClothes(userId)));
     }
 
     @Operation(summary = "옷 상세 조회", description = "보유/미보유 옷의 상세 정보(이미지, 이름, 브랜드, 카테고리, 타입, 색상, 스타일)를 조회합니다.")
     @GetMapping("/clothes/{clothesId}")
     public ResponseEntity<ApiResponse<ClothesResponse>> getClothes(@PathVariable Long clothesId) {
-        return ResponseEntity.ok(ApiResponse.ok(clothesService.getClothes(clothesId)));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.ok(clothesService.getClothes(userId, clothesId)));
     }
 
     @Operation(summary = "보유 옷 등록", description = "사용자 옷장에 보유 옷을 등록합니다.")
@@ -68,6 +71,7 @@ public class ClothesController {
             @PathVariable Long userId,
             @Valid @RequestBody ClothesCreateRequest request
     ) {
+        SecurityUtils.verifyUserIdMatch(userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(clothesService.createOwnedClothes(userId, request)));
     }
@@ -78,7 +82,8 @@ public class ClothesController {
             @PathVariable Long clothesId,
             @Valid @RequestBody ClothesFavoriteRequest request
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(clothesService.updateFavorite(clothesId, request)));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.ok(clothesService.updateFavorite(userId, clothesId, request)));
     }
 
     @Operation(summary = "옷 정보 수정", description = "등록된 보유/미보유 옷 정보를 수정합니다.")
@@ -87,13 +92,15 @@ public class ClothesController {
             @PathVariable Long clothesId,
             @Valid @RequestBody ClothesUpdateRequest request
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(clothesService.updateClothes(clothesId, request)));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.ok(clothesService.updateClothes(userId, clothesId, request)));
     }
 
     @Operation(summary = "옷 삭제", description = "등록된 보유/미보유 옷을 삭제합니다. 삭제 확인은 프론트에서 처리합니다.")
     @DeleteMapping("/clothes/{clothesId}")
     public ResponseEntity<Void> deleteClothes(@PathVariable Long clothesId) {
-        clothesService.deleteClothes(clothesId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        clothesService.deleteClothes(userId, clothesId);
         return ResponseEntity.noContent().build();
     }
 }

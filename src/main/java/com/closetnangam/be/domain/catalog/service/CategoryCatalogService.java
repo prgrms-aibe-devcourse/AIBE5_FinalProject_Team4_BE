@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.catalog.service;
 
+import com.closetnangam.be.domain.catalog.constants.CatalogLimits;
 import com.closetnangam.be.domain.catalog.dto.response.*;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
@@ -59,13 +60,15 @@ public class CategoryCatalogService {
                         new GuideFieldResponse(
                                 "secondaryColors",
                                 "보조 색상",
-                                "색상 코드 배열입니다. clothing_colors 테이블 SECONDARY 역할로 저장합니다.",
+                                "색상 코드 배열입니다. clothing_colors 테이블 SECONDARY 역할로 저장합니다. "
+                                        + "최대 " + CatalogLimits.MAX_SECONDARY_COLORS + "개(primaryColor 제외).",
                                 "NAVY"
                         ),
                         new GuideFieldResponse(
                                 "styles",
                                 "스타일",
-                                "스타일 코드 배열입니다. styles 목록의 code 값을 사용합니다.",
+                                "스타일 코드 배열입니다. styles 목록의 code 값을 사용합니다. "
+                                        + "최대 " + CatalogLimits.MAX_STYLES + "개.",
                                 "CASUAL"
                         )
                 ),
@@ -105,7 +108,7 @@ public class CategoryCatalogService {
                     .append(" (").append(category.getLabel()).append(")\n");
         }
 
-        guide.append("\n[item_type]\n");
+        guide.append("\n[itemType]\n");
         for (ClothesCategory category : ClothesCategory.values()) {
             guide.append(category.name()).append(":\n");
             for (ClothesItemType itemType : ClothesItemType.byCategory(category)) {
@@ -114,12 +117,18 @@ public class CategoryCatalogService {
             }
         }
 
-        guide.append("\n[color]\n");
+        guide.append("\n[primaryColor]\n");
+        guide.append("옷의 대표 색상 코드 1개. 아래 color 코드 목록에서 선택하세요.\n");
         guide.append(Arrays.stream(ClothesColor.values())
                 .map(color -> color.name() + " (" + color.getLabel() + ")")
                 .collect(Collectors.joining(", ")));
 
-        guide.append("\n\n[style]\n");
+        guide.append("\n\n[secondaryColors]\n");
+        guide.append("보조 색상 코드 배열. 없으면 빈 배열 []을 사용하고, primaryColor와 중복되면 안 됩니다. ");
+        guide.append("최대 ").append(CatalogLimits.MAX_SECONDARY_COLORS).append("개.\n");
+
+        guide.append("\n\n[styles]\n");
+        guide.append("스타일 코드 배열. 최소 1개, 최대 ").append(CatalogLimits.MAX_STYLES).append("개.\n");
         guide.append(Arrays.stream(StyleCode.values())
                 .map(style -> style.name() + " (" + style.getLabel() + ")")
                 .collect(Collectors.joining(", ")));
@@ -128,7 +137,7 @@ public class CategoryCatalogService {
         guide.append("""
                 {
                   "category": "TOP",
-                  "item_type": "SHORT_SLEEVE",
+                  "itemType": "SHORT_SLEEVE",
                   "primaryColor": "WHITE",
                   "secondaryColors": ["NAVY"],
                   "styles": ["CASUAL", "MINIMAL"]
@@ -159,6 +168,10 @@ public class CategoryCatalogService {
         if (secondaryColors == null || secondaryColors.isEmpty()) {
             return;
         }
+        if (secondaryColors.size() > CatalogLimits.MAX_SECONDARY_COLORS) {
+            throw new IllegalArgumentException(
+                    "보조 색상은 최대 " + CatalogLimits.MAX_SECONDARY_COLORS + "개까지 선택할 수 있습니다.");
+        }
         Set<String> seen = new HashSet<>();
         for (String secondaryColor : secondaryColors) {
             validateColorCode(secondaryColor);
@@ -174,6 +187,10 @@ public class CategoryCatalogService {
     public void validateStyleCodes(List<String> styleCodes) {
         if (styleCodes == null || styleCodes.isEmpty()) {
             throw new IllegalArgumentException("스타일은 1개 이상 선택해야 합니다.");
+        }
+        if (styleCodes.size() > CatalogLimits.MAX_STYLES) {
+            throw new IllegalArgumentException(
+                    "스타일은 최대 " + CatalogLimits.MAX_STYLES + "개까지 선택할 수 있습니다.");
         }
         Set<String> seen = new HashSet<>();
         for (String styleCode : styleCodes) {
