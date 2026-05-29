@@ -58,12 +58,10 @@ public class ClothesService {
                 .toList();
     }
 
-    public ClothesResponse getClothes(Long clothesId) {
-        WardrobeClothes wardrobeClothes = wardrobeClothesRepository.findByClothesIdWithDetails(clothesId).orElse(null);
-        Clothes clothes = wardrobeClothes != null
-                ? wardrobeClothes.getClothes()
-                : getClothesWithDetails(clothesId);
-        return ClothesResponse.from(clothes, wardrobeClothes);
+    public ClothesResponse getClothes(Long userId, Long clothesId) {
+        WardrobeClothes wardrobeClothes = wardrobeClothesRepository.findByClothesIdAndUserId(clothesId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("옷을 찾을 수 없습니다."));
+        return ClothesResponse.from(wardrobeClothes.getClothes(), wardrobeClothes);
     }
 
     @Transactional
@@ -153,9 +151,8 @@ public class ClothesService {
     }
 
     @Transactional
-    public ClothesResponse convertToOwned(Long clothesId, ClothesConvertToOwnedRequest request) {
-        WardrobeClothes wardrobeClothes = wardrobeClothesRepository.findByClothesIdWithDetails(clothesId)
-                .orElseThrow(() -> new IllegalArgumentException("옷장 등록 정보를 찾을 수 없습니다."));
+    public ClothesResponse convertToOwned(Long userId, Long clothesId, ClothesConvertToOwnedRequest request) {
+        WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
 
         wardrobeClothes.getClothes().convertToOwned(request.productCode(), request.isVerified());
         wardrobeClothes.convertToOwned(request.size(), request.season(), request.userImageUrl());
@@ -164,7 +161,7 @@ public class ClothesService {
     }
 
     @Transactional
-    public ClothesResponse updateClothes(Long clothesId, ClothesUpdateRequest request) {
+    public ClothesResponse updateClothes(Long userId, Long clothesId, ClothesUpdateRequest request) {
         clothesTagHelper.validateClassification(
                 request.category(),
                 request.itemType(),
@@ -173,8 +170,7 @@ public class ClothesService {
                 request.styles()
         );
 
-        WardrobeClothes wardrobeClothes = wardrobeClothesRepository.findByClothesIdWithDetails(clothesId)
-                .orElseThrow(() -> new IllegalArgumentException("옷장 등록 정보를 찾을 수 없습니다."));
+        WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
         Clothes clothes = wardrobeClothes.getClothes();
 
         clothes.update(
@@ -199,22 +195,22 @@ public class ClothesService {
     }
 
     @Transactional
-    public ClothesResponse updateFavorite(Long clothesId, ClothesFavoriteRequest request) {
-        WardrobeClothes wardrobeClothes = wardrobeClothesRepository.findByClothesIdWithDetails(clothesId)
-                .orElseThrow(() -> new IllegalArgumentException("옷장 등록 정보를 찾을 수 없습니다."));
+    public ClothesResponse updateFavorite(Long userId, Long clothesId, ClothesFavoriteRequest request) {
+        WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
         wardrobeClothes.updateFavorite(request.isFavorite());
         return ClothesResponse.from(wardrobeClothes.getClothes(), wardrobeClothes);
     }
 
-    @Transactional(readOnly = false)
-    public void deleteClothes(Long clothesId) {
-        getClothesWithDetails(clothesId);
+    @Transactional
+    public void deleteClothes(Long userId, Long clothesId) {
+        getOwnedWardrobeClothes(userId, clothesId);
         wardrobeClothesRepository.deleteByClothes_Id(clothesId);
         clothesRepository.deleteById(clothesId);
     }
 
-    private Clothes getClothesWithDetails(Long clothesId) {
-        return clothesRepository.findById(clothesId)
+    /** 소유권 확인: 해당 옷이 요청 사용자의 옷장에 없으면 404 */
+    private WardrobeClothes getOwnedWardrobeClothes(Long userId, Long clothesId) {
+        return wardrobeClothesRepository.findByClothesIdAndUserId(clothesId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("옷을 찾을 수 없습니다."));
     }
 

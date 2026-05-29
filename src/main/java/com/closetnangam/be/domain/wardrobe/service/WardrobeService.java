@@ -33,7 +33,8 @@ public class WardrobeService {
 
     @Transactional
     public Wardrobe getOrCreateWardrobe(Long userId) {
-        return wardrobeRepository.findByUser_Id(userId)
+        // FOR UPDATE: 동일 userId로 동시 요청이 들어올 때 중복 INSERT → DataIntegrityViolationException 방지
+        return wardrobeRepository.findByUser_IdForUpdate(userId)
                 .orElseGet(() -> createWardrobeEntity(userId));
     }
 
