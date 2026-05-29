@@ -9,61 +9,83 @@ import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.global.external.clothes.dto.NaverItemRequest;
+import com.closetnangam.be.global.external.clothes.dto.record.SaveNaverProductRequest;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothesStyleDto;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothingColorDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class ExternalClothesService {
 
-    private final String DEFAULT_TOP_ITEM_TYPE = "SHORT_SLEEVE";
-    private final String DEFAULT_BOTTOM_ITEM_TYPE = "COTTON";
-    private final String DEFAULT_CATEGORY = "TOP";
-    private final String DEFAULT_OUTER_ITEM_TYPE = "BLAZER";
-    private final String DEFAULT_SHOES_ITEM_TYPE = "SNEAKERS";
-    private final String DEFAULT_COLOR = "WHITE";
-    private final String UNKNOWN = "UNKNOWN";
+    private static final String DEFAULT_TOP_ITEM_TYPE = "SHORT_SLEEVE";
+    private static final String DEFAULT_BOTTOM_ITEM_TYPE = "COTTON";
+    private static final String DEFAULT_CATEGORY = "TOP";
+    private static final String DEFAULT_OUTER_ITEM_TYPE = "BLAZER";
+    private static final String DEFAULT_SHOES_ITEM_TYPE = "SNEAKERS";
+    private static final String DEFAULT_COLOR = "WHITE";
+    private static final String UNKNOWN = "UNKNOWN";
 
     private final ClothesRepository clothesRepository;
     private final StyleRepository styleRepository;
 
 
 
-    public Long saveNaverToWishlist(Long userId, Wardrobe wardrobe, NaverItemRequest naverRequest,
+    @Transactional
+    public Long saveNaverToWishlist(Long userId, Wardrobe wardrobe, SaveNaverProductRequest request,
                                     List<ClothingColorDto> colorDtos, List<ClothesStyleDto> styleDtos) {
 
-        // 1. [기존 가드 로직 유지]
-        String productId = defaultIfBlank(naverRequest.getProductId(), UNKNOWN);
+        // 0. 안전한 리스트 처리
+        List<ClothingColorDto> safeColors = (colorDtos != null) ? colorDtos : new ArrayList<>();
+        List<ClothesStyleDto> safeStyles = (styleDtos != null) ? styleDtos : new ArrayList<>();
+
+        // 파라미터 이름이 request이므로, naverRequest를 request로 모두 변경!
+        if (request == null) {
+            throw new IllegalArgumentException("상품 정보가 전송되지 않았습니다.");
+        }
+
+        // 1. [가드 로직] StringUtils.hasText() 활용
+        String productId = StringUtils.hasText(request.productId())
+                ? request.productId().trim()
+                : UNKNOWN;
+
         if (!UNKNOWN.equals(productId) && clothesRepository.existsByExternalProductId(productId)) {
             throw new IllegalStateException("이미 존재하는 상품입니다: " + productId);
         }
 
         // 2. [Clothes 엔티티 생성]
+        String brandName = StringUtils.hasText(request.brand())
+                ? request.brand().trim()
+                : UNKNOWN;
+
+        String category = refineCategory(request.category3());
+
         Clothes clothes = Clothes.builder()
-                .name(naverRequest.getCleanTitle())
-                .brandName(hasText(naverRequest.getBrand()) ? naverRequest.getBrand().trim() : UNKNOWN)
+                .name(request.cleanTitle())
+                .brandName(brandName)
                 .productCode("NAVER_" + productId)
-                .imageUrl(naverRequest.getImage())
-                .category(refineCategory(naverRequest.getCategory3()))
-                .itemType(refineItemType(refineCategory(naverRequest.getCategory3()), naverRequest.getCategory3(), naverRequest.getCleanTitle()))
+                .imageUrl(request.image())
+                .category(category)
+                .itemType(refineItemType(category, request.category3(), request.cleanTitle()))
                 .sourceType(SourceType.WISHLIST)
                 .externalSource("NAVER")
                 .externalProductId(productId)
-                .externalProductUrl(naverRequest.getLink())
+                .externalProductUrl(request.link())
                 .isVerified(false)
                 .build();
-
         // 3. [색상 태그 저장]
-        for (ClothingColorDto dto : colorDtos) {
+        for (ClothingColorDto dto : safeColors) { // colorDtos -> safeColors로 변경!
             ClothingColor colorTag = ClothingColor.create(
                     clothes,
-                    dto.colorCode(),    // 괄호 이름 그대로!
+                    dto.colorCode(),
                     dto.colorRole(),
                     dto.sortOrder()
             );
@@ -71,8 +93,8 @@ public class ExternalClothesService {
         }
 
         // 4. [스타일 태그 저장]
-        for (ClothesStyleDto dto : styleDtos) {
-            Style style = styleRepository.findById(dto.styleId()) // 여기서도 dto.styleId()
+        for (ClothesStyleDto dto : safeStyles) { // styleDtos -> safeStyles로 변경!
+            Style style = styleRepository.findById(dto.styleId())
                     .orElseThrow(() -> new IllegalArgumentException("스타일 없음"));
 
             ClothesStyleTag styleTag = ClothesStyleTag.create(
@@ -340,14 +362,18 @@ public class ExternalClothesService {
     }
 
     private String normalizeText(String value) {
-        if (!hasText(value)) {
+        // 2. hasText()를 직접 만든 메서드 대신 StringUtils.hasText(value) 사용
+        if (!StringUtils.hasText(value)) {
             return "";
         }
         return value.toLowerCase(Locale.ROOT).replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}]+", "");
     }
 
     private boolean containsAny(String source, String... keywords) {
+        if (!StringUtils.hasText(source)) return false; // 소스 자체도 체크!
+
         for (String keyword : keywords) {
+            // 성능 개선: 키워드를 미리 정규화해서 상수로 뽑아두면 여기서 호출할 필요가 없어짐
             if (source.contains(normalizeText(keyword))) {
                 return true;
             }
@@ -355,11 +381,6 @@ public class ExternalClothesService {
         return false;
     }
 
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
-    }
 
-    private String defaultIfBlank(String value, String fallback) {
-        return hasText(value) ? value.trim() : fallback;
-    }
+
 }
