@@ -94,7 +94,10 @@ public class AiService {
         final GeminiClothingClassificationResult finalResult = result;
         final String finalFailure = failureMessage;
         AiAnalyzeResponse response = transactionTemplate.execute(status -> {
-            ClothingAiPhoto photo = getOwnedPhoto(userId, photoId);
+            // FOR UPDATE: 저장 API의 row lock과 동일한 규칙으로 직렬화하여
+            // 저장 트랜잭션이 먼저 커밋된 경우 SAVED 상태를 반드시 확인하고 덮어쓰지 않도록 보장
+            ClothingAiPhoto photo = clothingAiPhotoRepository.findByIdAndUser_IdForUpdate(photoId, userId)
+                    .orElseThrow(() -> new IllegalArgumentException("업로드한 사진을 찾을 수 없습니다."));
             // 분석 대기 중 사용자가 저장을 완료한 경우 분석 결과로 SAVED 상태를 덮어쓰지 않음
             if (photo.isAlreadySaved()) {
                 return toAnalyzeResponse(photo);
