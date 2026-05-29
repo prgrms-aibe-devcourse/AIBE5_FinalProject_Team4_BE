@@ -5,11 +5,12 @@ import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
+import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
+import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
-import com.closetnangam.be.global.external.clothes.dto.NaverItemRequest;
-import com.closetnangam.be.global.external.clothes.dto.record.SaveNaverProductRequest;
+import com.closetnangam.be.global.external.clothes.dto.record.NaverProductCreateRequest;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothesStyleDto;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothingColorDto;
 import lombok.RequiredArgsConstructor;
@@ -17,9 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,80 +37,90 @@ public class ExternalClothesService {
 
     private final ClothesRepository clothesRepository;
     private final StyleRepository styleRepository;
-
+    private final WardrobeClothesRepository wardrobeClothesRepository;
 
 
     @Transactional
-    public Long saveNaverToWishlist(Long userId, Wardrobe wardrobe, SaveNaverProductRequest request,
-                                    List<ClothingColorDto> colorDtos, List<ClothesStyleDto> styleDtos) {
+    public Long getOrCreateExternalClothes(NaverProductCreateRequest request,
+                                           List<ClothingColorDto> colorDtos,
+                                           List<ClothesStyleDto> styleDtos) {
 
         // 0. 안전한 리스트 처리
         List<ClothingColorDto> safeColors = (colorDtos != null) ? colorDtos : new ArrayList<>();
         List<ClothesStyleDto> safeStyles = (styleDtos != null) ? styleDtos : new ArrayList<>();
 
-        // 파라미터 이름이 request이므로, naverRequest를 request로 모두 변경!
         if (request == null) {
             throw new IllegalArgumentException("상품 정보가 전송되지 않았습니다.");
         }
 
-        // 1. [가드 로직] StringUtils.hasText() 활용
-        String productId = StringUtils.hasText(request.productId())
-                ? request.productId().trim()
-                : UNKNOWN;
+        // 1. 외부 상품 ID 검증 및 공백 제거
+        String productId = StringUtils.hasText(request.productId()) ? request.productId().trim() : UNKNOWN;
 
-        if (!UNKNOWN.equals(productId) && clothesRepository.existsByExternalProductId(productId)) {
-            throw new IllegalStateException("이미 존재하는 상품입니다: " + productId);
+        // 2. [HTML 태그 및 품번 정제 파이프라인] - <b> 태그 박멸 및 순수 품번 추출
+        String rawTitle = request.cleanTitle();
+        String cleanTitle = StringUtils.hasText(rawTitle) ? rawTitle.replaceAll("<(/)?b>", "") : UNKNOWN;
+
+        String extractedProductCode = "NAVER_" + productId; // 기본값 세팅
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\d{7,}");
+        java.util.regex.Matcher matcher = pattern.matcher(cleanTitle);
+        if (matcher.find()) {
+            extractedProductCode = matcher.group(); // "1370396" 추출
+            cleanTitle = cleanTitle.replace(extractedProductCode, "").trim(); // 이름에서 품번 제거
         }
 
-        // 2. [Clothes 엔티티 생성]
-        String brandName = StringUtils.hasText(request.brand())
-                ? request.brand().trim()
-                : UNKNOWN;
+        // 3. [중복 체크] 이미 등록된 외부 상품인 경우 새로 만들지 않고 기존 옷 객체 재사용
+        Optional<Clothes> existingClothes = clothesRepository.findByExternalProductId(productId);
+        Clothes clothes;
 
-        String category = refineCategory(request.category3());
+        if (existingClothes.isPresent()) {
+            clothes = existingClothes.get();
+        } else {
+            // DB에 없는 새로운 상품일 때만 생성 (마스터 도감 적재)
+            String brandName = StringUtils.hasText(request.brand()) ? request.brand().trim() : UNKNOWN;
+            String category = refineCategory(request.category3());
 
-        Clothes clothes = Clothes.builder()
-                .name(request.cleanTitle())
-                .brandName(brandName)
-                .productCode("NAVER_" + productId)
-                .imageUrl(request.image())
-                .category(category)
-                .itemType(refineItemType(category, request.category3(), request.cleanTitle()))
-                .sourceType(SourceType.WISHLIST)
-                .externalSource("NAVER")
-                .externalProductId(productId)
-                .externalProductUrl(request.link())
-                .isVerified(false)
-                .build();
-        // 3. [색상 태그 저장]
-        for (ClothingColorDto dto : safeColors) { // colorDtos -> safeColors로 변경!
-            ClothingColor colorTag = ClothingColor.create(
-                    clothes,
-                    dto.colorCode(),
-                    dto.colorRole(),
-                    dto.sortOrder()
-            );
-            clothes.addColorTag(colorTag);
+            clothes = Clothes.builder()
+                    .name(cleanTitle) // 태그와 품번이 세탁된 깔끔한 이름
+                    .brandName(brandName)
+                    .productCode(extractedProductCode)
+                    .imageUrl(request.image())
+                    .category(category)
+                    .itemType(refineItemType(category, request.category3(), cleanTitle))
+                    .sourceType(SourceType.WISHLIST)
+                    .externalSource("NAVER")
+                    .externalProductId(productId)
+                    .externalProductUrl(request.link())
+                    .isVerified(false)
+                    .build();
+
+            // [색상 태그 저장]
+            for (ClothingColorDto dto : safeColors) {
+                ClothingColor colorTag = ClothingColor.create(clothes, dto.colorCode(), dto.colorRole(), dto.sortOrder());
+                clothes.addColorTag(colorTag);
+            }
+
+            // [스타일 태그 저장]
+            if (!safeStyles.isEmpty()) {
+                List<Long> styleIds = safeStyles.stream().map(ClothesStyleDto::styleId).toList();
+                Map<Long, Style> styleMap = styleRepository.findAllById(styleIds).stream()
+                        .collect(Collectors.toMap(Style::getId, Function.identity()));
+
+                for (ClothesStyleDto dto : safeStyles) {
+                    Style style = styleMap.get(dto.styleId());
+                    if (style == null) {
+                        throw new IllegalArgumentException("스타일 없음: " + dto.styleId());
+                    }
+                    ClothesStyleTag styleTag = ClothesStyleTag.create(clothes, style, dto.styleRole(), dto.sortOrder());
+                    clothes.addStyleTag(styleTag);
+                }
+            }
+
+            // 새로운 상품 정보 저장
+            clothes = clothesRepository.save(clothes);
         }
 
-        // 4. [스타일 태그 저장]
-        for (ClothesStyleDto dto : safeStyles) { // styleDtos -> safeStyles로 변경!
-            Style style = styleRepository.findById(dto.styleId())
-                    .orElseThrow(() -> new IllegalArgumentException("스타일 없음"));
-
-            ClothesStyleTag styleTag = ClothesStyleTag.create(
-                    clothes,
-                    style,
-                    dto.styleRole(),
-                    dto.sortOrder()
-            );
-            clothes.addStyleTag(styleTag);
-        }
-
-        // 5. [Cascade 저장]
-        // Clothes 엔티티에 @OneToMany(cascade = CascadeType.ALL)이 있으므로,
-        // clothes만 저장해도 색상/스타일 태그가 함께 DB에 Insert됨!
-        return clothesRepository.save(clothes).getId();
+        // 유저 옷장에 넣는 복잡한 일은 옷장 담당자에게 맡기고, 생성/조회된 옷의 고유 ID만 깔끔하게 반환!
+        return clothes.getId();
     }
     private String refineCategory(String naverCategory3) {
         String categoryText = normalizeText(naverCategory3);

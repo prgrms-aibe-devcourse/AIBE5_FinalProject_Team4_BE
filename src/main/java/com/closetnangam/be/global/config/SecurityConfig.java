@@ -29,8 +29,13 @@ public class SecurityConfig {
             "/oauth2/**",
             "/api/v1/categories/**",
             "/api/categories/**",   // TODO: FE /api/v1 마이그레이션 완료 후 제거 필요
-            "/api/v1/clothes/registration-methods"
+            "/api/v1/clothes/registration-methods",
+            "/api/v1/external/clothes/**",
+            "/api/naver/**",
+            "/api/weather/**"
+
     };
+
 
     private final OAuth2UserService oAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
@@ -53,4 +58,5 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 }
