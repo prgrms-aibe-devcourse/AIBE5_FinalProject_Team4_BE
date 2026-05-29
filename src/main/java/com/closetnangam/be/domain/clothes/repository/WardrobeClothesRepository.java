@@ -12,6 +12,15 @@ import java.util.Optional;
 public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes, Long> {
 
     @Query("""
+            select wc from WardrobeClothes wc
+            join fetch wc.wardrobe w
+            join fetch w.user
+            join fetch wc.clothes c
+            where wc.id = :wardrobeClothesId
+            """)
+    Optional<WardrobeClothes> findByIdWithDetails(@Param("wardrobeClothesId") Long wardrobeClothesId);
+
+    @Query("""
             select distinct wc from WardrobeClothes wc
             join fetch wc.clothes c
             join fetch wc.wardrobe w
