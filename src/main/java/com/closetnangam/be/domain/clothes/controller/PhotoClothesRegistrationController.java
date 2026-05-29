@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.clothes.dto.response.PhotoClothesRegistrationR
 import com.closetnangam.be.domain.clothes.dto.response.PhotoUploadResponse;
 import com.closetnangam.be.domain.clothes.service.PhotoClothesRegistrationService;
 import com.closetnangam.be.global.common.response.ApiResponse;
+import com.closetnangam.be.global.common.util.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,13 +34,13 @@ public class PhotoClothesRegistrationController {
     private final PhotoClothesRegistrationService photoClothesRegistrationService;
     private final AiService aiService;
 
-    // TODO: JWT 인증 구현 후 @PreAuthorize 또는 SecurityContextHolder로 userId 소유권 검증 추가 필요
     @Operation(summary = "의류 사진 업로드", description = "jpg, png, webp 형식의 옷 사진을 업로드하고 미리보기 URL을 반환합니다.")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PhotoUploadResponse>> uploadPhoto(
             @PathVariable Long userId,
             @RequestPart("file") MultipartFile file
     ) {
+        SecurityUtils.verifyOwnership(userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(photoClothesRegistrationService.uploadPhoto(userId, file)));
     }
@@ -50,6 +51,7 @@ public class PhotoClothesRegistrationController {
             @PathVariable Long userId,
             @PathVariable Long photoId
     ) {
+        SecurityUtils.verifyOwnership(userId);
         return ResponseEntity.ok(ApiResponse.ok(aiService.analyzeClothingPhoto(userId, photoId)));
     }
 
@@ -59,6 +61,7 @@ public class PhotoClothesRegistrationController {
             @PathVariable Long userId,
             @PathVariable Long photoId
     ) {
+        SecurityUtils.verifyOwnership(userId);
         return ResponseEntity.ok(ApiResponse.ok(photoClothesRegistrationService.getDraft(userId, photoId)));
     }
 
@@ -69,6 +72,7 @@ public class PhotoClothesRegistrationController {
             @PathVariable Long photoId,
             @Valid @RequestBody PhotoClothesSaveRequest request
     ) {
+        SecurityUtils.verifyOwnership(userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(photoClothesRegistrationService.savePhotoClothes(userId, photoId, request)));
     }

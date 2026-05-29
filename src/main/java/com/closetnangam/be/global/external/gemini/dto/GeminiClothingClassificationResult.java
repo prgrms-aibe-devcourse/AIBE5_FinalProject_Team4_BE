@@ -8,11 +8,11 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GeminiClothingClassificationResult(
         String name,
-        String brandName,
+        @JsonAlias("brand_name") String brandName,
         String category,
-        String itemType,
+        @JsonAlias("item_type") String itemType,
         @JsonAlias("color") String primaryColor,
-        List<String> secondaryColors,
+        @JsonAlias("secondary_colors") List<String> secondaryColors,
         List<String> styles
 ) {
 }

@@ -88,7 +88,9 @@ public class PhotoClothesRegistrationService {
                 request.styles()
         );
 
-        ClothingAiPhoto photo = getOwnedPhoto(userId, photoId);
+        // 비관적 락으로 동시 저장 요청 직렬화: 두 트랜잭션이 동시에 isAlreadySaved()==false를 보고 중복 생성하는 경쟁 조건 방지
+        ClothingAiPhoto photo = clothingAiPhotoRepository.findByIdAndUser_IdForUpdate(photoId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("업로드한 사진을 찾을 수 없습니다."));
         if (photo.isAlreadySaved()) {
             throw new IllegalStateException("이미 저장된 사진입니다.");
         }
