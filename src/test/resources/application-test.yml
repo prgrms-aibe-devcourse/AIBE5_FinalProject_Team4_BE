@@ -61,7 +61,10 @@ cloud:
       auto: false
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:test-secret-key-for-closetnangam-testing}
+  expiration:
+    access: 3600000
+    refresh: 604800000
 
 gemini:
   api-key: test-gemini-key
