@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Date;
 
 @Component
@@ -22,10 +21,12 @@ public class JwtTokenProvider {
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.expiration.access}") long accessTokenExpiration
     ) {
-        // HS256은 최소 32바이트(256bit) 키가 필요. 부족하면 32바이트로 패딩
+        // HS256은 최소 32바이트(256bit) 키가 필요. 짧은 secret은 취약한 서명 키이므로 기동을 거부
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {
-            keyBytes = Arrays.copyOf(keyBytes, 32);
+            throw new IllegalArgumentException(
+                    "jwt.secret은 32바이트(256bit) 이상이어야 합니다. 현재 " + keyBytes.length + "바이트. .env의 JWT_SECRET을 32자 이상으로 설정하세요."
+            );
         }
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
         this.accessTokenExpiration = accessTokenExpiration;

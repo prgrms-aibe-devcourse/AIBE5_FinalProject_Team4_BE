@@ -12,6 +12,8 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.util.StringUtils;
+
 import java.util.Map;
 import java.util.UUID;
 
@@ -77,17 +79,22 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
 
     @SuppressWarnings("unchecked")
     private String extractEmail(String provider, OAuth2User user) {
-        return switch (provider) {
+        String email = switch (provider) {
             case "kakao" -> {
                 Map<String, Object> account = (Map<String, Object>) user.getAttributes().get("kakao_account");
-                yield account != null ? String.valueOf(account.get("account_email")) : "kakao_" + user.getAttributes().get("id") + "@noreply.invalid";
+                yield account != null ? String.valueOf(account.get("email")) : null;
             }
             case "naver" -> {
                 Map<String, Object> response = (Map<String, Object>) user.getAttributes().get("response");
-                yield String.valueOf(response.get("email"));
+                yield response != null ? String.valueOf(response.get("email")) : null;
             }
             default -> String.valueOf(user.getAttributes().get("email")); // google
         };
+        // 이메일 동의 거부 또는 필드 누락 시 provider+id 기반 고유 fallback 사용
+        if (!StringUtils.hasText(email) || "null".equals(email)) {
+            return provider + "_" + extractProviderId(provider, user) + "@noreply.invalid";
+        }
+        return email;
     }
 
     @SuppressWarnings("unchecked")

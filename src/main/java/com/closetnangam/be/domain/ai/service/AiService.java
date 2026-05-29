@@ -95,6 +95,10 @@ public class AiService {
         final String finalFailure = failureMessage;
         AiAnalyzeResponse response = transactionTemplate.execute(status -> {
             ClothingAiPhoto photo = getOwnedPhoto(userId, photoId);
+            // 분석 대기 중 사용자가 저장을 완료한 경우 분석 결과로 SAVED 상태를 덮어쓰지 않음
+            if (photo.isAlreadySaved()) {
+                return toAnalyzeResponse(photo);
+            }
             if (finalResult != null) {
                 photo.applyAnalysisSuccess(
                         finalResult.name(),
