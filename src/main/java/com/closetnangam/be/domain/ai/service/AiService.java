@@ -10,6 +10,8 @@ import com.closetnangam.be.global.external.gemini.dto.GeminiClothingClassificati
 import com.closetnangam.be.global.storage.LocalImageStorageService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,8 @@ import java.util.List;
 
 @Service
 public class AiService {
+
+    private static final Logger log = LoggerFactory.getLogger(AiService.class);
 
     private final ClothingAiPhotoRepository clothingAiPhotoRepository;
     private final CategoryCatalogService categoryCatalogService;
@@ -74,12 +78,15 @@ public class AiService {
             validateClassificationResult(result);
         } catch (IllegalArgumentException e) {
             // 파일 미존재 등 입력 문제
+            log.warn("[AI분석] 이미지 파일을 읽지 못했습니다. userId={}, photoId={}: {}", userId, photoId, e.getMessage());
             failureMessage = "업로드된 이미지를 찾을 수 없습니다.";
         } catch (IllegalStateException e) {
-            // Gemini API 실패, 응답 파싱 실패, AI 결과 불충분
+            // Gemini API 실패, 응답 파싱 실패, AI 결과 불충분(유효하지 않은 category/color/style 포함)
+            log.warn("[AI분석] AI 분석 실패. userId={}, photoId={}: {}", userId, photoId, e.getMessage());
             failureMessage = "AI가 옷 이미지를 분석하지 못했습니다. 직접 입력해 주세요.";
         } catch (Exception e) {
             // 예기치 않은 런타임 오류도 FAILED로 처리해 ANALYZING 상태 고착 방지
+            log.error("[AI분석] 예상치 못한 오류. userId={}, photoId={}", userId, photoId, e);
             failureMessage = "AI 분석 중 예기치 않은 오류가 발생했습니다. 직접 입력해 주세요.";
         }
 
