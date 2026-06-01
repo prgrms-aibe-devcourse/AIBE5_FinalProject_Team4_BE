@@ -32,6 +32,7 @@ public class SecurityConfig {
             "/api/v1/clothes/registration-methods",
             "/api/naver/**",
             "/api/weather/**",
+            "/api/v1/auth/mock-token"
 
     };
 
