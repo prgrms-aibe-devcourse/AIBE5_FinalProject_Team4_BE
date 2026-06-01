@@ -6,6 +6,7 @@ import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
@@ -82,6 +83,7 @@ public class ExternalClothesService {
             clothes = Clothes.builder()
                     .name(cleanTitle) // 태그와 품번이 세탁된 깔끔한 이름
                     .brandName(brandName)
+                    .infoSource(ClothesInfoSource.EXTERNAL_SHOPPING) // 이 부분 추가!
                     .productCode(extractedProductCode)
                     .imageUrl(request.image())
                     .category(category)

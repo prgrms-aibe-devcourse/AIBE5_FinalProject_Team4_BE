@@ -29,10 +29,6 @@ public class ExternalClothesController {
     public ApiResponse<SaveNaverProductResponse> saveNaverProduct(
             @Valid @RequestBody NaverProductCreateRequest request
     ) {
-        Long userId = SecurityUtils.getCurrentUserId();
-
-        // 1. 요청 객체에서 색상과 스타일 리스트를 추출해서 서비스로 전달
-        // 2. NaverProductCreateRequest 타입 자체가 아니라 'request' 객체를 인자로 넘겨야 함
         Long clothesId = externalClothesService.getOrCreateExternalClothes(
                 request,
                 request.colors(),
