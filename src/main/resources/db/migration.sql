@@ -8,6 +8,19 @@
 ALTER TABLE `clothes`
     ADD COLUMN `version` BIGINT NOT NULL DEFAULT 0;
 
+-- 1-1. 옷 정보 출처 enum 컬럼 (PHOTO, PURCHASE_HISTORY, EXTERNAL_SHOPPING)
+--      레거시 MANUAL / NAVER_API enum 값은 제거됨 → db/migration-info-source-enum.sql 참고
+ALTER TABLE `clothes`
+    ADD COLUMN `info_source` VARCHAR(50) NOT NULL DEFAULT 'PURCHASE_HISTORY';
+
+-- 1-2. info_source / registration_source 레거시 백필
+--      운영 배포 시 앱 기동 전에 db/migration-info-source-enum.sql 을 반드시 실행하세요.
+--      (주석 처리된 UPDATE는 참고용이며, 실행 가능한 스크립트는 별도 파일에 있습니다)
+--
+--      MANUAL → WISHLIST: EXTERNAL_SHOPPING / OWNED: PURCHASE_HISTORY
+--      NAVER_API → EXTERNAL_SHOPPING (WISHLIST)
+--      PHOTO → PHOTO (유지)
+
 -- =====================================================================
 -- 아래 구문은 기존 데이터가 있을 경우에만 실행하세요.
 -- 로컬 개발 환경은 DB를 초기화 후 앱을 재시작하면 됩니다.
@@ -32,7 +45,7 @@ ALTER TABLE `clothes`
 --     'FREE',              -- size 기본값 (실제 값으로 교체)
 --     NULL,                -- season
 --     COALESCE(is_favorite, 0),
---     'MANUAL',
+--     'PURCHASE_HISTORY',
 --     image_url,
 --     NOW(),
 --     NOW()
