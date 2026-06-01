@@ -6,11 +6,13 @@ import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.domain.catalog.enums.ClothesColor;
 import com.closetnangam.be.domain.catalog.enums.ClothesItemType;
+import com.closetnangam.be.domain.catalog.enums.ExternalSource;
 import com.closetnangam.be.domain.catalog.enums.StyleCode;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -147,6 +149,19 @@ public class CategoryCatalogService {
         return guide.toString();
     }
 
+    public String getPurchaseCaptureExtractionGuide() {
+        StringBuilder guide = new StringBuilder();
+        guide.append(getAiClassificationGuide());
+        guide.append("\n\n[externalSource]\n");
+        guide.append("쇼핑몰 코드(suggestedExternalSource). 아래 코드만 사용하고, 확실하지 않으면 null.\n");
+        guide.append(Arrays.stream(ExternalSource.values())
+                .filter(source -> !source.isAllowsCustomInput())
+                .map(source -> source.name() + " (" + source.getLabel() + ")")
+                .collect(Collectors.joining(", ")));
+        guide.append("\n직접입력 쇼핑몰명은 suggestedExternalSource에 넣지 말고 null로 두세요.");
+        return guide.toString();
+    }
+
     public void validateClothesClassification(String categoryCode, String itemTypeCode, String colorCode) {
         validateCategoryAndItemType(categoryCode, itemTypeCode);
         validateColorCode(colorCode);
@@ -199,6 +214,38 @@ public class CategoryCatalogService {
                 throw new IllegalArgumentException("스타일에 중복된 값이 있습니다: " + styleCode);
             }
         }
+    }
+
+    public ExternalSourcesResponse getExternalSources() {
+        return new ExternalSourcesResponse(
+                """
+                        미보유 옷 저장 시 사용할 외부 쇼핑 출처 목록입니다.
+                        - 목록에서 선택: externalSource에 code 값(예: MUSINSA)을 저장합니다.
+                        - 직접입력: 사용자가 입력한 출처명을 externalSource VARCHAR에 그대로 저장합니다.
+                        DB 컬럼은 enum이 아닌 VARCHAR(50)입니다.
+                        """,
+                Arrays.stream(ExternalSource.values())
+                        .map(ExternalSourceResponse::from)
+                        .toList()
+        );
+    }
+
+    public void validateExternalSource(String externalSource) {
+        if (!StringUtils.hasText(externalSource)) {
+            throw new IllegalArgumentException("외부 출처는 필수입니다.");
+        }
+        if (externalSource.length() > 50) {
+            throw new IllegalArgumentException("외부 출처는 50자 이하여야 합니다.");
+        }
+        if ("NONE".equals(externalSource)) {
+            throw new IllegalArgumentException("외부 출처를 선택하거나 입력해 주세요.");
+        }
+
+        ExternalSource.findByCode(externalSource).ifPresent(matched -> {
+            if (matched.isAllowsCustomInput()) {
+                throw new IllegalArgumentException("직접입력 출처명을 입력해 주세요.");
+            }
+        });
     }
 
     private java.util.List<CategoryGroupResponse> getCategoryGroups() {

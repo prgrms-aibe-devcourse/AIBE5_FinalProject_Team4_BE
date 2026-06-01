@@ -36,6 +36,10 @@ public class ClothesTagHelper {
         categoryCatalogService.validateStyleCodes(styles);
     }
 
+    public void validateExternalSource(String externalSource) {
+        categoryCatalogService.validateExternalSource(externalSource);
+    }
+
     public void applyColorTags(Clothes clothes, String primaryColor, List<String> secondaryColors) {
         buildColorTags(clothes, primaryColor, secondaryColors).forEach(clothes::addColorTag);
     }

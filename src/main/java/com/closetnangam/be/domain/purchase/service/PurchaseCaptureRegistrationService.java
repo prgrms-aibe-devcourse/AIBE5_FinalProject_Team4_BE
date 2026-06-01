@@ -1,20 +1,21 @@
-package com.closetnangam.be.domain.clothes.service;
+package com.closetnangam.be.domain.purchase.service;
 
-import com.closetnangam.be.domain.ai.entity.ClothingAiPhoto;
 import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
-import com.closetnangam.be.domain.ai.repository.ClothingAiPhotoRepository;
-import com.closetnangam.be.domain.clothes.dto.request.PhotoClothesSaveRequest;
-import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
-import com.closetnangam.be.domain.clothes.dto.response.PhotoClothesDraftResponse;
-import com.closetnangam.be.domain.clothes.dto.response.PhotoClothesRegistrationResponse;
-import com.closetnangam.be.domain.clothes.dto.response.PhotoUploadResponse;
+import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
+import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.purchase.dto.request.PurchaseCaptureSaveRequest;
+import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureDraftResponse;
+import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureRegistrationResponse;
+import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureUploadResponse;
+import com.closetnangam.be.domain.purchase.entity.PurchaseCapture;
+import com.closetnangam.be.domain.purchase.repository.PurchaseCaptureRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
@@ -34,9 +35,9 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class PhotoClothesRegistrationService {
+public class PurchaseCaptureRegistrationService {
 
-    private final ClothingAiPhotoRepository clothingAiPhotoRepository;
+    private final PurchaseCaptureRepository purchaseCaptureRepository;
     private final ClothesRepository clothesRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final ClothesTagHelper clothesTagHelper;
@@ -46,11 +47,11 @@ public class PhotoClothesRegistrationService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public PhotoUploadResponse uploadPhoto(Long userId, MultipartFile file) {
+    public PurchaseCaptureUploadResponse uploadCapture(Long userId, MultipartFile file) {
         User user = getUser(userId);
-        LocalImageStorageService.StoredImage storedImage = localImageStorageService.storeClothesPhoto(userId, file);
+        LocalImageStorageService.StoredImage storedImage = localImageStorageService.storePurchaseCapture(userId, file);
 
-        ClothingAiPhoto photo = clothingAiPhotoRepository.save(ClothingAiPhoto.builder()
+        PurchaseCapture capture = purchaseCaptureRepository.save(PurchaseCapture.builder()
                 .user(user)
                 .imageUrl(storedImage.publicUrl())
                 .storedPath(storedImage.storedPath())
@@ -59,38 +60,38 @@ public class PhotoClothesRegistrationService {
                 .analysisStatus(AiAnalysisStatus.UPLOADED)
                 .build());
 
-        return new PhotoUploadResponse(
-                photo.getId(),
-                photo.getImageUrl(),
-                photo.getOriginalFilename(),
-                photo.getContentType()
+        return new PurchaseCaptureUploadResponse(
+                capture.getId(),
+                capture.getImageUrl(),
+                capture.getOriginalFilename(),
+                capture.getContentType()
         );
     }
 
-    public PhotoClothesDraftResponse getDraft(Long userId, Long photoId) {
-        ClothingAiPhoto photo = getOwnedPhoto(userId, photoId);
-        return toDraftResponse(photo);
+    public PurchaseCaptureDraftResponse getDraft(Long userId, Long captureId) {
+        PurchaseCapture capture = getOwnedCapture(userId, captureId);
+        return toDraftResponse(capture);
     }
 
     @Transactional
-    public PhotoClothesRegistrationResponse savePhotoClothes(
+    public PurchaseCaptureRegistrationResponse savePurchaseCaptureClothes(
             Long userId,
-            Long photoId,
-            PhotoClothesSaveRequest request
+            Long captureId,
+            PurchaseCaptureSaveRequest request
     ) {
-        validateClassification(
+        clothesTagHelper.validateClassification(
                 request.category(),
                 request.itemType(),
                 request.primaryColor(),
                 request.secondaryColors(),
                 request.styles()
         );
+        clothesTagHelper.validateExternalSource(request.externalSource());
 
-        // 비관적 락으로 동시 저장 요청 직렬화: 두 트랜잭션이 동시에 isAlreadySaved()==false를 보고 중복 생성하는 경쟁 조건 방지
-        ClothingAiPhoto photo = clothingAiPhotoRepository.findByIdAndUser_IdForUpdate(photoId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("업로드한 사진을 찾을 수 없습니다."));
-        if (photo.isAlreadySaved()) {
-            throw new IllegalStateException("이미 저장된 사진입니다.");
+        PurchaseCapture capture = purchaseCaptureRepository.findByIdAndUser_IdForUpdate(captureId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("업로드한 구매내역 캡처를 찾을 수 없습니다."));
+        if (capture.isAlreadySaved()) {
+            throw new IllegalStateException("이미 저장된 구매내역 캡처입니다.");
         }
 
         Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
@@ -99,12 +100,12 @@ public class PhotoClothesRegistrationService {
                 .name(request.name())
                 .brandName(request.brandName())
                 .productCode(request.productCode())
-                .imageUrl(photo.getImageUrl())
+                .imageUrl(capture.getImageUrl())
                 .category(request.category())
                 .itemType(request.itemType())
                 .sourceType(SourceType.OWNED)
-                .infoSource(ClothesInfoSource.PHOTO)
-                .externalSource(Clothes.EXTERNAL_NONE)
+                .infoSource(ClothesInfoSource.PURCHASE_HISTORY)
+                .externalSource(request.externalSource())
                 .externalProductId(Clothes.EXTERNAL_NONE)
                 .externalProductUrl(Clothes.EXTERNAL_NONE)
                 .isVerified(request.isVerified())
@@ -121,22 +122,23 @@ public class PhotoClothesRegistrationService {
                 .size(request.size())
                 .season(request.season())
                 .favorite(request.favorite())
-                .userImageUrl(photo.getImageUrl())
+                .userImageUrl(capture.getImageUrl())
                 .build());
 
-        photo.markSaved(savedClothes.getId(), wardrobeClothes.getId());
+        capture.markSaved(savedClothes.getId(), wardrobeClothes.getId());
 
-        return new PhotoClothesRegistrationResponse(
+        return new PurchaseCaptureRegistrationResponse(
                 wardrobeClothes.getId(),
                 savedClothes.getId(),
-                photo.getId(),
+                capture.getId(),
                 wardrobeClothes.getUserImageUrl(),
                 wardrobeClothes.getOwnershipStatus(),
                 savedClothes.getInfoSource(),
+                savedClothes.getExternalSource(),
                 wardrobeClothes.getSize(),
                 wardrobeClothes.getSeason(),
                 wardrobeClothes.getFavorite(),
-                com.closetnangam.be.domain.clothes.dto.response.ClothesResponse.from(savedClothes, wardrobeClothes)
+                ClothesResponse.from(savedClothes, wardrobeClothes)
         );
     }
 
@@ -145,28 +147,27 @@ public class PhotoClothesRegistrationService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
     }
 
-    private ClothingAiPhoto getOwnedPhoto(Long userId, Long photoId) {
-        return clothingAiPhotoRepository.findByIdAndUser_Id(photoId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("업로드한 사진을 찾을 수 없습니다."));
+    private PurchaseCapture getOwnedCapture(Long userId, Long captureId) {
+        return purchaseCaptureRepository.findByIdAndUser_Id(captureId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("업로드한 구매내역 캡처를 찾을 수 없습니다."));
     }
 
-    private PhotoClothesDraftResponse toDraftResponse(ClothingAiPhoto photo) {
-        List<String> styles = parseStyles(photo.getDraftStylesJson());
-        boolean aiFailed = photo.getAnalysisStatus() == AiAnalysisStatus.FAILED;
-
-        return new PhotoClothesDraftResponse(
-                photo.getId(),
-                photo.getAnalysisStatus(),
-                photo.getImageUrl(),
-                photo.getFailureMessage(),
-                aiFailed,
-                photo.getDraftName(),
-                photo.getDraftBrandName(),
-                photo.getDraftCategory(),
-                photo.getDraftItemType(),
-                photo.getDraftPrimaryColor(),
-                parseColors(photo.getDraftSecondaryColorsJson()),
-                styles
+    private PurchaseCaptureDraftResponse toDraftResponse(PurchaseCapture capture) {
+        return new PurchaseCaptureDraftResponse(
+                capture.getId(),
+                capture.getAnalysisStatus(),
+                capture.getImageUrl(),
+                capture.getFailureMessage(),
+                capture.getAnalysisStatus() == AiAnalysisStatus.FAILED,
+                capture.getDraftName(),
+                capture.getDraftBrandName(),
+                capture.getDraftCategory(),
+                capture.getDraftItemType(),
+                capture.getDraftPrimaryColor(),
+                parseColors(capture.getDraftSecondaryColorsJson()),
+                parseStyles(capture.getDraftStylesJson()),
+                capture.getDraftOptionText(),
+                capture.getDraftExternalSource()
         );
     }
 
@@ -182,16 +183,6 @@ public class PhotoClothesRegistrationService {
         } catch (JsonProcessingException exception) {
             return Collections.emptyList();
         }
-    }
-
-    private void validateClassification(
-            String category,
-            String itemType,
-            String primaryColor,
-            List<String> secondaryColors,
-            List<String> styles
-    ) {
-        clothesTagHelper.validateClassification(category, itemType, primaryColor, secondaryColors, styles);
     }
 
     private List<String> parseStyles(String draftStylesJson) {

@@ -5,6 +5,7 @@ import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
 
 import java.time.LocalDateTime;
@@ -26,6 +27,7 @@ public record ClothesResponse(
         List<SecondaryColorResponse> secondaryColors,
         List<StyleTagResponse> styles,
         SourceType sourceType,
+        ClothesInfoSource infoSource,
         String externalSource,
         String externalProductId,
         String externalProductUrl,
@@ -88,6 +90,7 @@ public record ClothesResponse(
                 secondaryColors,
                 styles,
                 clothes.getSourceType(),
+                clothes.getInfoSource(),
                 clothes.getExternalSource(),
                 clothes.getExternalProductId(),
                 clothes.getExternalProductUrl(),

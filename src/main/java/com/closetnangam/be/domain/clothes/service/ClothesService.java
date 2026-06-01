@@ -8,8 +8,8 @@ import com.closetnangam.be.domain.clothes.dto.request.WishlistClothesCreateReque
 import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
-import com.closetnangam.be.domain.clothes.enums.RegistrationSource;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
@@ -26,8 +26,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ClothesService {
-
-    private static final String EXTERNAL_NONE = "NONE";
 
     private final ClothesRepository clothesRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
@@ -83,9 +81,10 @@ public class ClothesService {
                 request.category(),
                 request.itemType(),
                 SourceType.OWNED,
-                EXTERNAL_NONE,
-                EXTERNAL_NONE,
-                EXTERNAL_NONE,
+                ClothesInfoSource.PURCHASE_HISTORY,
+                Clothes.EXTERNAL_NONE,
+                Clothes.EXTERNAL_NONE,
+                Clothes.EXTERNAL_NONE,
                 request.isVerified(),
                 request.primaryColor(),
                 request.secondaryColors(),
@@ -100,7 +99,6 @@ public class ClothesService {
                 .size(request.size())
                 .season(request.season())
                 .favorite(false)
-                .registrationSource(RegistrationSource.MANUAL)
                 .userImageUrl(request.imageUrl())
                 .build());
 
@@ -116,6 +114,7 @@ public class ClothesService {
                 request.secondaryColors(),
                 request.styles()
         );
+        clothesTagHelper.validateExternalSource(request.externalSource());
 
         Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
         Clothes clothes = buildClothes(
@@ -126,6 +125,7 @@ public class ClothesService {
                 request.category(),
                 request.itemType(),
                 SourceType.WISHLIST,
+                ClothesInfoSource.EXTERNAL_SHOPPING,
                 request.externalSource(),
                 request.externalProductId(),
                 request.externalProductUrl(),
@@ -143,7 +143,6 @@ public class ClothesService {
                 .size(request.size())
                 .season(request.season())
                 .favorite(false)
-                .registrationSource(RegistrationSource.MANUAL)
                 .userImageUrl(request.imageUrl())
                 .build());
 
@@ -222,6 +221,7 @@ public class ClothesService {
             String category,
             String itemType,
             SourceType sourceType,
+            ClothesInfoSource infoSource,
             String externalSource,
             String externalProductId,
             String externalProductUrl,
@@ -238,6 +238,7 @@ public class ClothesService {
                 .category(category)
                 .itemType(itemType)
                 .sourceType(sourceType)
+                .infoSource(infoSource)
                 .externalSource(externalSource)
                 .externalProductId(externalProductId)
                 .externalProductUrl(externalProductUrl)
