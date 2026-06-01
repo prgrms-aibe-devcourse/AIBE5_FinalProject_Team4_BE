@@ -3,6 +3,7 @@ package com.closetnangam.be.global.common.controller;
 import com.closetnangam.be.global.auth.jwt.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +16,7 @@ import java.util.Map;
 @Tag(name = "Mock Auth", description = "개발용 임시 인증 API")
 @RestController
 @RequestMapping("/api/v1/auth")
+@Profile("local")
 public class MockAuthController {
 
     private final JwtTokenProvider jwtTokenProvider;
