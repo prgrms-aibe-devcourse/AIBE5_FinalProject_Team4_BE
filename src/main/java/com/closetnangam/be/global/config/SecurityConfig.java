@@ -33,7 +33,7 @@ public class SecurityConfig {
             "/api/naver/**",
             "/api/weather/**",
             "/api/v1/auth/mock-token",
-            "/api/v1/**"
+            "/api/v1/outfit-books/**"
 
     };
 
