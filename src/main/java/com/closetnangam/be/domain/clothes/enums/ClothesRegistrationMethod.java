@@ -9,7 +9,7 @@ public enum ClothesRegistrationMethod {
 
     PURCHASE_HISTORY(
             "구매내역 기반 등록",
-            "구매 내역에서 상품을 선택해 옷장에 등록합니다."
+            "구매내역 캡처를 업로드해 상품 정보를 추출한 뒤 옷장에 등록합니다."
     ),
     PHOTO(
             "사진 기반 등록",

@@ -8,6 +8,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -43,12 +45,69 @@ public class LocalImageStorageService {
         return new StoredImage(publicUrl, targetPath.toString(), file.getContentType(), file.getOriginalFilename());
     }
 
-    public byte[] readStoredImage(String storedPath) {
+    public StoredImage storePurchaseCapture(Long userId, MultipartFile file) {
+        validateFile(file);
+
+        String extension = extractExtension(file.getOriginalFilename());
+        String storedFileName = UUID.randomUUID() + "." + extension;
+        Path targetDirectory = Paths.get(storageProperties.getLocal().getBasePath(), "purchase-captures", String.valueOf(userId));
+        Path targetPath = targetDirectory.resolve(storedFileName);
+
         try {
-            return Files.readAllBytes(Paths.get(storedPath));
+            Files.createDirectories(targetDirectory);
+            file.transferTo(targetPath);
+        } catch (IOException exception) {
+            throw new IllegalStateException("이미지 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        }
+
+        String publicUrl = storageProperties.getLocal().getBaseUrl()
+                + "/purchase-captures/" + userId + "/" + storedFileName;
+
+        return new StoredImage(publicUrl, targetPath.toString(), file.getContentType(), file.getOriginalFilename());
+    }
+
+    public byte[] readStoredImage(String storedPath) {
+        return readStoredImage(Paths.get(storedPath));
+    }
+
+    public byte[] readStoredImage(Path storedPath) {
+        try {
+            return Files.readAllBytes(storedPath);
         } catch (IOException exception) {
             throw new IllegalArgumentException("업로드된 이미지를 찾을 수 없습니다.");
         }
+    }
+
+    /**
+     * 사용자 이미지 조회용 경로를 안전하게 해석합니다.
+     * normalize 후 basePath 하위·user 디렉터리 하위인지 검증해 path traversal을 차단합니다.
+     */
+    public Path resolveSecureUserImagePath(String subdirectory, Long userId, String filename) {
+        if (!StringUtils.hasText(filename)) {
+            throw new IllegalArgumentException("잘못된 파일 이름입니다.");
+        }
+
+        String decodedFilename;
+        try {
+            decodedFilename = URLDecoder.decode(filename, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("잘못된 파일 이름입니다.");
+        }
+        if (decodedFilename.contains("\0")) {
+            throw new IllegalArgumentException("잘못된 파일 이름입니다.");
+        }
+
+        Path baseDir = Paths.get(storageProperties.getLocal().getBasePath()).toAbsolutePath().normalize();
+        Path userDir = baseDir.resolve(subdirectory).resolve(String.valueOf(userId)).normalize();
+        if (!userDir.startsWith(baseDir)) {
+            throw new IllegalArgumentException("잘못된 파일 이름입니다.");
+        }
+
+        Path resolved = userDir.resolve(decodedFilename).normalize();
+        if (!resolved.startsWith(userDir)) {
+            throw new IllegalArgumentException("잘못된 파일 이름입니다.");
+        }
+        return resolved;
     }
 
     private void validateFile(MultipartFile file) {
