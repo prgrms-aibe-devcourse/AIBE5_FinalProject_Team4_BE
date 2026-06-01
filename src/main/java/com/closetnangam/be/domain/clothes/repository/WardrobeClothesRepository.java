@@ -70,4 +70,27 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
     );
 
     void deleteByClothes_Id(Long clothesId);
+
+    /**
+     * 추천 후보 조회: 특정 사용자의 보유 옷 중 기준 옷과 다른 카테고리인 항목만 반환합니다.
+     *
+     * @param excludeClothesId 기준 옷 ID (결과에서 제외)
+     * @param excludeCategory  기준 옷의 카테고리 코드 (동일 카테고리 제외)
+     */
+    @Query("""
+            select distinct wc from WardrobeClothes wc
+            join fetch wc.clothes c
+            join fetch wc.wardrobe w
+            where w.user.id = :userId
+              and wc.ownershipStatus = :ownershipStatus
+              and c.id <> :excludeClothesId
+              and c.category <> :excludeCategory
+            order by c.createdAt desc
+            """)
+    List<WardrobeClothes> findCandidatesForRecommendation(
+            @Param("userId") Long userId,
+            @Param("ownershipStatus") OwnershipStatus ownershipStatus,
+            @Param("excludeClothesId") Long excludeClothesId,
+            @Param("excludeCategory") String excludeCategory
+    );
 }
