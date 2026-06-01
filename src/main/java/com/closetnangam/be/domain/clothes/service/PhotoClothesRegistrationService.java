@@ -10,8 +10,8 @@ import com.closetnangam.be.domain.clothes.dto.response.PhotoClothesRegistrationR
 import com.closetnangam.be.domain.clothes.dto.response.PhotoUploadResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
-import com.closetnangam.be.domain.clothes.enums.RegistrationSource;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
@@ -35,8 +35,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PhotoClothesRegistrationService {
-
-    private static final String EXTERNAL_NONE = "NONE";
 
     private final ClothingAiPhotoRepository clothingAiPhotoRepository;
     private final ClothesRepository clothesRepository;
@@ -105,9 +103,10 @@ public class PhotoClothesRegistrationService {
                 .category(request.category())
                 .itemType(request.itemType())
                 .sourceType(SourceType.OWNED)
-                .externalSource(EXTERNAL_NONE)
-                .externalProductId(EXTERNAL_NONE)
-                .externalProductUrl(EXTERNAL_NONE)
+                .infoSource(ClothesInfoSource.PHOTO)
+                .externalSource(Clothes.EXTERNAL_NONE)
+                .externalProductId(Clothes.EXTERNAL_NONE)
+                .externalProductUrl(Clothes.EXTERNAL_NONE)
                 .isVerified(request.isVerified())
                 .build();
 
@@ -122,7 +121,6 @@ public class PhotoClothesRegistrationService {
                 .size(request.size())
                 .season(request.season())
                 .favorite(request.favorite())
-                .registrationSource(RegistrationSource.PHOTO)
                 .userImageUrl(photo.getImageUrl())
                 .build());
 
@@ -134,7 +132,7 @@ public class PhotoClothesRegistrationService {
                 photo.getId(),
                 wardrobeClothes.getUserImageUrl(),
                 wardrobeClothes.getOwnershipStatus(),
-                wardrobeClothes.getRegistrationSource(),
+                savedClothes.getInfoSource(),
                 wardrobeClothes.getSize(),
                 wardrobeClothes.getSeason(),
                 wardrobeClothes.getFavorite(),

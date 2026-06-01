@@ -1,7 +1,7 @@
 package com.closetnangam.be.domain.clothes.entity;
 
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
-import com.closetnangam.be.domain.clothes.enums.RegistrationSource;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.global.common.entity.BaseEntity;
 import jakarta.persistence.Column;
@@ -52,9 +52,10 @@ public class WardrobeClothes extends BaseEntity {
     @Column(nullable = false)
     private Boolean favorite = false;
 
+    /** clothes.info_source와 동기화되는 비정규화 컬럼(레거시). 빌더에서 clothes 기준으로만 설정합니다. */
     @Enumerated(EnumType.STRING)
     @Column(name = "registration_source", nullable = false, length = 50)
-    private RegistrationSource registrationSource;
+    private ClothesInfoSource registrationSource;
 
     @Column(name = "user_image_url", nullable = false, length = 500)
     private String userImageUrl;
@@ -67,7 +68,6 @@ public class WardrobeClothes extends BaseEntity {
             String size,
             String season,
             Boolean favorite,
-            RegistrationSource registrationSource,
             String userImageUrl
     ) {
         this.wardrobe = wardrobe;
@@ -76,8 +76,11 @@ public class WardrobeClothes extends BaseEntity {
         this.size = size;
         this.season = season;
         this.favorite = favorite != null ? favorite : false;
-        this.registrationSource = registrationSource;
         this.userImageUrl = userImageUrl;
+        if (clothes.getInfoSource() == null) {
+            throw new IllegalArgumentException("옷 정보 출처가 설정되지 않았습니다.");
+        }
+        this.registrationSource = clothes.getInfoSource();
     }
 
     public void updateFavorite(Boolean favorite) {
@@ -95,5 +98,6 @@ public class WardrobeClothes extends BaseEntity {
         this.size = size;
         this.season = season;
         this.userImageUrl = userImageUrl;
+        this.registrationSource = this.clothes.getInfoSource();
     }
 }

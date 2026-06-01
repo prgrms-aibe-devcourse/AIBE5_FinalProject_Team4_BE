@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.clothes.entity;
 
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.global.common.entity.BaseEntity;
 import jakarta.persistence.CascadeType;
@@ -31,7 +32,7 @@ import java.util.List;
 @Table(name = "clothes")
 public class Clothes extends BaseEntity {
 
-    private static final String EXTERNAL_NONE = "NONE";
+    public static final String EXTERNAL_NONE = "NONE";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -59,6 +60,10 @@ public class Clothes extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", nullable = false, length = 50)
     private SourceType sourceType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "info_source", nullable = false, length = 50)
+    private ClothesInfoSource infoSource;
 
     @Column(name = "external_source", nullable = false, length = 50)
     private String externalSource;
@@ -95,6 +100,7 @@ public class Clothes extends BaseEntity {
             String category,
             String itemType,
             SourceType sourceType,
+            ClothesInfoSource infoSource,
             String externalSource,
             String externalProductId,
             String externalProductUrl,
@@ -107,6 +113,10 @@ public class Clothes extends BaseEntity {
         this.category = category;
         this.itemType = itemType;
         this.sourceType = sourceType;
+        if (infoSource == null) {
+            throw new IllegalArgumentException("옷 정보 출처는 필수입니다.");
+        }
+        this.infoSource = infoSource;
         this.externalSource = externalSource;
         this.externalProductId = externalProductId;
         this.externalProductUrl = externalProductUrl;
@@ -166,6 +176,7 @@ public class Clothes extends BaseEntity {
             throw new IllegalArgumentException("미보유 옷만 보유 옷으로 전환할 수 있습니다.");
         }
         this.sourceType = SourceType.OWNED;
+        this.infoSource = ClothesInfoSource.PURCHASE_HISTORY;
         this.externalSource = EXTERNAL_NONE;
         this.externalProductId = EXTERNAL_NONE;
         this.externalProductUrl = EXTERNAL_NONE;
