@@ -1,6 +1,7 @@
 package com.closetnangam.be.global.external.gemini;
 
 import com.closetnangam.be.global.external.gemini.dto.GeminiClothingClassificationResult;
+import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureExtractionResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,10 +50,6 @@ public class GeminiService {
             String mimeType,
             String classificationGuide
     ) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("Gemini API 키가 설정되어 있지 않습니다.");
-        }
-
         String prompt = """
                 당신은 의류 분류 AI입니다. 아래 가이드의 코드만 사용해 JSON으로 응답하세요.
                 name은 옷 이름(한국어), brandName은 브랜드명(모르면 "UNKNOWN")을 추정합니다.
@@ -71,6 +68,46 @@ public class GeminiService {
                 }
                 """.formatted(classificationGuide);
 
+        return generateJsonFromImage(imageBytes, mimeType, prompt, GeminiClothingClassificationResult.class);
+    }
+
+    public GeminiPurchaseCaptureExtractionResult extractPurchaseCaptureInfo(
+            byte[] imageBytes,
+            String mimeType,
+            String extractionGuide
+    ) {
+        String prompt = """
+                당신은 쇼핑몰 구매내역 캡처 OCR AI입니다.
+                이미지 속 텍스트를 읽어 상품 정보를 추출하고, 아래 가이드의 코드만 사용해 JSON으로 응답하세요.
+                추출할 수 없는 필드는 null 또는 빈 배열 []을 사용하세요.
+                brandName을 모르면 "UNKNOWN"을 사용하세요.
+                optionText에는 사이즈·색상·옵션 등 주문 옵션 텍스트를 그대로 넣으세요.
+                suggestedExternalSource는 화면/로고/URL로 추정 가능한 쇼핑몰 코드입니다. 불확실하면 null.
+
+                %s
+
+                반드시 아래 JSON 형식만 반환하세요.
+                {
+                  "name": "string",
+                  "brandName": "string",
+                  "category": "TOP",
+                  "itemType": "SHORT_SLEEVE",
+                  "primaryColor": "WHITE",
+                  "secondaryColors": [],
+                  "styles": ["CASUAL"],
+                  "optionText": "M / 네이비",
+                  "suggestedExternalSource": "MUSINSA"
+                }
+                """.formatted(extractionGuide);
+
+        return generateJsonFromImage(imageBytes, mimeType, prompt, GeminiPurchaseCaptureExtractionResult.class);
+    }
+
+    private <T> T generateJsonFromImage(byte[] imageBytes, String mimeType, String prompt, Class<T> resultType) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("Gemini API 키가 설정되어 있지 않습니다.");
+        }
+
         Map<String, Object> requestBody = Map.of(
                 "contents", List.of(
                         Map.of("parts", List.of(
@@ -86,7 +123,6 @@ public class GeminiService {
                 )
         );
 
-        // API 키는 URL이 아닌 헤더로 전달 (로그 유출 방지)
         String url = baseUrl + "/models/" + model + ":generateContent";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -95,18 +131,18 @@ public class GeminiService {
 
         try {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-            return parseClassificationResult(response.getBody());
+            return parseJsonResult(response.getBody(), resultType);
         } catch (RestClientException exception) {
-            throw new IllegalStateException("AI 의류 판별 API 호출에 실패했습니다.");
+            throw new IllegalStateException("AI API 호출에 실패했습니다.");
         }
     }
 
-    private GeminiClothingClassificationResult parseClassificationResult(String responseBody) {
+    private <T> T parseJsonResult(String responseBody, Class<T> resultType) {
         JsonNode root;
         try {
             root = objectMapper.readTree(responseBody);
         } catch (Exception exception) {
-            throw new IllegalStateException("AI 판별 결과를 해석하지 못했습니다.");
+            throw new IllegalStateException("AI 응답을 해석하지 못했습니다.");
         }
 
         JsonNode textNode = root.path("candidates").path(0).path("content").path("parts").path(0).path("text");
@@ -115,9 +151,9 @@ public class GeminiService {
         }
 
         try {
-            return objectMapper.readValue(textNode.asText(), GeminiClothingClassificationResult.class);
+            return objectMapper.readValue(textNode.asText(), resultType);
         } catch (Exception exception) {
-            throw new IllegalStateException("AI 판별 결과를 해석하지 못했습니다.");
+            throw new IllegalStateException("AI 응답을 해석하지 못했습니다.");
         }
     }
 }

@@ -149,6 +149,19 @@ public class CategoryCatalogService {
         return guide.toString();
     }
 
+    public String getPurchaseCaptureExtractionGuide() {
+        StringBuilder guide = new StringBuilder();
+        guide.append(getAiClassificationGuide());
+        guide.append("\n\n[externalSource]\n");
+        guide.append("쇼핑몰 코드(suggestedExternalSource). 아래 코드만 사용하고, 확실하지 않으면 null.\n");
+        guide.append(Arrays.stream(ExternalSource.values())
+                .filter(source -> !source.isAllowsCustomInput())
+                .map(source -> source.name() + " (" + source.getLabel() + ")")
+                .collect(Collectors.joining(", ")));
+        guide.append("\n직접입력 쇼핑몰명은 suggestedExternalSource에 넣지 말고 null로 두세요.");
+        return guide.toString();
+    }
+
     public void validateClothesClassification(String categoryCode, String itemTypeCode, String colorCode) {
         validateCategoryAndItemType(categoryCode, itemTypeCode);
         validateColorCode(colorCode);

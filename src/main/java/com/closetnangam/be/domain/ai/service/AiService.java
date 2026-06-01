@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.global.external.gemini.GeminiService;
 import com.closetnangam.be.global.external.gemini.dto.GeminiClothingClassificationResult;
 import com.closetnangam.be.global.storage.LocalImageStorageService;
+import com.closetnangam.be.global.storage.StoredImageAnalysisContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -54,14 +55,14 @@ public class AiService {
         // Phase 1: 소유권 확인 + ANALYZING 상태 기록 (단기 트랜잭션)
         // FOR UPDATE: 저장 API와 동일한 row lock 규칙으로 직렬화하여
         // 저장 트랜잭션이 SAVED로 커밋한 뒤 markAnalyzing()이 그 상태를 덮어쓰는 것을 방지
-        PhotoAnalysisContext ctx = transactionTemplate.execute(status -> {
+        StoredImageAnalysisContext ctx = transactionTemplate.execute(status -> {
             ClothingAiPhoto photo = clothingAiPhotoRepository.findByIdAndUser_IdForUpdate(photoId, userId)
                     .orElseThrow(() -> new IllegalArgumentException("업로드한 사진을 찾을 수 없습니다."));
             if (photo.isAlreadySaved()) {
                 throw new IllegalStateException("이미 저장된 사진은 다시 분석할 수 없습니다.");
             }
             photo.markAnalyzing();
-            return new PhotoAnalysisContext(photo.getStoredPath(), photo.getContentType());
+            return new StoredImageAnalysisContext(photo.getStoredPath(), photo.getContentType());
         });
         if (ctx == null) {
             throw new IllegalStateException("분석 준비 중 오류가 발생했습니다.");
@@ -233,5 +234,4 @@ public class AiService {
         }
     }
 
-    private record PhotoAnalysisContext(String storedPath, String contentType) {}
 }
