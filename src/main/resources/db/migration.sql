@@ -9,37 +9,17 @@ ALTER TABLE `clothes`
     ADD COLUMN `version` BIGINT NOT NULL DEFAULT 0;
 
 -- 1-1. 옷 정보 출처 enum 컬럼 (PHOTO, PURCHASE_HISTORY, EXTERNAL_SHOPPING)
+--      레거시 MANUAL / NAVER_API enum 값은 제거됨 → db/migration-info-source-enum.sql 참고
 ALTER TABLE `clothes`
     ADD COLUMN `info_source` VARCHAR(50) NOT NULL DEFAULT 'PURCHASE_HISTORY';
 
--- 1-2. info_source 백필 (운영 배포 시 컬럼 추가 직후 실행)
---    DEFAULT만으로는 PHOTO / EXTERNAL_SHOPPING 이력이 PURCHASE_HISTORY로 남을 수 있음
--- UPDATE `clothes`
--- SET `info_source` = 'EXTERNAL_SHOPPING'
--- WHERE `source_type` = 'WISHLIST'
---   AND `external_source` <> 'NONE';
+-- 1-2. info_source / registration_source 레거시 백필
+--      운영 배포 시 앱 기동 전에 db/migration-info-source-enum.sql 을 반드시 실행하세요.
+--      (주석 처리된 UPDATE는 참고용이며, 실행 가능한 스크립트는 별도 파일에 있습니다)
 --
--- UPDATE `clothes` c
--- INNER JOIN `wardrobe_clothes` wc ON wc.clothes_id = c.clothes_id
--- SET c.info_source = 'PHOTO'
--- WHERE wc.registration_source = 'PHOTO';
---
--- -- 레거시 registration_source (NAVER_API 등) → EXTERNAL_SHOPPING
--- UPDATE `clothes` c
--- INNER JOIN `wardrobe_clothes` wc ON wc.clothes_id = c.clothes_id
--- SET c.info_source = 'EXTERNAL_SHOPPING'
--- WHERE c.source_type = 'WISHLIST'
---   AND wc.registration_source IN ('NAVER_API', 'EXTERNAL_SHOPPING');
---
--- -- 나머지 보유(OWNED) 옷: PURCHASE_HISTORY (DEFAULT와 동일, 명시 보정)
--- UPDATE `clothes`
--- SET `info_source` = 'PURCHASE_HISTORY'
--- WHERE `source_type` = 'OWNED'
---   AND `info_source` = 'PURCHASE_HISTORY';
---
--- UPDATE `wardrobe_clothes` wc
--- INNER JOIN `clothes` c ON c.clothes_id = wc.clothes_id
--- SET wc.registration_source = c.info_source;
+--      MANUAL → WISHLIST: EXTERNAL_SHOPPING / OWNED: PURCHASE_HISTORY
+--      NAVER_API → EXTERNAL_SHOPPING (WISHLIST)
+--      PHOTO → PHOTO (유지)
 
 -- =====================================================================
 -- 아래 구문은 기존 데이터가 있을 경우에만 실행하세요.
