@@ -1,6 +1,5 @@
 package com.closetnangam.be.global.external.clothes.controller;
 
-import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
 import com.closetnangam.be.global.auth.util.SecurityUtils;
 import com.closetnangam.be.global.common.response.ApiResponse;
@@ -30,17 +29,15 @@ public class ExternalClothesController {
     public ApiResponse<SaveNaverProductResponse> saveNaverProduct(
             @Valid @RequestBody NaverProductCreateRequest request
     ) {
-        // 1. 테스트용 유저 ID 1번 강제 주입 (로그인 구현 전까지 유지)
-        Long authenticatedUserId = 1L;
+        Long userId = SecurityUtils.getCurrentUserId();
 
-        // 메서드명을 새로 바꾼 getOrCreateExternalClothes로 매핑하고, DTO 내부의 colors(), styles()를 넘깁니다.
+        // 1. 요청 객체에서 색상과 스타일 리스트를 추출해서 서비스로 전달
+        // 2. NaverProductCreateRequest 타입 자체가 아니라 'request' 객체를 인자로 넘겨야 함
         Long clothesId = externalClothesService.getOrCreateExternalClothes(
-                request, request.colors(), request.styles());
-
-        // 3. [옷장 담당 역할] 유저의 옷장에 이 옷을 담아두는 로직 호출
-        // 임시로 주석 처리해 두었다가, 옷장 담당 팀원이 메서드(예: addClothesToWishlist)를 만들어주면 주석을 풀고 연결합니다!
-        // Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(authenticatedUserId);
-        // wardrobeService.addClothesToWishlist(authenticatedUserId, wardrobe, clothesId);
+                request,
+                request.colors(),
+                request.styles()
+        );
 
         return ApiResponse.ok(new SaveNaverProductResponse(clothesId));
     }

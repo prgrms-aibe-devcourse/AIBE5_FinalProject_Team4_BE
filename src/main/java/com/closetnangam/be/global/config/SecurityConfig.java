@@ -32,7 +32,7 @@ public class SecurityConfig {
             "/api/v1/clothes/registration-methods",
             "/api/v1/external/clothes/**",
             "/api/naver/**",
-            "/api/weather/**"
+            "/api/weather/**",
 
     };
 
