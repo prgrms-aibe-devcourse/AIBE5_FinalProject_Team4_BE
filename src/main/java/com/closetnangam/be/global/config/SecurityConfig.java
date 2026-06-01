@@ -5,6 +5,7 @@ import com.closetnangam.be.global.auth.jwt.JwtTokenProvider;
 import com.closetnangam.be.global.auth.oauth.OAuth2SuccessHandler;
 import com.closetnangam.be.global.auth.oauth.OAuth2UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -12,6 +13,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -32,8 +35,8 @@ public class SecurityConfig {
             "/api/v1/clothes/registration-methods",
             "/api/naver/**",
             "/api/weather/**",
-            "/api/v1/auth/mock-token",
-            "/api/v1/outfit-books/**"
+            "/api/v1/auth/**",
+
 
     };
 
@@ -50,6 +53,12 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(ex -> ex
+                        .defaultAuthenticationEntryPointFor(
+                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
+                                apiRequestMatcher()
+                        )
+                )
                 .oauth2Login(oauth -> oauth
                         .userInfoEndpoint(e -> e.userService(oAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
@@ -58,6 +67,10 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    private RequestMatcher apiRequestMatcher() {
+        return request -> request.getServletPath() != null && request.getServletPath().startsWith("/api/");
     }
 
 }
