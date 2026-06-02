@@ -2,6 +2,7 @@ package com.closetnangam.be.domain.recommendation.controller;
 
 import com.closetnangam.be.domain.recommendation.dto.response.SimilarProductRecommendationResponse;
 import com.closetnangam.be.domain.recommendation.service.SimilarProductRecommendationService;
+import com.closetnangam.be.global.auth.util.SecurityUtils;
 import com.closetnangam.be.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,8 +27,8 @@ public class RecommendationController {
      * 2. 사용자가 모달에서 옷 하나를 선택하면 해당 clothesId로 이 API를 호출한다.
      * 3. 응답의 products를 추천 상품 카드 목록으로 렌더링한다.
      *
-     * 현재 인증 사용자 조회가 아직 완전히 연결되지 않아 userId를 path variable로 받는다.
-     * JWT 기반 사용자 식별이 정착되면 userId는 토큰에서 꺼내는 방식으로 바꾸는 것이 더 안전하다.
+     * path의 userId는 API 경로 일관성을 위해 유지한다.
+     * 단, 추천 기준 옷은 개인 옷장 데이터이므로 JWT의 사용자와 path userId가 같은지 컨트롤러에서 먼저 검증한다.
      */
     @Operation(
             summary = "유사 상품 추천",
@@ -38,6 +39,7 @@ public class RecommendationController {
             @PathVariable Long userId,
             @PathVariable Long clothesId
     ) {
+        SecurityUtils.verifyUserIdMatch(userId);
         return ResponseEntity.ok(ApiResponse.ok(
                 similarProductRecommendationService.recommendSimilarProducts(userId, clothesId)
         ));
