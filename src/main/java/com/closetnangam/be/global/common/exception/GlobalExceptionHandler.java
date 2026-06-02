@@ -26,6 +26,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("이미 존재하는 데이터입니다."));
     }
 
+    /**
+     * 외부 API 호출 실패는 서버 로직 자체의 예외라기보다 upstream 장애/인증/응답 문제에 가깝다.
+     * 502로 내려 프론트가 재시도, fallback 추천, 수동 등록 안내 같은 UX를 분기할 수 있게 한다.
+     */
+    @ExceptionHandler(ExternalApiException.class)
+    public ResponseEntity<ApiResponse<Void>> handleExternalApi(ExternalApiException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ApiResponse.fail(exception.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()

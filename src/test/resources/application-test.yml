@@ -5,15 +5,20 @@ spring:
       - io.awspring.cloud.autoconfigure.s3.S3TransferManagerAutoConfiguration
 
   datasource:
-    url: jdbc:mysql://localhost:3306/closetnangam_test?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    # CI와 로컬 테스트가 MySQL 컨테이너 없이도 실행되도록 H2를 MySQL 호환 모드로 사용합니다.
+    url: jdbc:h2:mem:closetnangam_test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
 
   jpa:
     hibernate:
+      # 테스트마다 스키마를 새로 만들고 제거해 테스트 간 데이터 오염을 막습니다.
       ddl-auto: create-drop
     show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
 
   data:
     redis:
@@ -25,19 +30,19 @@ spring:
       client:
         registration:
           kakao:
-            client-id: ${KAKAO_CLIENT_ID}
-            client-secret: ${KAKAO_CLIENT_SECRET}
+            client-id: ${KAKAO_CLIENT_ID:test-kakao-client-id}
+            client-secret: ${KAKAO_CLIENT_SECRET:test-kakao-client-secret}
             redirect-uri: http://localhost:8080/login/oauth2/code/kakao
             authorization-grant-type: authorization_code
             scope: account_email
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-id: ${GOOGLE_CLIENT_ID:test-google-client-id}
+            client-secret: ${GOOGLE_CLIENT_SECRET:test-google-client-secret}
             redirect-uri: http://localhost:8080/login/oauth2/code/google
             scope: profile, email
           naver:
-            client-id: ${NAVER_CLIENT_ID}
-            client-secret: ${NAVER_CLIENT_SECRET}
+            client-id: ${NAVER_CLIENT_ID:test-naver-client-id}
+            client-secret: ${NAVER_CLIENT_SECRET:test-naver-client-secret}
             redirect-uri: http://localhost:8080/login/oauth2/code/naver
             authorization-grant-type: authorization_code
             scope: name, email
@@ -61,7 +66,7 @@ cloud:
       auto: false
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:test-jwt-secret-must-be-long-enough-for-tests}
 
 gemini:
   api-key: test-gemini-key
