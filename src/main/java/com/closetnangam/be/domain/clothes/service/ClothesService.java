@@ -10,7 +10,6 @@ import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
-import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
@@ -82,7 +81,7 @@ public class ClothesService {
                 request.imageUrl(),
                 request.category(),
                 request.itemType(),
-                SourceType.OWNED,
+                OwnershipStatus.OWNED,
                 ClothesInfoSource.PURCHASE_HISTORY,
                 Clothes.EXTERNAL_NONE,
                 Clothes.EXTERNAL_NONE,
@@ -126,7 +125,7 @@ public class ClothesService {
                 request.imageUrl(),
                 request.category(),
                 request.itemType(),
-                SourceType.WISHLIST,
+                OwnershipStatus.WISHLIST,
                 ClothesInfoSource.EXTERNAL_SHOPPING,
                 request.externalSource(),
                 request.externalProductId(),
@@ -202,11 +201,14 @@ public class ClothesService {
         return ClothesResponse.from(wardrobeClothes.getClothes(), wardrobeClothes);
     }
 
+    /**
+     * 사용자 옷장에서 옷을 제거합니다. {@link Clothes} 마스터 데이터는 유지되어
+     * 피드·다른 사용자 조회 등 {@code clothes_id} 참조가 계속 동작합니다.
+     */
     @Transactional
     public void deleteClothes(Long userId, Long clothesId) {
-        getOwnedWardrobeClothes(userId, clothesId);
-        wardrobeClothesRepository.deleteByClothes_Id(clothesId);
-        clothesRepository.deleteById(clothesId);
+        WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
+        wardrobeClothes.softDelete();
     }
 
     /** 소유권 확인: 해당 옷이 요청 사용자의 옷장에 없으면 404 */
@@ -222,7 +224,7 @@ public class ClothesService {
             String imageUrl,
             String category,
             String itemType,
-            SourceType sourceType,
+            OwnershipStatus ownershipStatus,
             ClothesInfoSource infoSource,
             String externalSource,
             String externalProductId,
@@ -239,7 +241,7 @@ public class ClothesService {
                 .imageUrl(imageUrl)
                 .category(category)
                 .itemType(itemType)
-                .sourceType(sourceType)
+                .ownershipStatus(ownershipStatus)
                 .infoSource(infoSource)
                 .externalSource(externalSource)
                 .externalProductId(externalProductId)

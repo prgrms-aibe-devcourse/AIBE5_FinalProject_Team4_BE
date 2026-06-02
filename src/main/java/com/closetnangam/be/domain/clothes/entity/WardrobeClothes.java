@@ -20,6 +20,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -60,6 +63,10 @@ public class WardrobeClothes extends BaseEntity {
     @Column(name = "user_image_url", nullable = false, length = 500)
     private String userImageUrl;
 
+    /** 사용자 옷장에서 제거된 시각. null이면 활성. {@link Clothes} 마스터 행은 유지됩니다. */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
     private WardrobeClothes(
             Wardrobe wardrobe,
@@ -99,5 +106,19 @@ public class WardrobeClothes extends BaseEntity {
         this.season = season;
         this.userImageUrl = userImageUrl;
         this.registrationSource = this.clothes.getInfoSource();
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    /**
+     * 사용자 옷장에서만 제거합니다. 연관 {@link Clothes}·태그·피드 등 외부 참조용 데이터는 삭제하지 않습니다.
+     */
+    public void softDelete() {
+        if (deletedAt != null) {
+            throw new IllegalStateException("이미 삭제된 옷장 항목입니다.");
+        }
+        this.deletedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 }
