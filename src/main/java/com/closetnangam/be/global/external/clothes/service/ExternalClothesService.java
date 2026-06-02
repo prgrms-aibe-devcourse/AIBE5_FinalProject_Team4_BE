@@ -5,33 +5,24 @@ import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
+import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
+import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.global.external.clothes.dto.record.NaverProductCreateRequest;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothesStyleDto;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothingColorDto;
-import com.closetnangam.be.global.external.clothes.dto.response.NaverSearchResponse;
-import com.closetnangam.be.global.external.clothes.dto.response.ProductDto;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.net.URLEncoder;
-
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
-
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -47,17 +38,7 @@ public class ExternalClothesService {
 
     private final ClothesRepository clothesRepository;
     private final StyleRepository styleRepository;
-
-
-
-    // 똑같은 방식으로 값을 주입받는지 확인!
-    @Value("${spring.security.oauth2.client.registration.naver.client-id}")
-    private String clientId;
-
-    @Value("${spring.security.oauth2.client.registration.naver.client-secret}")
-    private String clientSecret;
-
-
+    private final WardrobeClothesRepository wardrobeClothesRepository;
 
 
     @Transactional
@@ -102,6 +83,7 @@ public class ExternalClothesService {
             clothes = Clothes.builder()
                     .name(cleanTitle) // 태그와 품번이 세탁된 깔끔한 이름
                     .brandName(brandName)
+                    .infoSource(ClothesInfoSource.EXTERNAL_SHOPPING) // 이 부분 추가!
                     .productCode(extractedProductCode)
                     .imageUrl(request.image())
                     .category(category)
@@ -399,8 +381,6 @@ public class ExternalClothesService {
         return value.toLowerCase(Locale.ROOT).replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}]+", "");
     }
 
-
-
     private boolean containsAny(String source, String... keywords) {
         if (!StringUtils.hasText(source)) return false; // 소스 자체도 체크!
 
@@ -412,69 +392,7 @@ public class ExternalClothesService {
         }
         return false;
     }
-    public List<ProductDto> searchProducts(String keyword) {
-        if (!StringUtils.hasText(keyword)) {
-            throw new IllegalArgumentException("검색어를 입력해 주세요.");
-        }
 
-        String encodedKeyword = URLEncoder.encode(keyword, StandardCharsets.UTF_8);
-        String uri = "https://openapi.naver.com/v1/search/shop.json?query=" + encodedKeyword + "&display=10&sort=sim";
 
-        log.info("[API 디버깅] 최종 호출 URI: {}", uri);
-        RestTemplate restTemplate = new RestTemplate();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("X-Naver-Client-Id", clientId);
-        headers.set("X-Naver-Client-Secret", clientSecret);
-        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        try {
-            ResponseEntity<NaverSearchResponse> response = restTemplate.exchange(
-                    uri,
-                    HttpMethod.GET,
-                    entity,
-                    NaverSearchResponse.class
-            );
-
-            NaverSearchResponse body = response.getBody();
-            if (body == null || body.items() == null || body.items().isEmpty()) {
-                log.warn(
-                        "[Trace] ExternalClothesService - raw 응답 상태={}, query='{}', body가 비어 있습니다.",
-                        response.getStatusCode(),
-                        keyword
-                );
-                return Collections.emptyList();
-            }
-
-            log.info(
-                    "[Trace] ExternalClothesService - raw 응답 상태={}, query='{}', total={}, display={}, items={}개",
-                    response.getStatusCode(),
-                    keyword,
-                    body.total(),
-                    body.display(),
-                    body.items().size()
-            );
-            log.info(
-                    "[Trace] ExternalClothesService - raw 첫 아이템: title='{}', link='{}'",
-                    body.items().get(0).title(),
-                    body.items().get(0).link()
-            );
-
-            List<ProductDto> products = body.items().stream()
-                    .map(item -> new ProductDto(item.title(), item.image(), item.lprice(), item.link()))
-                    .toList();
-
-            log.info("[Trace] ExternalClothesService - ProductDto 변환 완료: {}개", products.size());
-            return products;
-        } catch (HttpClientErrorException e) {
-            log.error("[API 에러] 호출 실패 - 상태 코드: {}, 에러 메시지: {}", e.getStatusCode(), e.getResponseBodyAsString());
-        } catch (Exception e) {
-            log.error("[API 에러] 알 수 없는 오류 발생: ", e);
-        }
-
-        return Collections.emptyList();
-    }
 
 }

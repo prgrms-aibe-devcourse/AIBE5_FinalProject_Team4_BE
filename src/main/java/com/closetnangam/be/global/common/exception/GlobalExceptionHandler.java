@@ -1,6 +1,8 @@
 package com.closetnangam.be.global.common.exception;
 
 import com.closetnangam.be.global.common.response.ApiResponse;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,21 +13,34 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
+import java.util.NoSuchElementException;
+
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException exception) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail(exception.getMessage()));
+        log.warn("Access denied: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("접근 권한이 없습니다."));
+    }
+
+    /** 리소스 미존재 시 HTTP 404 */
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoSuchElement(NoSuchElementException exception) {
+        log.warn("Resource not found: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("요청한 리소스를 찾을 수 없습니다."));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException exception) {
+        log.warn("Illegal argument: {}", exception.getMessage());
         return ResponseEntity.badRequest().body(ApiResponse.fail(exception.getMessage()));
     }
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException exception) {
+        log.warn("Illegal state: {}", exception.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail(exception.getMessage()));
     }
 
@@ -34,11 +49,31 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("이미 존재하는 데이터입니다."));
     }
 
+    /**
+     * 외부 API 호출 실패는 서버 로직 자체의 예외라기보다 upstream 장애/인증/응답 문제에 가깝다.
+     * 502로 내려 프론트가 재시도, fallback 추천, 수동 등록 안내 같은 UX를 분기할 수 있게 한다.
+     */
+    @ExceptionHandler(ExternalApiException.class)
+    public ResponseEntity<ApiResponse<Void>> handleExternalApi(ExternalApiException exception) {
+        log.warn("External API error: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ApiResponse.fail("외부 서비스 연동 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .orElse("요청 값이 올바르지 않습니다.");
+        return ResponseEntity.badRequest().body(ApiResponse.fail(message));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException exception) {
+        String message = exception.getConstraintViolations().stream()
+                .findFirst()
+                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
                 .orElse("요청 값이 올바르지 않습니다.");
         return ResponseEntity.badRequest().body(ApiResponse.fail(message));
     }
