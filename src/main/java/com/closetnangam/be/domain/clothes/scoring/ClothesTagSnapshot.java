@@ -43,9 +43,10 @@ public record ClothesTagSnapshot(
                 continue;
             }
             ColorRole colorRole = colorTag.getColorRole();
+            double weight = (colorRole != null) ? colorRole.getWeight() : ColorRole.SECONDARY.getWeight();
             weightedColors.add(new WeightedColor(
                     colorTag.getColorCode(),
-                    colorRole.getWeight()
+                    weight
             ));
             if (ColorRole.PRIMARY.equals(colorRole) && primaryColor == null) {
                 primaryColor = colorTag.getColorCode();
