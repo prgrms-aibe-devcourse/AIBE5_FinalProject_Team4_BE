@@ -55,7 +55,9 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(ExternalApiException.class)
     public ResponseEntity<ApiResponse<Void>> handleExternalApi(ExternalApiException exception) {
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ApiResponse.fail(exception.getMessage()));
+        log.warn("External API error: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ApiResponse.fail("외부 서비스 연동 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

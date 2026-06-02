@@ -153,25 +153,37 @@ public class Clothes extends BaseEntity {
     }
 
     public void replaceColorTags(List<ClothingColor> newColorTags) {
-        this.colorTags.clear();
-        this.colorTags.addAll(newColorTags);
-        invalidateSortedTagCaches();
+        synchronized (this) {
+            this.colorTags.clear();
+            this.colorTags.addAll(newColorTags);
+            sortedColorTagsCache = null;
+            recommendationTagSnapshotCache = null;
+        }
     }
 
     public void replaceStyleTags(List<ClothesStyleTag> newStyleTags) {
-        this.styleTags.clear();
-        this.styleTags.addAll(newStyleTags);
-        invalidateSortedTagCaches();
+        synchronized (this) {
+            this.styleTags.clear();
+            this.styleTags.addAll(newStyleTags);
+            sortedStyleTagsCache = null;
+            recommendationTagSnapshotCache = null;
+        }
     }
 
     public void addColorTag(ClothingColor colorTag) {
-        this.colorTags.add(colorTag);
-        invalidateSortedTagCaches();
+        synchronized (this) {
+            this.colorTags.add(colorTag);
+            sortedColorTagsCache = null;
+            recommendationTagSnapshotCache = null;
+        }
     }
 
     public void addStyleTag(ClothesStyleTag styleTag) {
-        this.styleTags.add(styleTag);
-        invalidateSortedTagCaches();
+        synchronized (this) {
+            this.styleTags.add(styleTag);
+            sortedStyleTagsCache = null;
+            recommendationTagSnapshotCache = null;
+        }
     }
 
     private transient volatile List<ClothingColor> sortedColorTagsCache;
