@@ -15,6 +15,10 @@ spring:
       # CI는 MySQL 8.4 서비스 컨테이너를 사용합니다. 매 실행마다 스키마를 새로 만들어 테스트 간 데이터 오염을 막습니다.
       ddl-auto: create-drop
     show-sql: false
+    properties:
+      hibernate:
+        # 테스트 DB도 MySQL이므로 Hibernate가 연결 메타데이터에 의존하지 않도록 dialect를 명시합니다.
+        dialect: org.hibernate.dialect.MySQLDialect
 
   data:
     redis:
