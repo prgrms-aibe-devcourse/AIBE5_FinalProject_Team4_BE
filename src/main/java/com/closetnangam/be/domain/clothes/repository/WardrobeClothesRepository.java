@@ -62,6 +62,8 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             select wc from WardrobeClothes wc
             join fetch wc.clothes c
             join fetch wc.wardrobe w
+            left join fetch c.styleTags st
+            left join fetch st.style
             where c.id = :clothesId and w.user.id = :userId
             """)
     Optional<WardrobeClothes> findByClothesIdAndUserId(
@@ -74,6 +76,12 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
     /**
      * 추천 후보 조회: 특정 사용자의 보유 옷 중 기준 옷과 다른 카테고리인 항목만 반환합니다.
      *
+     * <p><b>fetch 전략</b><br>
+     * {@code colorTags}와 {@code styleTags}를 동시에 {@code join fetch}하면
+     * {@code MultipleBagFetchException}이 발생하므로, {@code styleTags} + {@code Style}만 이 쿼리에서
+     * {@code left join fetch}로 로딩하고 {@code colorTags}는 {@code @Fetch(SUBSELECT)}로 별도 1쿼리 처리합니다.<br>
+     * 결과: 이 쿼리 1회 + colorTags SUBSELECT 1회 (styleTags/Style은 join fetch에 포함).
+     *
      * @param excludeClothesId 기준 옷 ID (결과에서 제외)
      * @param excludeCategory  기준 옷의 카테고리 코드 (동일 카테고리 제외)
      */
@@ -81,6 +89,8 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             select distinct wc from WardrobeClothes wc
             join fetch wc.clothes c
             join fetch wc.wardrobe w
+            left join fetch c.styleTags st
+            left join fetch st.style
             where w.user.id = :userId
               and wc.ownershipStatus = :ownershipStatus
               and c.id <> :excludeClothesId

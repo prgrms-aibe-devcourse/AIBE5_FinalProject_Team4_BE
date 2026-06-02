@@ -5,39 +5,64 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResp
 import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResponse.AnchorItem;
 import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResponse.ColorInfo;
 import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResponse.RecommendedItem;
-import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResponse.ScoreBreakdown;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
-import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
-import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
+import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot.WeightedColor;
 import com.closetnangam.be.domain.clothes.scoring.ColorCompatibilityTable;
 import com.closetnangam.be.domain.clothes.scoring.ItemTypeCompatibilityTable;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ClothesRecommendationService {
 
+    private static final String CLOTHES_NOT_FOUND_MESSAGE = "해당 옷을 찾을 수 없습니다.";
+
     /**
      * 응답에서 카테고리를 보여줄 순서.
-     * anchor 카테고리는 제외되므로 실제 응답에는 최대 3개 카테고리가 나타납니다.
+     * anchor 카테고리가 CATEGORY_ORDER 내에 있을 경우 최대 3개, 그 외(예: ACCESSORY)일 경우 최대 4개 카테고리가 반환됩니다.
      */
     private static final List<String> CATEGORY_ORDER = List.of("TOP", "BOTTOM", "OUTER", "SHOES");
 
-    private static final int MAX_LIMIT_PER_CATEGORY = 10;
+    /** scoredAndGrouped() pre-filter용 Set — CATEGORY_ORDER 외 후보는 채점에서 제외 */
+    private static final Set<String> CATEGORY_SET = Set.copyOf(CATEGORY_ORDER);
+
+    private static final ColorInfo UNKNOWN_COLOR_INFO = new ColorInfo("UNKNOWN", "UNKNOWN", null);
+
+    /**
+     * 색상 코드 → ColorInfo 정적 캐시.
+     * ClothesColor 는 변경되지 않는 정적 데이터이므로 클래스 로드 시점에 한 번만 구성합니다.
+     */
+    private static final Map<String, ColorInfo> COLOR_INFO_CACHE = Arrays.stream(ClothesColor.values())
+            .collect(Collectors.toUnmodifiableMap(
+                    ClothesColor::name,
+                    c -> new ColorInfo(c.name(), c.getLabel(), c.getHex())
+            ));
+
+    /** 이미 DEBUG 로그를 출력한 미등록 색상 코드 — 동일 코드의 반복 로깅을 방지합니다. */
+    private final Set<String> loggedUnknownColorCodes = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     // 점수 가중치 (합계 = 1.0)
     private static final double WEIGHT_COLOR     = 0.35;
@@ -45,67 +70,111 @@ public class ClothesRecommendationService {
     private static final double WEIGHT_SEASON    = 0.15;
     private static final double WEIGHT_ITEM_TYPE = 0.20;
 
-    /** primary 색상은 full weight, secondary는 보조 색상으로 약한 weight 적용 */
-    private static final double PRIMARY_COLOR_WEIGHT   = 1.0;
-    private static final double SECONDARY_COLOR_WEIGHT = 0.6;
+    /** 색상·스타일 데이터 부재 시 중립 점수 */
+    private static final double SCORE_NEUTRAL = 0.5;
+    /** 시즌 한쪽 미입력 시 점수 */
+    private static final double SCORE_SEASON_UNKNOWN = 0.7;
+    /** 시즌 불일치 시 점수 */
+    private static final double SCORE_SEASON_MISMATCH = 0.3;
+    /** 스타일 불일치 시 점수 */
+    private static final double SCORE_STYLE_MISMATCH = 0.2;
 
     private final WardrobeClothesRepository wardrobeClothesRepository;
 
     /**
      * 기준 옷({clothesId})와 어울리는 보유 옷을 카테고리별로 추천합니다.
      *
-     * @param limitPerCategory 카테고리당 최대 추천 수 (1~10)
+     * <p><b>Precondition:</b> 호출 전에 컨트롤러에서 {@code SecurityUtils.verifyUserIdMatch(userId)}로
+     * JWT 사용자 일치를 검증해야 합니다.
+     *
+     * @param userId           인증된 사용자 ID (컨트롤러에서 JWT 검증 후 전달)
+     * @param clothesId        기준 옷 ID
+     * @param limitPerCategory 카테고리당 최대 추천 수 (1~10, 컨트롤러에서 검증)
+     * @throws NoSuchElementException {@code clothesId}가 존재하지 않거나 {@code userId} 소유가 아닌 경우 (HTTP 404)
      */
     public ClothesRecommendationResponse recommend(Long userId, Long clothesId, int limitPerCategory) {
-        int limit = Math.min(Math.max(1, limitPerCategory), MAX_LIMIT_PER_CATEGORY);
-
+        // userId와 clothesId를 함께 조회해 해당 옷이 이 사용자 소유임을 확인합니다.
         WardrobeClothes anchor = wardrobeClothesRepository
                 .findByClothesIdAndUserId(clothesId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("옷을 찾을 수 없습니다."));
+                .orElseThrow(() -> new NoSuchElementException(CLOTHES_NOT_FOUND_MESSAGE));
 
-        String excludeCategory = anchor.getClothes().getCategory();
+        // join fetch 로 Clothes 가 반드시 로딩되어야 합니다. null 이면 데이터 정합성 이상입니다.
+        Clothes anchorClothes = anchor.getClothes();
+        if (anchorClothes == null) {
+            throw new IllegalStateException("기준 옷의 Clothes 관계를 로딩할 수 없습니다. wardrobeClothesId=" + anchor.getId());
+        }
+
+        String excludeCategory = anchorClothes.getCategory();
 
         List<WardrobeClothes> candidates = wardrobeClothesRepository.findCandidatesForRecommendation(
                 userId, OwnershipStatus.OWNED, clothesId, excludeCategory
         );
 
-        Map<String, List<RecommendedItem>> recommendations = scoredAndGrouped(anchor, candidates, limit);
+        AnchorScoringContext anchorContext = AnchorScoringContext.from(anchor);
+        Map<String, List<RecommendedItem>> recommendations = scoredAndGrouped(anchorContext, candidates, limitPerCategory);
 
-        return new ClothesRecommendationResponse(toAnchorItem(anchor), recommendations);
+        return new ClothesRecommendationResponse(toAnchorItem(anchor, anchorClothes, anchorContext.tagSnapshot()), recommendations);
     }
 
     // ── 점수 계산 및 카테고리별 그룹화 ────────────────────────────────────
 
     private Map<String, List<RecommendedItem>> scoredAndGrouped(
-            WardrobeClothes anchor,
+            AnchorScoringContext anchorContext,
             List<WardrobeClothes> candidates,
             int limit
     ) {
-        Map<String, List<RecommendedItem>> grouped = candidates.stream()
-                .map(candidate -> toRecommendedItem(anchor, candidate))
-                .collect(Collectors.groupingBy(RecommendedItem::category));
+        // 단일 for-loop 으로 다음을 동시에 처리합니다:
+        // 1) getClothes() 호출 횟수를 후보당 1회로 제한
+        // 2) null Clothes 방어 및 CATEGORY_ORDER 외 카테고리 조기 제외
+        // 3) getRecommendationTagSnapshot() 을 한 번만 호출해 스냅샷을 채점 루프에 전달
+        Map<String, List<CandidateEntry>> candidatesByCategory = new HashMap<>();
+        for (WardrobeClothes candidate : candidates) {
+            Clothes clothes = candidate.getClothes();
+            if (clothes == null) {
+                log.debug("WardrobeClothes(id={})의 Clothes 가 null — 후보에서 제외합니다.", candidate.getId());
+                continue;
+            }
+            String category = clothes.getCategory();
+            if (!CATEGORY_SET.contains(category)) {
+                continue;
+            }
+            ClothesTagSnapshot tagSnapshot = clothes.getRecommendationTagSnapshot();
+            if (tagSnapshot == null) {
+                log.debug("WardrobeClothes(id={})의 태그 스냅샷을 생성할 수 없습니다 — 후보에서 제외합니다.", candidate.getId());
+                continue;
+            }
+            candidatesByCategory
+                    .computeIfAbsent(category, k -> new ArrayList<>())
+                    .add(new CandidateEntry(candidate, clothes, tagSnapshot));
+        }
 
         Map<String, List<RecommendedItem>> ordered = new LinkedHashMap<>();
         for (String category : CATEGORY_ORDER) {
-            if (grouped.containsKey(category)) {
-                List<RecommendedItem> sorted = grouped.get(category).stream()
-                        .sorted(Comparator.comparingInt(RecommendedItem::compatibilityScore).reversed())
-                        .limit(limit)
-                        .toList();
-                ordered.put(category, sorted);
+            List<CandidateEntry> categoryCandidates = candidatesByCategory.getOrDefault(category, List.of());
+            if (categoryCandidates.isEmpty()) {
+                continue;
             }
+
+            // 카테고리당 후보 수가 적으면(일반적) O(n log n) 정렬 비용은 미미합니다.
+            List<RecommendedItem> sorted = categoryCandidates.stream()
+                    .map(entry -> toRecommendedItem(anchorContext, entry))
+                    .sorted(Comparator.comparingInt(RecommendedItem::compatibilityScore).reversed())
+                    .limit(limit)
+                    .toList();
+            ordered.put(category, sorted);
         }
         return ordered;
     }
 
-    private RecommendedItem toRecommendedItem(WardrobeClothes anchor, WardrobeClothes candidate) {
-        Clothes anchorClothes = anchor.getClothes();
-        Clothes candidateClothes = candidate.getClothes();
+    private RecommendedItem toRecommendedItem(AnchorScoringContext anchorContext, CandidateEntry entry) {
+        WardrobeClothes candidate = entry.wardrobeClothes();
+        Clothes candidateClothes = entry.clothes();
+        ClothesTagSnapshot candidateTags = entry.tagSnapshot();
 
-        double colorScore     = computeColorScore(anchorClothes, candidateClothes);
-        double styleScore     = computeStyleScore(anchorClothes, candidateClothes);
-        double seasonScore    = computeSeasonScore(anchor.getSeason(), candidate.getSeason());
-        double itemTypeScore  = computeItemTypeScore(anchorClothes.getItemType(), candidateClothes.getItemType());
+        double colorScore     = computeColorScore(anchorContext.tagSnapshot().weightedColors(), candidateTags.weightedColors());
+        double styleScore     = computeStyleScore(anchorContext.tagSnapshot().primaryStyleCode(), candidateTags.styleCodes());
+        double seasonScore    = computeSeasonScore(anchorContext.season(), candidate.getSeason());
+        double itemTypeScore  = computeItemTypeScore(anchorContext.itemType(), candidateClothes.getItemType());
 
         int total = (int) Math.round(
                 100.0 * (
@@ -115,14 +184,6 @@ public class ClothesRecommendationService {
                                 + WEIGHT_ITEM_TYPE * itemTypeScore
                 )
         );
-        ScoreBreakdown breakdown = new ScoreBreakdown(
-                (int) Math.round(colorScore * 100),
-                (int) Math.round(styleScore * 100),
-                (int) Math.round(seasonScore * 100),
-                (int) Math.round(itemTypeScore * 100)
-        );
-
-        String primaryColor = getPrimaryColorCode(candidateClothes);
 
         return new RecommendedItem(
                 candidateClothes.getId(),
@@ -132,13 +193,12 @@ public class ClothesRecommendationService {
                 candidate.getUserImageUrl(),
                 candidateClothes.getCategory(),
                 candidateClothes.getItemType(),
-                primaryColor,
-                toColorInfo(primaryColor),
-                getSecondaryColorCodes(candidateClothes),
-                getStyleCodes(candidateClothes),
+                candidateTags.primaryColor(),
+                toColorInfo(candidateTags.primaryColor()),
+                candidateTags.secondaryColorCodes(),
+                candidateTags.styleCodes(),
                 candidate.getSeason(),
-                total,
-                breakdown
+                total
         );
     }
 
@@ -146,89 +206,92 @@ public class ClothesRecommendationService {
 
     /**
      * 색상 어울림 점수 (0.0 ~ 1.0).
-     * 양쪽 옷의 primary·secondary 색상 조합을 양방향으로 비교하고,
-     * secondary 색상은 {@link #SECONDARY_COLOR_WEIGHT}를 곱해 primary보다 약하게 반영합니다.
+     * 양쪽 옷의 primary·secondary 색상 조합을 양방향으로 비교합니다.
+     *
+     * <p>조기 탈출 최적화를 위해 {@code anchorColors}, {@code candidateColors} 모두
+     * weight 내림차순 정렬된 목록이어야 합니다
+     * ({@link ClothesTagSnapshot#weightedColors()} 반환값).
+     *
+     * @param anchorColors    weight DESC 정렬된 anchor 색상 목록
+     * @param candidateColors weight DESC 정렬된 candidate 색상 목록
      */
-    private double computeColorScore(Clothes anchor, Clothes candidate) {
-        List<WeightedColor> anchorColors = getWeightedColors(anchor);
-        List<WeightedColor> candidateColors = getWeightedColors(candidate);
-
-        if (anchorColors.isEmpty() || candidateColors.isEmpty()) {
-            return 0.5;
+    private double computeColorScore(List<WeightedColor> anchorColors, List<WeightedColor> candidateColors) {
+        if (anchorColors == null || anchorColors.isEmpty() || candidateColors == null || candidateColors.isEmpty()) {
+            return SCORE_NEUTRAL;
         }
 
         double best = 0.0;
         for (WeightedColor anchorColor : anchorColors) {
+            // weightedColors는 weight DESC 정렬이므로, 현재 anchorWeight로 만들 수 있는 최대 pairScore
+            // (= anchorWeight × maxHarmony × maxCandidateWeight = anchorWeight × 1.0 × 1.0)가
+            // 이미 best 이하라면 이후 anchor 항목 전부 무의미 → 외부 루프 조기 탈출
+            if (anchorColor.weight() <= best) {
+                break;
+            }
             for (WeightedColor candidateColor : candidateColors) {
-                double harmony = Math.max(
-                        ColorCompatibilityTable.score(anchorColor.code(), candidateColor.code()),
-                        ColorCompatibilityTable.score(candidateColor.code(), anchorColor.code())
-                );
+                // candidateColors 도 weight DESC 정렬이므로, anchorWeight × candidateWeight ≤ best 이면
+                // 이후 후보는 harmony=1.0 이어도 best 를 초과할 수 없음 → 내부 루프 조기 탈출
+                if (anchorColor.weight() * candidateColor.weight() <= best) {
+                    break;
+                }
+                double harmony = ColorCompatibilityTable.bestHarmony(anchorColor.code(), candidateColor.code());
                 double pairScore = harmony * anchorColor.weight() * candidateColor.weight();
-                best = Math.max(best, pairScore);
+                if (pairScore > best) {
+                    best = pairScore;
+                    if (best >= 1.0) {
+                        return best;
+                    }
+                }
             }
         }
         return best;
     }
 
-    private List<WeightedColor> getWeightedColors(Clothes clothes) {
-        return clothes.getSortedColorTags().stream()
-                .map(tag -> new WeightedColor(
-                        tag.getColorCode(),
-                        tag.getColorRole() == ColorRole.PRIMARY
-                                ? PRIMARY_COLOR_WEIGHT
-                                : SECONDARY_COLOR_WEIGHT
-                ))
-                .toList();
-    }
-
-    private record WeightedColor(String code, double weight) {}
-
     /**
-     * 스타일 Jaccard 유사도 기반 점수 (0.2 ~ 1.0).
-     * 공통 스타일 태그가 많을수록 높습니다.
+     * 스타일 점수 (0.2 ~ 1.0).
+     * 기준 옷 PRIMARY 스타일이 후보 옷의 PRIMARY·SECONDARY 태그 중 하나라도 포함되면 1.0.
+     * anchor PRIMARY 스타일이 없으면 중립(0.5), 후보 스타일 태그가 없으면 불일치(0.2).
      */
-    private double computeStyleScore(Clothes anchor, Clothes candidate) {
-        Set<String> anchorStyles = getStyleCodeSet(anchor);
-        Set<String> candidateStyles = getStyleCodeSet(candidate);
-
-        if (anchorStyles.isEmpty() || candidateStyles.isEmpty()) {
-            return 0.5;
+    private double computeStyleScore(String anchorPrimaryStyle, List<String> candidateStyles) {
+        if (!StringUtils.hasText(anchorPrimaryStyle)) {
+            return SCORE_NEUTRAL;
         }
-
-        long intersectionSize = anchorStyles.stream()
-                .filter(candidateStyles::contains)
-                .count();
-        long unionSize = anchorStyles.size() + candidateStyles.size() - intersectionSize;
-
-        double jaccard = unionSize == 0 ? 0.0 : (double) intersectionSize / unionSize;
-        return 0.2 + 0.8 * jaccard;
+        if (candidateStyles == null || candidateStyles.isEmpty()) {
+            return SCORE_STYLE_MISMATCH;
+        }
+        return candidateStyles.contains(anchorPrimaryStyle) ? 1.0 : SCORE_STYLE_MISMATCH;
     }
 
     /**
      * itemType(소분류) 코디 어울림 점수 (0.0 ~ 1.0).
-     * {@link ItemTypeCompatibilityTable}의 cohesion group + 명시 페어를 사용합니다.
+     * 한쪽이라도 itemType이 null이거나 공백이면 중립 점수를 반환합니다.
      */
     private double computeItemTypeScore(String anchorItemType, String candidateItemType) {
+        if (!StringUtils.hasText(anchorItemType) || !StringUtils.hasText(candidateItemType)) {
+            return SCORE_NEUTRAL;
+        }
         return ItemTypeCompatibilityTable.score(anchorItemType, candidateItemType);
     }
 
     /**
-     * 시즌 점수 (0.3 ~ 1.0).
-     * 동일 시즌: 1.0 / 한쪽 null: 0.7 / 불일치: 0.3
+     * 시즌 점수.
+     * 반환 타입은 {@code double}이지만, 아래 세 값 중 하나만 반환합니다 (연속 범위가 아님).
+     * <ul>
+     *   <li>동일 시즌: 1.0</li>
+     *   <li>한쪽 미입력: {@link #SCORE_SEASON_UNKNOWN} (0.7)</li>
+     *   <li>불일치: {@link #SCORE_SEASON_MISMATCH} (0.3)</li>
+     * </ul>
      */
     private double computeSeasonScore(String anchorSeason, String candidateSeason) {
         if (!StringUtils.hasText(anchorSeason) || !StringUtils.hasText(candidateSeason)) {
-            return 0.7;
+            return SCORE_SEASON_UNKNOWN;
         }
-        return anchorSeason.equals(candidateSeason) ? 1.0 : 0.3;
+        return anchorSeason.equals(candidateSeason) ? 1.0 : SCORE_SEASON_MISMATCH;
     }
 
     // ── 변환 헬퍼 ─────────────────────────────────────────────────────────
 
-    private AnchorItem toAnchorItem(WardrobeClothes wc) {
-        Clothes clothes = wc.getClothes();
-        String primaryColor = getPrimaryColorCode(clothes);
+    private AnchorItem toAnchorItem(WardrobeClothes wc, Clothes clothes, ClothesTagSnapshot tagSnapshot) {
         return new AnchorItem(
                 clothes.getId(),
                 clothes.getName(),
@@ -236,47 +299,46 @@ public class ClothesRecommendationService {
                 wc.getUserImageUrl(),
                 clothes.getCategory(),
                 clothes.getItemType(),
-                primaryColor,
-                toColorInfo(primaryColor)
+                tagSnapshot.primaryColor(),
+                toColorInfo(tagSnapshot.primaryColor())
         );
     }
 
     private ColorInfo toColorInfo(String colorCode) {
         if (!StringUtils.hasText(colorCode)) {
-            return null;
+            return UNKNOWN_COLOR_INFO;
         }
-        try {
-            ClothesColor color = ClothesColor.fromCode(colorCode);
-            return new ColorInfo(color.name(), color.getLabel(), color.getHex());
-        } catch (IllegalArgumentException exception) {
-            return new ColorInfo(colorCode, colorCode, null);
+        ColorInfo cached = COLOR_INFO_CACHE.get(colorCode);
+        if (cached == null) {
+            if (loggedUnknownColorCodes.add(colorCode)) {
+                log.debug("등록되지 않은 색상 코드가 발견되었습니다 — DB 데이터를 확인하세요.");
+            }
+            return UNKNOWN_COLOR_INFO;
         }
+        return cached;
     }
 
-    private String getPrimaryColorCode(Clothes clothes) {
-        return clothes.getSortedColorTags().stream()
-                .filter(c -> c.getColorRole() == ColorRole.PRIMARY)
-                .findFirst()
-                .map(ClothingColor::getColorCode)
-                .orElse(null);
+    /** scoredAndGrouped() 에서 Clothes·스냅샷을 한 번만 조회해 채점 루프에 전달합니다. */
+    private record CandidateEntry(
+            WardrobeClothes wardrobeClothes,
+            Clothes clothes,
+            ClothesTagSnapshot tagSnapshot
+    ) {
     }
 
-    private List<String> getSecondaryColorCodes(Clothes clothes) {
-        return clothes.getSortedColorTags().stream()
-                .filter(c -> c.getColorRole() == ColorRole.SECONDARY)
-                .map(ClothingColor::getColorCode)
-                .toList();
-    }
-
-    private List<String> getStyleCodes(Clothes clothes) {
-        return clothes.getSortedStyleTags().stream()
-                .map(tag -> tag.getStyle().getCode())
-                .toList();
-    }
-
-    private Set<String> getStyleCodeSet(Clothes clothes) {
-        return clothes.getSortedStyleTags().stream()
-                .map(tag -> tag.getStyle().getCode())
-                .collect(Collectors.toSet());
+    private record AnchorScoringContext(
+            ClothesTagSnapshot tagSnapshot,
+            String itemType,
+            String season
+    ) {
+        /** @param anchor {@code getClothes()} 가 null 이 아님을 호출자가 보장해야 합니다. */
+        static AnchorScoringContext from(WardrobeClothes anchor) {
+            Clothes clothes = anchor.getClothes();
+            return new AnchorScoringContext(
+                    clothes.getRecommendationTagSnapshot(),
+                    clothes.getItemType(),
+                    anchor.getSeason()
+            );
+        }
     }
 }

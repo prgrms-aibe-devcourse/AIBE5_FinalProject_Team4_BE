@@ -145,6 +145,13 @@ public final class ColorCompatibilityTable {
     private ColorCompatibilityTable() {}
 
     /**
+     * 비대칭 테이블이므로 {@code colorA→colorB}, {@code colorB→colorA} 양방향 중 더 높은 점수를 반환합니다.
+     */
+    public static double bestHarmony(String colorA, String colorB) {
+        return Math.max(score(colorA, colorB), score(colorB, colorA));
+    }
+
+    /**
      * anchorColor 기준으로 candidateColor의 어울림 점수를 반환합니다.
      *
      * @param anchorColor    기준 옷의 색상 코드 (예: "NAVY")

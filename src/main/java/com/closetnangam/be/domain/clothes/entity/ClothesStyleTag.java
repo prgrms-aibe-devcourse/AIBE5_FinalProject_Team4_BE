@@ -40,6 +40,9 @@ public class ClothesStyleTag extends BaseEntity {
     @JoinColumn(name = "clothes_id", nullable = false)
     private Clothes clothes;
 
+    /**
+     * 참조 Style 엔티티. LAZY 유지 — 추천 쿼리에서 {@code left join fetch st.style}로 함께 로딩됩니다.
+     */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "style_id", nullable = false)
     private Style style;

@@ -14,8 +14,6 @@ import java.util.List;
 public record ClothesResponse(
         Long clothesId,
         Long wardrobeClothesId,
-        Long wardrobeId,
-        Long userId,
         String name,
         String brandName,
         String productCode,
@@ -77,8 +75,6 @@ public record ClothesResponse(
         return new ClothesResponse(
                 clothes.getId(),
                 wardrobeClothes != null ? wardrobeClothes.getId() : null,
-                wardrobeClothes != null ? wardrobeClothes.getWardrobe().getId() : null,
-                wardrobeClothes != null ? wardrobeClothes.getWardrobe().getUser().getId() : null,
                 clothes.getName(),
                 clothes.getBrandName(),
                 clothes.getProductCode(),

@@ -14,6 +14,7 @@ public record ClothesRecommendationResponse(
             Long clothesId,
             String name,
             String imageUrl,
+            // TODO: S3 signed URL 도입 시 만료 시간을 포함한 presigned URL로 교체 필요
             String userImageUrl,
             String category,
             String itemType,
@@ -27,6 +28,7 @@ public record ClothesRecommendationResponse(
             Long wardrobeClothesId,
             String name,
             String imageUrl,
+            // TODO: S3 signed URL 도입 시 만료 시간을 포함한 presigned URL로 교체 필요
             String userImageUrl,
             String category,
             String itemType,
@@ -35,13 +37,9 @@ public record ClothesRecommendationResponse(
             List<String> secondaryColors,
             List<String> styleCodes,
             String season,
-            int compatibilityScore,
-            ScoreBreakdown breakdown
+            int compatibilityScore
     ) {}
 
     /** 색상 코드 + 한글명 + hex */
     public record ColorInfo(String code, String label, String hex) {}
-
-    /** 점수 구성 (0~100) */
-    public record ScoreBreakdown(int colorScore, int styleScore, int seasonScore, int itemTypeScore) {}
 }

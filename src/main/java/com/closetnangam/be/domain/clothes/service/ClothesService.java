@@ -18,6 +18,8 @@ import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.NoSuchElementException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -58,7 +60,7 @@ public class ClothesService {
 
     public ClothesResponse getClothes(Long userId, Long clothesId) {
         WardrobeClothes wardrobeClothes = wardrobeClothesRepository.findByClothesIdAndUserId(clothesId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("옷을 찾을 수 없습니다."));
+                .orElseThrow(() -> new NoSuchElementException("옷을 찾을 수 없습니다."));
         return ClothesResponse.from(wardrobeClothes.getClothes(), wardrobeClothes);
     }
 
@@ -210,7 +212,7 @@ public class ClothesService {
     /** 소유권 확인: 해당 옷이 요청 사용자의 옷장에 없으면 404 */
     private WardrobeClothes getOwnedWardrobeClothes(Long userId, Long clothesId) {
         return wardrobeClothesRepository.findByClothesIdAndUserId(clothesId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("옷을 찾을 수 없습니다."));
+                .orElseThrow(() -> new NoSuchElementException("옷을 찾을 수 없습니다."));
     }
 
     private Clothes buildClothes(
