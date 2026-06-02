@@ -1,7 +1,7 @@
 package com.closetnangam.be.domain.clothes.entity;
 
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
-import com.closetnangam.be.domain.clothes.enums.SourceType;
+import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
 import com.closetnangam.be.global.common.entity.BaseEntity;
 import jakarta.persistence.CascadeType;
@@ -61,7 +61,7 @@ public class Clothes extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", nullable = false, length = 50)
-    private SourceType sourceType;
+    private OwnershipStatus ownershipStatus;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "info_source", nullable = false, length = 50)
@@ -110,7 +110,7 @@ public class Clothes extends BaseEntity {
             String imageUrl,
             String category,
             String itemType,
-            SourceType sourceType,
+            OwnershipStatus ownershipStatus,
             ClothesInfoSource infoSource,
             String externalSource,
             String externalProductId,
@@ -123,7 +123,7 @@ public class Clothes extends BaseEntity {
         this.imageUrl = imageUrl;
         this.category = category;
         this.itemType = itemType;
-        this.sourceType = sourceType;
+        this.ownershipStatus = ownershipStatus;
         if (infoSource == null) {
             throw new IllegalArgumentException("옷 정보 출처는 필수입니다.");
         }
@@ -253,10 +253,10 @@ public class Clothes extends BaseEntity {
     }
 
     public void convertToOwned(String productCode, Boolean isVerified) {
-        if (this.sourceType != SourceType.WISHLIST) {
+        if (this.ownershipStatus != OwnershipStatus.WISHLIST) {
             throw new IllegalArgumentException("미보유 옷만 보유 옷으로 전환할 수 있습니다.");
         }
-        this.sourceType = SourceType.OWNED;
+        this.ownershipStatus = OwnershipStatus.OWNED;
         this.infoSource = ClothesInfoSource.PURCHASE_HISTORY;
         this.externalSource = EXTERNAL_NONE;
         this.externalProductId = EXTERNAL_NONE;

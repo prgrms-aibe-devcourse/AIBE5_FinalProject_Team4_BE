@@ -7,7 +7,7 @@ import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
-import com.closetnangam.be.domain.clothes.enums.SourceType;
+import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
@@ -88,7 +88,7 @@ public class ExternalClothesService {
                     .imageUrl(request.image())
                     .category(category)
                     .itemType(refineItemType(category, request.category3(), cleanTitle))
-                    .sourceType(SourceType.WISHLIST)
+                    .ownershipStatus(OwnershipStatus.WISHLIST)
                     .externalSource("NAVER")
                     .externalProductId(productId)
                     .externalProductUrl(request.link())
