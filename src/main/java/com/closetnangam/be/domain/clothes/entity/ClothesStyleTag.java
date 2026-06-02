@@ -1,8 +1,12 @@
 package com.closetnangam.be.domain.clothes.entity;
 
 import com.closetnangam.be.domain.catalog.entity.Style;
+import com.closetnangam.be.domain.clothes.enums.StyleRole;
+import com.closetnangam.be.global.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,7 +29,7 @@ import lombok.NoArgsConstructor;
                 columnNames = {"clothes_id", "style_id"}
         )
 )
-public class ClothesStyleTag {
+public class ClothesStyleTag extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,12 +44,21 @@ public class ClothesStyleTag {
     @JoinColumn(name = "style_id", nullable = false)
     private Style style;
 
-    private ClothesStyleTag(Clothes clothes, Style style) {
+    @Enumerated(EnumType.STRING)
+    @Column(name = "style_role", nullable = false, length = 20)
+    private StyleRole styleRole;
+
+    @Column(name = "sort_order", nullable = false)
+    private Byte sortOrder;
+
+    private ClothesStyleTag(Clothes clothes, Style style, StyleRole styleRole, byte sortOrder) {
         this.clothes = clothes;
         this.style = style;
+        this.styleRole = styleRole;
+        this.sortOrder = sortOrder;
     }
 
-    public static ClothesStyleTag create(Clothes clothes, Style style) {
-        return new ClothesStyleTag(clothes, style);
+    public static ClothesStyleTag create(Clothes clothes, Style style, StyleRole styleRole, byte sortOrder) {
+        return new ClothesStyleTag(clothes, style, styleRole, sortOrder);
     }
 }

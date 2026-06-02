@@ -1,8 +1,5 @@
 package com.closetnangam.be.domain.clothes.service;
 
-import com.closetnangam.be.domain.catalog.entity.Style;
-import com.closetnangam.be.domain.catalog.repository.StyleRepository;
-import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesConvertToOwnedRequest;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesCreateRequest;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesFavoriteRequest;
@@ -10,9 +7,13 @@ import com.closetnangam.be.domain.clothes.dto.request.ClothesUpdateRequest;
 import com.closetnangam.be.domain.clothes.dto.request.WishlistClothesCreateRequest;
 import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
-import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
+import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
+import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
+import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
 import lombok.RequiredArgsConstructor;
@@ -21,127 +22,155 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * 옷 CRUD 서비스.
- * <p>
- * {@link ClothesResponse} 매핑은 {@code wardrobe}, {@code user}, {@code styleTags.style} 연관 관계가
- * 로딩된 {@link Clothes} 엔티티를 전제로 합니다. 목록/상세 조회는
- * {@link com.closetnangam.be.domain.clothes.repository.ClothesRepository}의 join fetch 쿼리에 의존합니다.
- * <p>
- * 등록(create) 직후 응답은 영속성 컨텍스트 내 lazy loading으로 처리됩니다.
- * 조회 API와 동일한 fetch 전략이 필요하면 DTO 프로젝션 또는 save 후 재조회로 전환을 검토하세요.
- */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ClothesService {
 
-    private static final String EXTERNAL_NONE = "NONE";
-
     private final ClothesRepository clothesRepository;
-    private final StyleRepository styleRepository;
-    private final CategoryCatalogService categoryCatalogService;
+    private final WardrobeClothesRepository wardrobeClothesRepository;
+    private final ClothesTagHelper clothesTagHelper;
     private final WardrobeService wardrobeService;
 
     public List<ClothesResponse> getOwnedClothes(Long userId) {
-        return clothesRepository.findAllByUserIdAndSourceType(userId, SourceType.OWNED).stream()
-                .map(ClothesResponse::from)
+        return wardrobeClothesRepository.findAllByUserIdAndOwnershipStatus(userId, OwnershipStatus.OWNED).stream()
+                .map(entry -> ClothesResponse.from(entry.getClothes(), entry))
                 .toList();
     }
 
     public List<ClothesResponse> getFavoriteOwnedClothes(Long userId) {
-        return clothesRepository.findFavoritesByUserIdAndSourceType(userId, SourceType.OWNED).stream()
-                .map(ClothesResponse::from)
+        return wardrobeClothesRepository.findFavoritesByUserIdAndOwnershipStatus(userId, OwnershipStatus.OWNED).stream()
+                .map(entry -> ClothesResponse.from(entry.getClothes(), entry))
                 .toList();
     }
 
     public List<ClothesResponse> getWishlistClothes(Long userId) {
-        return clothesRepository.findAllByUserIdAndSourceType(userId, SourceType.WISHLIST).stream()
-                .map(ClothesResponse::from)
+        return wardrobeClothesRepository.findAllByUserIdAndOwnershipStatus(userId, OwnershipStatus.WISHLIST).stream()
+                .map(entry -> ClothesResponse.from(entry.getClothes(), entry))
                 .toList();
     }
 
     public List<ClothesResponse> getFavoriteWishlistClothes(Long userId) {
-        return clothesRepository.findFavoritesByUserIdAndSourceType(userId, SourceType.WISHLIST).stream()
-                .map(ClothesResponse::from)
+        return wardrobeClothesRepository.findFavoritesByUserIdAndOwnershipStatus(userId, OwnershipStatus.WISHLIST).stream()
+                .map(entry -> ClothesResponse.from(entry.getClothes(), entry))
                 .toList();
     }
 
-    public ClothesResponse getClothes(Long clothesId) {
-        Clothes clothes = getClothesWithDetails(clothesId);
-        return ClothesResponse.from(clothes);
+    public ClothesResponse getClothes(Long userId, Long clothesId) {
+        WardrobeClothes wardrobeClothes = wardrobeClothesRepository.findByClothesIdAndUserId(clothesId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("옷을 찾을 수 없습니다."));
+        return ClothesResponse.from(wardrobeClothes.getClothes(), wardrobeClothes);
     }
 
     @Transactional
     public ClothesResponse createOwnedClothes(Long userId, ClothesCreateRequest request) {
-        validateClassification(request.category(), request.itemType(), request.color(), request.styles());
+        clothesTagHelper.validateClassification(
+                request.category(),
+                request.itemType(),
+                request.primaryColor(),
+                request.secondaryColors(),
+                request.styles()
+        );
 
         Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
+        Clothes clothes = buildClothes(
+                request.name(),
+                request.brandName(),
+                request.productCode(),
+                request.imageUrl(),
+                request.category(),
+                request.itemType(),
+                SourceType.OWNED,
+                ClothesInfoSource.PURCHASE_HISTORY,
+                Clothes.EXTERNAL_NONE,
+                Clothes.EXTERNAL_NONE,
+                Clothes.EXTERNAL_NONE,
+                request.isVerified(),
+                request.primaryColor(),
+                request.secondaryColors(),
+                request.styles()
+        );
+        Clothes savedClothes = clothesRepository.save(clothes);
 
-        Clothes clothes = Clothes.builder()
+        WardrobeClothes wardrobeClothes = wardrobeClothesRepository.save(WardrobeClothes.builder()
                 .wardrobe(wardrobe)
-                .name(request.name())
-                .brandName(request.brandName())
-                .productCode(request.productCode())
-                .imageUrl(request.imageUrl())
-                .category(request.category())
-                .itemType(request.itemType())
-                .color(request.color())
-                .sourceType(SourceType.OWNED)
-                .externalSource(EXTERNAL_NONE)
-                .externalProductId(EXTERNAL_NONE)
-                .externalProductUrl(EXTERNAL_NONE)
-                .isVerified(request.isVerified())
-                .isFavorite(false)
-                .build();
+                .clothes(savedClothes)
+                .ownershipStatus(OwnershipStatus.OWNED)
+                .size(request.size())
+                .season(request.season())
+                .favorite(false)
+                .userImageUrl(request.imageUrl())
+                .build());
 
-        applyStyleTags(clothes, request.styles());
-        Clothes saved = clothesRepository.save(clothes);
-        // save 직후 join fetch 재조회로 N+1 방지 (wardrobe.user, styleTags.style lazy 로딩 차단)
-        return ClothesResponse.from(getClothesWithDetails(saved.getId()));
+        return ClothesResponse.from(savedClothes, wardrobeClothes);
     }
 
     @Transactional
     public ClothesResponse createWishlistClothes(Long userId, WishlistClothesCreateRequest request) {
-        validateClassification(request.category(), request.itemType(), request.color(), request.styles());
+        clothesTagHelper.validateClassification(
+                request.category(),
+                request.itemType(),
+                request.primaryColor(),
+                request.secondaryColors(),
+                request.styles()
+        );
+        clothesTagHelper.validateExternalSource(request.externalSource());
 
         Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
+        Clothes clothes = buildClothes(
+                request.name(),
+                request.brandName(),
+                request.productCode(),
+                request.imageUrl(),
+                request.category(),
+                request.itemType(),
+                SourceType.WISHLIST,
+                ClothesInfoSource.EXTERNAL_SHOPPING,
+                request.externalSource(),
+                request.externalProductId(),
+                request.externalProductUrl(),
+                false,
+                request.primaryColor(),
+                request.secondaryColors(),
+                request.styles()
+        );
+        Clothes savedClothes = clothesRepository.save(clothes);
 
-        Clothes clothes = Clothes.builder()
+        WardrobeClothes wardrobeClothes = wardrobeClothesRepository.save(WardrobeClothes.builder()
                 .wardrobe(wardrobe)
-                .name(request.name())
-                .brandName(request.brandName())
-                .productCode(request.productCode())
-                .imageUrl(request.imageUrl())
-                .category(request.category())
-                .itemType(request.itemType())
-                .color(request.color())
-                .sourceType(SourceType.WISHLIST)
-                .externalSource(request.externalSource())
-                .externalProductId(request.externalProductId())
-                .externalProductUrl(request.externalProductUrl())
-                .isVerified(false)
-                .isFavorite(false)
-                .build();
+                .clothes(savedClothes)
+                .ownershipStatus(OwnershipStatus.WISHLIST)
+                .size(request.size())
+                .season(request.season())
+                .favorite(false)
+                .userImageUrl(request.imageUrl())
+                .build());
 
-        applyStyleTags(clothes, request.styles());
-        Clothes saved = clothesRepository.save(clothes);
-        // save 직후 join fetch 재조회로 N+1 방지 (wardrobe.user, styleTags.style lazy 로딩 차단)
-        return ClothesResponse.from(getClothesWithDetails(saved.getId()));
+        return ClothesResponse.from(savedClothes, wardrobeClothes);
     }
 
     @Transactional
-    public ClothesResponse convertToOwned(Long clothesId, ClothesConvertToOwnedRequest request) {
-        Clothes clothes = getClothesWithDetails(clothesId);
-        clothes.convertToOwned(request.productCode(), request.isVerified());
-        return ClothesResponse.from(clothes);
+    public ClothesResponse convertToOwned(Long userId, Long clothesId, ClothesConvertToOwnedRequest request) {
+        WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
+
+        wardrobeClothes.getClothes().convertToOwned(request.productCode(), request.isVerified());
+        wardrobeClothes.convertToOwned(request.size(), request.season(), request.userImageUrl());
+
+        return ClothesResponse.from(wardrobeClothes.getClothes(), wardrobeClothes);
     }
 
     @Transactional
-    public ClothesResponse updateClothes(Long clothesId, ClothesUpdateRequest request) {
-        validateClassification(request.category(), request.itemType(), request.color(), request.styles());
+    public ClothesResponse updateClothes(Long userId, Long clothesId, ClothesUpdateRequest request) {
+        clothesTagHelper.validateClassification(
+                request.category(),
+                request.itemType(),
+                request.primaryColor(),
+                request.secondaryColors(),
+                request.styles()
+        );
 
-        Clothes clothes = getClothesWithDetails(clothesId);
+        WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
+        Clothes clothes = wardrobeClothes.getClothes();
 
         clothes.update(
                 request.name(),
@@ -150,53 +179,74 @@ public class ClothesService {
                 request.imageUrl(),
                 request.category(),
                 request.itemType(),
-                request.color(),
                 request.isVerified()
         );
+        clothesTagHelper.replaceColorTags(clothes, request.primaryColor(), request.secondaryColors());
+        clothesTagHelper.replaceStyleTags(clothes, request.styles());
 
-        clothes.replaceStyleTags(buildStyleTags(clothes, request.styles()));
-        return ClothesResponse.from(clothes);
+        wardrobeClothes.updateWardrobeDetails(
+                request.size(),
+                request.season(),
+                request.imageUrl()
+        );
+
+        return ClothesResponse.from(clothes, wardrobeClothes);
     }
 
     @Transactional
-    public ClothesResponse updateFavorite(Long clothesId, ClothesFavoriteRequest request) {
-        Clothes clothes = getClothesWithDetails(clothesId);
-        clothes.updateFavorite(request.isFavorite());
-        return ClothesResponse.from(clothes);
+    public ClothesResponse updateFavorite(Long userId, Long clothesId, ClothesFavoriteRequest request) {
+        WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
+        wardrobeClothes.updateFavorite(request.isFavorite());
+        return ClothesResponse.from(wardrobeClothes.getClothes(), wardrobeClothes);
     }
 
     @Transactional
-    public void deleteClothes(Long clothesId) {
-        Clothes clothes = getClothesWithDetails(clothesId);
-        clothesRepository.delete(clothes);
+    public void deleteClothes(Long userId, Long clothesId) {
+        getOwnedWardrobeClothes(userId, clothesId);
+        wardrobeClothesRepository.deleteByClothes_Id(clothesId);
+        clothesRepository.deleteById(clothesId);
     }
 
-    private Clothes getClothesWithDetails(Long clothesId) {
-        return clothesRepository.findByIdWithDetails(clothesId)
+    /** 소유권 확인: 해당 옷이 요청 사용자의 옷장에 없으면 404 */
+    private WardrobeClothes getOwnedWardrobeClothes(Long userId, Long clothesId) {
+        return wardrobeClothesRepository.findByClothesIdAndUserId(clothesId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("옷을 찾을 수 없습니다."));
     }
 
-    private void validateClassification(
+    private Clothes buildClothes(
+            String name,
+            String brandName,
+            String productCode,
+            String imageUrl,
             String category,
             String itemType,
-            String color,
+            SourceType sourceType,
+            ClothesInfoSource infoSource,
+            String externalSource,
+            String externalProductId,
+            String externalProductUrl,
+            Boolean isVerified,
+            String primaryColor,
+            List<String> secondaryColors,
             List<String> styles
     ) {
-        categoryCatalogService.validateClothesClassification(category, itemType, color);
-        categoryCatalogService.validateStyleCodes(styles);
-    }
+        Clothes clothes = Clothes.builder()
+                .name(name)
+                .brandName(brandName)
+                .productCode(productCode)
+                .imageUrl(imageUrl)
+                .category(category)
+                .itemType(itemType)
+                .sourceType(sourceType)
+                .infoSource(infoSource)
+                .externalSource(externalSource)
+                .externalProductId(externalProductId)
+                .externalProductUrl(externalProductUrl)
+                .isVerified(isVerified)
+                .build();
 
-    private void applyStyleTags(Clothes clothes, List<String> styleCodes) {
-        buildStyleTags(clothes, styleCodes).forEach(clothes::addStyleTag);
-    }
-
-    private List<ClothesStyleTag> buildStyleTags(Clothes clothes, List<String> styleCodes) {
-        List<Style> styles = styleRepository.findByCodeIn(styleCodes);
-        if (styles.size() != styleCodes.size()) {
-            throw new IllegalArgumentException("존재하지 않는 스타일 코드가 포함되어 있습니다.");
-        }
-        return styles.stream()
-                .map(style -> ClothesStyleTag.create(clothes, style))
-                .toList();
+        clothesTagHelper.applyColorTags(clothes, primaryColor, secondaryColors);
+        clothesTagHelper.applyStyleTags(clothes, styles);
+        return clothes;
     }
 }

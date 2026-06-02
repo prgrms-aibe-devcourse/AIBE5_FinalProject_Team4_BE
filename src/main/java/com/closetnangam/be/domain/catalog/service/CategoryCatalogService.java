@@ -1,19 +1,24 @@
 package com.closetnangam.be.domain.catalog.service;
 
+import com.closetnangam.be.domain.catalog.constants.CatalogLimits;
 import com.closetnangam.be.domain.catalog.dto.response.*;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.domain.catalog.enums.ClothesColor;
 import com.closetnangam.be.domain.catalog.enums.ClothesItemType;
+import com.closetnangam.be.domain.catalog.enums.ExternalSource;
 import com.closetnangam.be.domain.catalog.enums.StyleCode;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,15 +54,23 @@ public class CategoryCatalogService {
                                 "SHORT_SLEEVE"
                         ),
                         new GuideFieldResponse(
-                                "color",
-                                "컬러",
-                                "색상 코드(code)를 DB에 저장하고, 화면에는 hex 값으로 색상 원(swatch)을 표시합니다.",
+                                "primaryColor",
+                                "주 색상",
+                                "색상 코드(code)를 clothing_colors 테이블 PRIMARY 역할로 저장합니다.",
+                                "WHITE"
+                        ),
+                        new GuideFieldResponse(
+                                "secondaryColors",
+                                "보조 색상",
+                                "색상 코드 배열입니다. clothing_colors 테이블 SECONDARY 역할로 저장합니다. "
+                                        + "최대 " + CatalogLimits.MAX_SECONDARY_COLORS + "개(primaryColor 제외).",
                                 "NAVY"
                         ),
                         new GuideFieldResponse(
                                 "styles",
                                 "스타일",
-                                "스타일 코드 배열입니다. styles 목록의 code 값을 사용합니다.",
+                                "스타일 코드 배열입니다. styles 목록의 code 값을 사용합니다. "
+                                        + "최대 " + CatalogLimits.MAX_STYLES + "개.",
                                 "CASUAL"
                         )
                 ),
@@ -73,7 +86,8 @@ public class CategoryCatalogService {
                         Map.of(
                                 "category", "TOP",
                                 "item_type", "SHORT_SLEEVE",
-                                "color", "WHITE",
+                                "primaryColor", "WHITE",
+                                "secondaryColors", List.of("NAVY"),
                                 "styles", List.of("CASUAL", "MINIMAL")
                         ),
                         "colorDisplay",
@@ -96,7 +110,7 @@ public class CategoryCatalogService {
                     .append(" (").append(category.getLabel()).append(")\n");
         }
 
-        guide.append("\n[item_type]\n");
+        guide.append("\n[itemType]\n");
         for (ClothesCategory category : ClothesCategory.values()) {
             guide.append(category.name()).append(":\n");
             for (ClothesItemType itemType : ClothesItemType.byCategory(category)) {
@@ -105,12 +119,18 @@ public class CategoryCatalogService {
             }
         }
 
-        guide.append("\n[color]\n");
+        guide.append("\n[primaryColor]\n");
+        guide.append("옷의 대표 색상 코드 1개. 아래 color 코드 목록에서 선택하세요.\n");
         guide.append(Arrays.stream(ClothesColor.values())
                 .map(color -> color.name() + " (" + color.getLabel() + ")")
                 .collect(Collectors.joining(", ")));
 
-        guide.append("\n\n[style]\n");
+        guide.append("\n\n[secondaryColors]\n");
+        guide.append("보조 색상 코드 배열. 없으면 빈 배열 []을 사용하고, primaryColor와 중복되면 안 됩니다. ");
+        guide.append("최대 ").append(CatalogLimits.MAX_SECONDARY_COLORS).append("개.\n");
+
+        guide.append("\n\n[styles]\n");
+        guide.append("스타일 코드 배열. 최소 1개, 최대 ").append(CatalogLimits.MAX_STYLES).append("개.\n");
         guide.append(Arrays.stream(StyleCode.values())
                 .map(style -> style.name() + " (" + style.getLabel() + ")")
                 .collect(Collectors.joining(", ")));
@@ -119,8 +139,9 @@ public class CategoryCatalogService {
         guide.append("""
                 {
                   "category": "TOP",
-                  "item_type": "SHORT_SLEEVE",
-                  "color": "WHITE",
+                  "itemType": "SHORT_SLEEVE",
+                  "primaryColor": "WHITE",
+                  "secondaryColors": ["NAVY"],
                   "styles": ["CASUAL", "MINIMAL"]
                 }
                 """);
@@ -128,21 +149,103 @@ public class CategoryCatalogService {
         return guide.toString();
     }
 
+    public String getPurchaseCaptureExtractionGuide() {
+        StringBuilder guide = new StringBuilder();
+        guide.append(getAiClassificationGuide());
+        guide.append("\n\n[externalSource]\n");
+        guide.append("쇼핑몰 코드(suggestedExternalSource). 아래 코드만 사용하고, 확실하지 않으면 null.\n");
+        guide.append(Arrays.stream(ExternalSource.values())
+                .filter(source -> !source.isAllowsCustomInput())
+                .map(source -> source.name() + " (" + source.getLabel() + ")")
+                .collect(Collectors.joining(", ")));
+        guide.append("\n직접입력 쇼핑몰명은 suggestedExternalSource에 넣지 말고 null로 두세요.");
+        return guide.toString();
+    }
+
     public void validateClothesClassification(String categoryCode, String itemTypeCode, String colorCode) {
+        validateCategoryAndItemType(categoryCode, itemTypeCode);
+        validateColorCode(colorCode);
+    }
+
+    public void validateCategoryAndItemType(String categoryCode, String itemTypeCode) {
         ClothesCategory.fromCode(categoryCode);
         if (!ClothesItemType.matchesCategory(categoryCode, itemTypeCode)) {
             throw new IllegalArgumentException("item_type이 category와 일치하지 않습니다.");
         }
+    }
+
+    public void validateColorCode(String colorCode) {
         ClothesColor.fromCode(colorCode);
+    }
+
+    public void validateClothesColors(String primaryColor, List<String> secondaryColors) {
+        validateColorCode(primaryColor);
+        if (secondaryColors == null || secondaryColors.isEmpty()) {
+            return;
+        }
+        if (secondaryColors.size() > CatalogLimits.MAX_SECONDARY_COLORS) {
+            throw new IllegalArgumentException(
+                    "보조 색상은 최대 " + CatalogLimits.MAX_SECONDARY_COLORS + "개까지 선택할 수 있습니다.");
+        }
+        Set<String> seen = new HashSet<>();
+        for (String secondaryColor : secondaryColors) {
+            validateColorCode(secondaryColor);
+            if (primaryColor.equals(secondaryColor)) {
+                throw new IllegalArgumentException("주 색상과 보조 색상은 같을 수 없습니다.");
+            }
+            if (!seen.add(secondaryColor)) {
+                throw new IllegalArgumentException("보조 색상에 중복된 값이 있습니다: " + secondaryColor);
+            }
+        }
     }
 
     public void validateStyleCodes(List<String> styleCodes) {
         if (styleCodes == null || styleCodes.isEmpty()) {
             throw new IllegalArgumentException("스타일은 1개 이상 선택해야 합니다.");
         }
+        if (styleCodes.size() > CatalogLimits.MAX_STYLES) {
+            throw new IllegalArgumentException(
+                    "스타일은 최대 " + CatalogLimits.MAX_STYLES + "개까지 선택할 수 있습니다.");
+        }
+        Set<String> seen = new HashSet<>();
         for (String styleCode : styleCodes) {
             StyleCode.fromCode(styleCode);
+            if (!seen.add(styleCode)) {
+                throw new IllegalArgumentException("스타일에 중복된 값이 있습니다: " + styleCode);
+            }
         }
+    }
+
+    public ExternalSourcesResponse getExternalSources() {
+        return new ExternalSourcesResponse(
+                """
+                        미보유 옷 저장 시 사용할 외부 쇼핑 출처 목록입니다.
+                        - 목록에서 선택: externalSource에 code 값(예: MUSINSA)을 저장합니다.
+                        - 직접입력: 사용자가 입력한 출처명을 externalSource VARCHAR에 그대로 저장합니다.
+                        DB 컬럼은 enum이 아닌 VARCHAR(50)입니다.
+                        """,
+                Arrays.stream(ExternalSource.values())
+                        .map(ExternalSourceResponse::from)
+                        .toList()
+        );
+    }
+
+    public void validateExternalSource(String externalSource) {
+        if (!StringUtils.hasText(externalSource)) {
+            throw new IllegalArgumentException("외부 출처는 필수입니다.");
+        }
+        if (externalSource.length() > 50) {
+            throw new IllegalArgumentException("외부 출처는 50자 이하여야 합니다.");
+        }
+        if ("NONE".equals(externalSource)) {
+            throw new IllegalArgumentException("외부 출처를 선택하거나 입력해 주세요.");
+        }
+
+        ExternalSource.findByCode(externalSource).ifPresent(matched -> {
+            if (matched.isAllowsCustomInput()) {
+                throw new IllegalArgumentException("직접입력 출처명을 입력해 주세요.");
+            }
+        });
     }
 
     private java.util.List<CategoryGroupResponse> getCategoryGroups() {

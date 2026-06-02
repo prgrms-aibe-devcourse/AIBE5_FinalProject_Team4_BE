@@ -1,7 +1,7 @@
 package com.closetnangam.be.domain.clothes.entity;
 
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
-import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.global.common.entity.BaseEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -12,20 +12,19 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import org.hibernate.annotations.BatchSize;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Entity
 @Getter
@@ -33,16 +32,12 @@ import java.util.stream.Collectors;
 @Table(name = "clothes")
 public class Clothes extends BaseEntity {
 
-    private static final String EXTERNAL_NONE = "NONE";
+    public static final String EXTERNAL_NONE = "NONE";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "clothes_id")
     private Long id;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "wardrobe_id", nullable = false)
-    private Wardrobe wardrobe;
 
     @Column(nullable = false)
     private String name;
@@ -62,17 +57,18 @@ public class Clothes extends BaseEntity {
     @Column(name = "item_type", nullable = false, length = 50)
     private String itemType;
 
-    @Column(nullable = false, length = 50)
-    private String color;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", nullable = false, length = 50)
     private SourceType sourceType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "info_source", nullable = false, length = 50)
+    private ClothesInfoSource infoSource;
+
     @Column(name = "external_source", nullable = false, length = 50)
     private String externalSource;
 
-    @Column(name = "external_product_id", nullable = false)
+    @Column(name = "external_product_id", nullable = false, length = 255)
     private String externalProductId;
 
     @Column(name = "external_product_url", nullable = false, length = 500)
@@ -81,43 +77,50 @@ public class Clothes extends BaseEntity {
     @Column(name = "is_verified", nullable = false)
     private Boolean isVerified;
 
-    @Column(name = "is_favorite", nullable = false)
-    private Boolean isFavorite = false;
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
-    @OneToMany(mappedBy = "clothes", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 100)
+    @OrderBy("sortOrder ASC")
+    @OneToMany(mappedBy = "clothes", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<ClothingColor> colorTags = new ArrayList<>();
+
+    @BatchSize(size = 100)
+    @OrderBy("sortOrder ASC")
+    @OneToMany(mappedBy = "clothes", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ClothesStyleTag> styleTags = new ArrayList<>();
 
     @Builder
     private Clothes(
-            Wardrobe wardrobe,
             String name,
             String brandName,
             String productCode,
             String imageUrl,
             String category,
             String itemType,
-            String color,
             SourceType sourceType,
+            ClothesInfoSource infoSource,
             String externalSource,
             String externalProductId,
             String externalProductUrl,
-            Boolean isVerified,
-            Boolean isFavorite
+            Boolean isVerified
     ) {
-        this.wardrobe = wardrobe;
         this.name = name;
         this.brandName = brandName;
         this.productCode = productCode;
         this.imageUrl = imageUrl;
         this.category = category;
         this.itemType = itemType;
-        this.color = color;
         this.sourceType = sourceType;
+        if (infoSource == null) {
+            throw new IllegalArgumentException("옷 정보 출처는 필수입니다.");
+        }
+        this.infoSource = infoSource;
         this.externalSource = externalSource;
         this.externalProductId = externalProductId;
         this.externalProductUrl = externalProductUrl;
         this.isVerified = isVerified;
-        this.isFavorite = isFavorite != null ? isFavorite : false;
     }
 
     public void update(
@@ -127,7 +130,6 @@ public class Clothes extends BaseEntity {
             String imageUrl,
             String category,
             String itemType,
-            String color,
             Boolean isVerified
     ) {
         this.name = name;
@@ -136,32 +138,37 @@ public class Clothes extends BaseEntity {
         this.imageUrl = imageUrl;
         this.category = category;
         this.itemType = itemType;
-        this.color = color;
         this.isVerified = isVerified;
     }
 
+    public void replaceColorTags(List<ClothingColor> newColorTags) {
+        this.colorTags.clear();
+        this.colorTags.addAll(newColorTags);
+    }
+
     public void replaceStyleTags(List<ClothesStyleTag> newStyleTags) {
-        Set<Long> newStyleIds = newStyleTags.stream()
-                .map(tag -> tag.getStyle().getId())
-                .collect(Collectors.toSet());
+        this.styleTags.clear();
+        this.styleTags.addAll(newStyleTags);
+    }
 
-        this.styleTags.removeIf(existing -> !newStyleIds.contains(existing.getStyle().getId()));
-
-        Set<Long> existingStyleIds = this.styleTags.stream()
-                .map(tag -> tag.getStyle().getId())
-                .collect(Collectors.toSet());
-
-        newStyleTags.stream()
-                .filter(tag -> !existingStyleIds.contains(tag.getStyle().getId()))
-                .forEach(this.styleTags::add);
+    public void addColorTag(ClothingColor colorTag) {
+        this.colorTags.add(colorTag);
     }
 
     public void addStyleTag(ClothesStyleTag styleTag) {
         this.styleTags.add(styleTag);
     }
 
-    public void updateFavorite(Boolean isFavorite) {
-        this.isFavorite = isFavorite;
+    public List<ClothingColor> getSortedColorTags() {
+        return colorTags.stream()
+                .sorted(Comparator.comparing(ClothingColor::getSortOrder))
+                .toList();
+    }
+
+    public List<ClothesStyleTag> getSortedStyleTags() {
+        return styleTags.stream()
+                .sorted(Comparator.comparing(ClothesStyleTag::getSortOrder))
+                .toList();
     }
 
     public void convertToOwned(String productCode, Boolean isVerified) {
@@ -169,6 +176,7 @@ public class Clothes extends BaseEntity {
             throw new IllegalArgumentException("미보유 옷만 보유 옷으로 전환할 수 있습니다.");
         }
         this.sourceType = SourceType.OWNED;
+        this.infoSource = ClothesInfoSource.PURCHASE_HISTORY;
         this.externalSource = EXTERNAL_NONE;
         this.externalProductId = EXTERNAL_NONE;
         this.externalProductUrl = EXTERNAL_NONE;

@@ -2,6 +2,7 @@ package com.closetnangam.be.domain.catalog.controller;
 
 import com.closetnangam.be.domain.catalog.dto.response.CategoryCatalogResponse;
 import com.closetnangam.be.domain.catalog.dto.response.CategoryUsageGuideResponse;
+import com.closetnangam.be.domain.catalog.dto.response.ExternalSourcesResponse;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,5 +51,18 @@ public class CategoryController {
     @GetMapping("/ai-guide")
     public ResponseEntity<ApiResponse<String>> getAiGuide() {
         return ResponseEntity.ok(ApiResponse.ok(categoryCatalogService.getAiClassificationGuide()));
+    }
+
+    @Operation(
+            summary = "외부 쇼핑 출처 목록 조회",
+            description = """
+                    미보유 옷 저장 시 선택할 외부 출처 12개 + 직접입력 옵션을 반환합니다.
+                    - 선택 항목: externalSource에 code 저장 (예: NAVER_SHOPPING, MUSINSA)
+                    - 직접입력: allowsCustomInput=true 항목 선택 후 사용자 입력값을 externalSource에 저장
+                    """
+    )
+    @GetMapping("/external-sources")
+    public ResponseEntity<ApiResponse<ExternalSourcesResponse>> getExternalSources() {
+        return ResponseEntity.ok(ApiResponse.ok(categoryCatalogService.getExternalSources()));
     }
 }
