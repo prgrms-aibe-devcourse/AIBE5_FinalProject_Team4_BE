@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-02
+last_updated: 2026-06-03
 ---
 
 # 기획서
@@ -360,19 +360,26 @@ main
 
 ## 9. 기술 스택
 
-| 구분 | 기술 / 도구 | 기준 |
+| 구분 | 기술 / 도구 | 기술 선택 근거 |
 | --- | --- | --- |
-| Frontend | FE 레포 문서 기준 | 화면 구현 기술과 상태 관리, 라우팅, mock 정책은 FE 레포에서 관리 |
+| Frontend | React 18.3.1 | 반복 UI의 컴포넌트 단위 구성과 상태 기반 화면 렌더링 |
+| Frontend | Vite 8.0.14 | FE 개발 서버 실행과 React SPA 빌드 |
+| Frontend | TypeScript 6.0.3 | TS/TSX 코드 작성, API DTO와 props 타입 검증 |
+| Frontend | React Router 7.15.1 | 화면 이동, 에러 페이지 진입, 라우팅 관리 |
+| Frontend | Axios 1.16.1 | API 요청, 인증 토큰 헤더, 공통 에러 처리 |
+| Frontend | Tailwind CSS 4.3.0 | 모바일 웹 UI와 유틸리티 클래스 기반 스타일 구성 |
+| Frontend | Node.js 24.13.0 | FE 개발 서버 실행과 빌드 실행 |
 | Backend | Java 21 LTS | Spring Boot 기반 서버 개발 |
-| Backend | Spring Boot 3.5.14 | REST API 서버 |
-| Backend | Gradle | 의존성 및 빌드 관리 |
-| Backend | Spring Data JPA | 관계형 DB와 도메인 엔티티 매핑 |
-| Backend | Spring Security · OAuth2 · JWT | 소셜 로그인, 인증, 사용자별 접근 제어 |
-| Database | MySQL 8.4 | 주요 서비스 데이터 저장 |
-| Infra | AWS EC2 · RDS · S3 | 서버, DB, 이미지 저장 기준 인프라 |
-| Infra | Docker Compose | 로컬 개발 인프라 실행 |
+| Backend | Spring Boot 3.5.14 | REST API 서버 구성 |
+| Backend | Gradle | BE 의존성 관리, 빌드, 테스트 실행 |
+| Backend | Spring Data JPA | 객체와 테이블 매핑, CRUD 구현 |
+| Backend | Spring Security / OAuth2 / JWT | 소셜 로그인, 사용자 인증, 사용자별 접근 제어 |
+| Database | MySQL 8.4 | 관계형 서비스 데이터 저장 |
+| Infra | Docker Compose | MySQL 8.4, Redis 7 컨테이너 실행 |
+| Infra | AWS EC2 · RDS · S3 | 서버 배포, 운영 DB, 목표 이미지 저장소 기준 |
+| 테스트 | Swagger | API 요청·응답 형식 확인, FE/BE 연동 오류 감소 |
 | External | Naver Shopping API | 외부 상품 검색 |
-| External | Gemini API | 사진/구매내역 분석과 추천 설명 생성 |
+| External | Gemini API | 사진/구매내역 분석과 AI 응답 생성 |
 | External | 기상청 API | 지역 기반 날씨 정보 조회 |
 
 ## 10. WBS 요약 / 주차별 스프린트

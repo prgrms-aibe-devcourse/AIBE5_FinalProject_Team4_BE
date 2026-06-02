@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-02
+last_updated: 2026-06-03
 ---
 
 # 추천 정책 가이드
@@ -11,7 +11,7 @@ last_updated: 2026-06-02
 ## 문서 위치 기준
 
 - BE 레포: 추천 정책 원본 문서입니다.
-- FE 레포: 동일본 또는 요약 동기화본을 둡니다.
+- FE 레포: 동일본을 둡니다.
 - FE 전용 화면 문구, 버튼 상태, 로딩/에러/빈 상태는 FE 문서에서 상세화합니다.
 
 ## 사용자 스타일 점수

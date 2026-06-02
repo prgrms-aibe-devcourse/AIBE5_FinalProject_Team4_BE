@@ -1,7 +1,7 @@
 ---
 doc_type: be_only
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-02
+last_updated: 2026-06-03
 ---
 
 # 데이터 생명주기

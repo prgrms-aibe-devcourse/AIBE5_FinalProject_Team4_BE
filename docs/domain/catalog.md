@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-02
+last_updated: 2026-06-03
 ---
 
 # 카탈로그 사용 가이드
@@ -11,7 +11,7 @@ last_updated: 2026-06-02
 ## 문서 위치 기준
 
 - BE 레포: 카탈로그 원본 문서입니다.
-- FE 레포: 동일본 또는 요약 동기화본을 둡니다.
+- FE 레포: 동일본을 둡니다.
 - FE 전용 UI 표현, 컴포넌트, mock 데이터 위치는 FE 문서에서 별도로 정리합니다.
 
 ## 개요
