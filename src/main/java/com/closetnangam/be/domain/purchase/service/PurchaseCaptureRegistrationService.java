@@ -6,7 +6,6 @@ import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
-import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
@@ -103,7 +102,7 @@ public class PurchaseCaptureRegistrationService {
                 .imageUrl(capture.getImageUrl())
                 .category(request.category())
                 .itemType(request.itemType())
-                .sourceType(SourceType.OWNED)
+                .ownershipStatus(OwnershipStatus.OWNED)
                 .infoSource(ClothesInfoSource.PURCHASE_HISTORY)
                 .externalSource(request.externalSource())
                 .externalProductId(Clothes.EXTERNAL_NONE)

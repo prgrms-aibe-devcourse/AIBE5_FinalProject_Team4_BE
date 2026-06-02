@@ -10,7 +10,6 @@ import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
-import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
@@ -82,7 +81,7 @@ public class ClothesService {
                 request.imageUrl(),
                 request.category(),
                 request.itemType(),
-                SourceType.OWNED,
+                OwnershipStatus.OWNED,
                 ClothesInfoSource.PURCHASE_HISTORY,
                 Clothes.EXTERNAL_NONE,
                 Clothes.EXTERNAL_NONE,
@@ -126,7 +125,7 @@ public class ClothesService {
                 request.imageUrl(),
                 request.category(),
                 request.itemType(),
-                SourceType.WISHLIST,
+                OwnershipStatus.WISHLIST,
                 ClothesInfoSource.EXTERNAL_SHOPPING,
                 request.externalSource(),
                 request.externalProductId(),
@@ -222,7 +221,7 @@ public class ClothesService {
             String imageUrl,
             String category,
             String itemType,
-            SourceType sourceType,
+            OwnershipStatus ownershipStatus,
             ClothesInfoSource infoSource,
             String externalSource,
             String externalProductId,
@@ -239,7 +238,7 @@ public class ClothesService {
                 .imageUrl(imageUrl)
                 .category(category)
                 .itemType(itemType)
-                .sourceType(sourceType)
+                .ownershipStatus(ownershipStatus)
                 .infoSource(infoSource)
                 .externalSource(externalSource)
                 .externalProductId(externalProductId)

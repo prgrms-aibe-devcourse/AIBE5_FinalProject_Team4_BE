@@ -12,7 +12,6 @@ import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
-import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.user.entity.User;
@@ -102,7 +101,7 @@ public class PhotoClothesRegistrationService {
                 .imageUrl(photo.getImageUrl())
                 .category(request.category())
                 .itemType(request.itemType())
-                .sourceType(SourceType.OWNED)
+                .ownershipStatus(OwnershipStatus.OWNED)
                 .infoSource(ClothesInfoSource.PHOTO)
                 .externalSource(Clothes.EXTERNAL_NONE)
                 .externalProductId(Clothes.EXTERNAL_NONE)
