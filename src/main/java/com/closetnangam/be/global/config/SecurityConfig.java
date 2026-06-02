@@ -5,6 +5,7 @@ import com.closetnangam.be.global.auth.jwt.JwtTokenProvider;
 import com.closetnangam.be.global.auth.oauth.OAuth2SuccessHandler;
 import com.closetnangam.be.global.auth.oauth.OAuth2UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -12,6 +13,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -29,8 +32,14 @@ public class SecurityConfig {
             "/oauth2/**",
             "/api/v1/categories/**",
             "/api/categories/**",   // TODO: FE /api/v1 마이그레이션 완료 후 제거 필요
-            "/api/v1/clothes/registration-methods"
+            "/api/v1/clothes/registration-methods",
+            "/api/naver/**",
+            "/api/weather/**",
+            "/api/v1/auth/**",
+
+
     };
+
 
     private final OAuth2UserService oAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
@@ -44,6 +53,12 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(ex -> ex
+                        .defaultAuthenticationEntryPointFor(
+                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
+                                apiRequestMatcher()
+                        )
+                )
                 .oauth2Login(oauth -> oauth
                         .userInfoEndpoint(e -> e.userService(oAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
@@ -53,4 +68,9 @@ public class SecurityConfig {
 
         return http.build();
     }
+
+    private RequestMatcher apiRequestMatcher() {
+        return request -> request.getServletPath() != null && request.getServletPath().startsWith("/api/");
+    }
+
 }
