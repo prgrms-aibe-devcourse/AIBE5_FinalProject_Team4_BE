@@ -4,8 +4,14 @@ import com.closetnangam.be.domain.catalog.enums.StyleCode;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
+import com.closetnangam.be.domain.clothes.entity.ClothingColor;
+import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.ColorRole;
+import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
-import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
+import com.closetnangam.be.domain.clothes.enums.StyleRole;
+import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.recommendation.dto.response.SimilarProductRecommendationResponse;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
@@ -32,7 +38,7 @@ import static org.mockito.Mockito.verify;
 class SimilarProductRecommendationServiceTest {
 
     @Mock
-    private ClothesRepository clothesRepository;
+    private WardrobeClothesRepository wardrobeClothesRepository;
 
     @Mock
     private NaverApiService naverApiService;
@@ -47,7 +53,7 @@ class SimilarProductRecommendationServiceTest {
          * 이 테스트는 네이버 API를 실제 호출하지 않고, 서비스가 어떤 검색어를 만드는지만 검증한다.
          * 추천 품질의 핵심이 검색어 조합 규칙이므로 외부 API 응답보다 이 규칙을 안정적으로 고정하는 것이 중요하다.
          */
-        Clothes baseClothes = createBaseClothes(
+        WardrobeClothes wardrobeClothes = createWardrobeClothes(
                 1L,
                 User.Gender.MALE,
                 "ourselves",
@@ -58,7 +64,7 @@ class SimilarProductRecommendationServiceTest {
                 StyleCode.CASUAL
         );
 
-        given(clothesRepository.findByIdWithDetails(10L)).willReturn(Optional.of(baseClothes));
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(wardrobeClothes));
         given(naverApiService.searchShoppingProducts(anyString())).willReturn(List.of());
 
         SimilarProductRecommendationResponse response =
@@ -75,25 +81,14 @@ class SimilarProductRecommendationServiceTest {
     @Test
     @DisplayName("선택한 옷이 요청 사용자의 옷이 아니면 추천을 차단한다")
     void recommendSimilarProductsRejectsOtherUsersClothes() {
-        Clothes baseClothes = createBaseClothes(
-                2L,
-                User.Gender.MALE,
-                "ourselves",
-                "multi stripe long sleeve",
-                "BLACK",
-                "LONG_SLEEVE",
-                "TOP",
-                StyleCode.CASUAL
-        );
-
-        given(clothesRepository.findByIdWithDetails(10L)).willReturn(Optional.of(baseClothes));
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> similarProductRecommendationService.recommendSimilarProducts(1L, 10L))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("해당 사용자의 옷이 아닙니다.");
+                .hasMessage("해당 사용자의 옷을 찾을 수 없습니다.");
     }
 
-    private Clothes createBaseClothes(
+    private WardrobeClothes createWardrobeClothes(
             Long userId,
             User.Gender gender,
             String brandName,
@@ -103,7 +98,11 @@ class SimilarProductRecommendationServiceTest {
             String category,
             StyleCode styleCode
     ) {
-        // 엔티티 생성자와 연관관계는 실제 도메인 모델을 그대로 쓰고, DB가 채워주는 id만 테스트에서 주입한다.
+        /*
+         * 엔티티 생성자와 연관관계는 실제 도메인 모델을 그대로 사용한다.
+         * 최신 모델에서는 사용자 소유 정보가 Clothes가 아니라 WardrobeClothes에 있으므로,
+         * 테스트도 WardrobeClothes를 기준으로 fixture를 만든다.
+         */
         User user = User.builder()
                 .nickname("test-user-" + userId)
                 .email("test" + userId + "@example.com")
@@ -116,27 +115,38 @@ class SimilarProductRecommendationServiceTest {
         ReflectionTestUtils.setField(wardrobe, "id", 100L + userId);
 
         Clothes clothes = Clothes.builder()
-                .wardrobe(wardrobe)
                 .name(name)
                 .brandName(brandName)
                 .productCode("NONE")
                 .imageUrl("https://example.com/image.jpg")
                 .category(category)
                 .itemType(itemType)
-                .color(color)
                 .sourceType(SourceType.OWNED)
+                .infoSource(ClothesInfoSource.PHOTO)
                 .externalSource("NONE")
                 .externalProductId("NONE")
                 .externalProductUrl("NONE")
                 .isVerified(true)
-                .isFavorite(false)
                 .build();
         ReflectionTestUtils.setField(clothes, "id", 10L);
 
+        clothes.addColorTag(ClothingColor.create(clothes, color, ColorRole.PRIMARY, (byte) 1));
+
         Style style = Style.from(styleCode);
         ReflectionTestUtils.setField(style, "id", 1L);
-        clothes.addStyleTag(ClothesStyleTag.create(clothes, style));
+        clothes.addStyleTag(ClothesStyleTag.create(clothes, style, StyleRole.PRIMARY, (byte) 1));
 
-        return clothes;
+        WardrobeClothes wardrobeClothes = WardrobeClothes.builder()
+                .wardrobe(wardrobe)
+                .clothes(clothes)
+                .ownershipStatus(OwnershipStatus.OWNED)
+                .size("L")
+                .season("SPRING")
+                .favorite(false)
+                .userImageUrl("https://example.com/user-image.jpg")
+                .build();
+        ReflectionTestUtils.setField(wardrobeClothes, "id", 20L);
+
+        return wardrobeClothes;
     }
 }

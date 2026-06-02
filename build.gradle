@@ -54,8 +54,6 @@ dependencies {
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
-	// 테스트는 로컬 MySQL/Docker에 의존하지 않도록 H2 인메모리 DB로 실행합니다.
-	testRuntimeOnly 'com.h2database:h2'
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

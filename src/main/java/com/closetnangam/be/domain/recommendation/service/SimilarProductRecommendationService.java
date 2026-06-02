@@ -4,7 +4,9 @@ import com.closetnangam.be.domain.catalog.enums.ClothesColor;
 import com.closetnangam.be.domain.catalog.enums.ClothesItemType;
 import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
-import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
+import com.closetnangam.be.domain.clothes.entity.ClothingColor;
+import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.recommendation.dto.response.SimilarProductRecommendationResponse;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
@@ -14,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
@@ -29,26 +30,26 @@ import java.util.stream.Stream;
 @Transactional(readOnly = true)
 public class SimilarProductRecommendationService {
 
-    private final ClothesRepository clothesRepository;
+    private final WardrobeClothesRepository wardrobeClothesRepository;
     private final NaverApiService naverApiService;
 
     /**
      * 선택된 옷이 요청한 사용자의 옷인지 확인한 뒤, 속성 기반 검색어로 네이버 쇼핑 상품을 조회한다.
      */
     public SimilarProductRecommendationResponse recommendSimilarProducts(Long userId, Long clothesId) {
-        Clothes baseClothes = clothesRepository.findByIdWithDetails(clothesId)
-                .orElseThrow(() -> new IllegalArgumentException("옷을 찾을 수 없습니다."));
+        /*
+         * 최신 옷장 모델에서는 Clothes가 상품 마스터에 가깝고, 사용자 소유 여부는 WardrobeClothes가 가진다.
+         * 따라서 clothesId만 조회하지 않고 userId까지 함께 걸어 "이 사용자의 옷장에 담긴 옷"인지 확인한다.
+         */
+        WardrobeClothes wardrobeClothes = wardrobeClothesRepository.findByClothesIdAndUserId(clothesId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자의 옷을 찾을 수 없습니다."));
 
-        // URL의 userId와 실제 옷 소유자가 다르면 다른 사용자의 옷으로 추천을 요청한 상황이므로 차단한다.
-        if (!Objects.equals(baseClothes.getWardrobe().getUser().getId(), userId)) {
-            throw new IllegalArgumentException("해당 사용자의 옷이 아닙니다.");
-        }
-
-        String query = buildSearchQuery(baseClothes);
+        Clothes baseClothes = wardrobeClothes.getClothes();
+        String query = buildSearchQuery(wardrobeClothes);
         List<NaverShoppingProductResponse> products = naverApiService.searchShoppingProducts(query);
 
         return new SimilarProductRecommendationResponse(
-                ClothesResponse.from(baseClothes),
+                ClothesResponse.from(baseClothes, wardrobeClothes),
                 query,
                 products
         );
@@ -65,9 +66,10 @@ public class SimilarProductRecommendationService {
      * - 상품명 전체를 넣으면 동일 상품 재검색에 가까워진다.
      * - 유사 추천에서는 성별, 색상, 디자인, 핏 같은 속성이 더 중요하다.
      */
-    private String buildSearchQuery(Clothes clothes) {
+    private String buildSearchQuery(WardrobeClothes wardrobeClothes) {
+        Clothes clothes = wardrobeClothes.getClothes();
         return Stream.of(
-                        getGenderLabel(clothes),
+                        getGenderLabel(wardrobeClothes),
                         getColorLabel(clothes),
                         extractDesignKeywords(clothes),
                         getPrimaryStyleName(clothes),
@@ -84,8 +86,8 @@ public class SimilarProductRecommendationService {
      * 성별 키워드는 네이버 쇼핑 결과의 성별 카테고리를 좁히는 데 효과가 크다.
      * OTHER 또는 미입력 상태는 성별을 강제로 제한하지 않는다.
      */
-    private String getGenderLabel(Clothes clothes) {
-        User.Gender gender = clothes.getWardrobe().getUser().getGender();
+    private String getGenderLabel(WardrobeClothes wardrobeClothes) {
+        User.Gender gender = wardrobeClothes.getWardrobe().getUser().getGender();
         if (gender == User.Gender.MALE) {
             return "남성";
         }
@@ -100,10 +102,15 @@ public class SimilarProductRecommendationService {
      * 혹시 enum에 없는 값이 저장되어 있어도 추천 API 전체가 실패하지 않도록 원본 값을 사용한다.
      */
     private String getColorLabel(Clothes clothes) {
+        String primaryColorCode = clothes.getSortedColorTags().stream()
+                .findFirst()
+                .map(ClothingColor::getColorCode)
+                .orElse("");
+
         try {
-            return ClothesColor.fromCode(clothes.getColor()).getLabel();
+            return ClothesColor.fromCode(primaryColorCode).getLabel();
         } catch (IllegalArgumentException e) {
-            return normalize(clothes.getColor());
+            return normalize(primaryColorCode);
         }
     }
 
