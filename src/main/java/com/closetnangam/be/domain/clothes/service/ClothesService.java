@@ -201,11 +201,14 @@ public class ClothesService {
         return ClothesResponse.from(wardrobeClothes.getClothes(), wardrobeClothes);
     }
 
+    /**
+     * 사용자 옷장에서 옷을 제거합니다. {@link Clothes} 마스터 데이터는 유지되어
+     * 피드·다른 사용자 조회 등 {@code clothes_id} 참조가 계속 동작합니다.
+     */
     @Transactional
     public void deleteClothes(Long userId, Long clothesId) {
-        getOwnedWardrobeClothes(userId, clothesId);
-        wardrobeClothesRepository.deleteByClothes_Id(clothesId);
-        clothesRepository.deleteById(clothesId);
+        WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
+        wardrobeClothes.softDelete();
     }
 
     /** 소유권 확인: 해당 옷이 요청 사용자의 옷장에 없으면 404 */
