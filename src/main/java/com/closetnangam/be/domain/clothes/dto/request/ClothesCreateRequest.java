@@ -14,7 +14,7 @@ public record ClothesCreateRequest(
         @NotBlank @Size(max = 255) String name,
         @NotBlank @Size(max = 100) String brandName,
         @NotBlank @Size(max = 100) String productCode,
-        @NotBlank @Size(max = 500) @Pattern(regexp = ValidationPatterns.HTTP_URL) String imageUrl,
+        @NotBlank @Size(max = 500) @Pattern(regexp = ValidationPatterns.STORED_IMAGE_URL) String imageUrl,
         @NotBlank @Size(max = 50) String category,
         @NotBlank @Size(max = 50) String itemType,
         @NotBlank @Size(max = 50) String primaryColor,

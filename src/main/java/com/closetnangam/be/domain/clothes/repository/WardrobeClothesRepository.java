@@ -62,6 +62,7 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             select wc from WardrobeClothes wc
             join fetch wc.clothes c
             join fetch wc.wardrobe w
+            join fetch w.user
             left join fetch c.styleTags st
             left join fetch st.style
             where c.id = :clothesId and w.user.id = :userId

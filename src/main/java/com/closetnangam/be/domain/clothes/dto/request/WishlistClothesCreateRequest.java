@@ -13,7 +13,7 @@ public record WishlistClothesCreateRequest(
         @NotBlank @Size(max = 255) String name,
         @NotBlank @Size(max = 100) String brandName,
         @NotBlank @Size(max = 100) String productCode,
-        @NotBlank @Size(max = 500) @Pattern(regexp = ValidationPatterns.HTTP_URL) String imageUrl,
+        @NotBlank @Size(max = 500) @Pattern(regexp = ValidationPatterns.STORED_IMAGE_URL) String imageUrl,
         @NotBlank @Size(max = 50) String category,
         @NotBlank @Size(max = 50) String itemType,
         @NotBlank @Size(max = 50) String primaryColor,
@@ -23,6 +23,6 @@ public record WishlistClothesCreateRequest(
         @Size(max = 50) String season,
         @NotBlank @Size(max = 50) String externalSource,
         @NotBlank @Size(max = 255) String externalProductId,
-        @NotBlank @Size(max = 500) @Pattern(regexp = ValidationPatterns.HTTP_URL) String externalProductUrl
+        @NotBlank @Size(max = 500) @Pattern(regexp = ValidationPatterns.EXTERNAL_HTTPS_URL) String externalProductUrl
 ) {
 }

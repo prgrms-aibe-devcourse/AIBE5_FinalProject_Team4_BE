@@ -71,12 +71,11 @@ public class ClothesController {
     }
 
     @Operation(summary = "옷 상세 조회", description = "보유/미보유 옷의 상세 정보(이미지, 이름, 브랜드, 카테고리, 타입, 색상, 스타일)를 조회합니다.")
-    @GetMapping("/users/{userId}/clothes/{clothesId}")
+    @GetMapping("/clothes/{clothesId}")
     public ResponseEntity<ApiResponse<ClothesResponse>> getClothes(
-            @PathVariable @Min(1) Long userId,
             @PathVariable @Min(1) Long clothesId
     ) {
-        SecurityUtils.verifyUserIdMatch(userId);
+        Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.ok(clothesService.getClothes(userId, clothesId)));
     }
 
@@ -92,34 +91,31 @@ public class ClothesController {
     }
 
     @Operation(summary = "옷 즐겨찾기 설정", description = "보유/미보유 옷의 즐겨찾기 상태를 등록/해제합니다.")
-    @PatchMapping("/users/{userId}/clothes/{clothesId}/favorite")
+    @PatchMapping("/clothes/{clothesId}/favorite")
     public ResponseEntity<ApiResponse<ClothesResponse>> updateFavorite(
-            @PathVariable @Min(1) Long userId,
             @PathVariable @Min(1) Long clothesId,
             @Valid @RequestBody ClothesFavoriteRequest request
     ) {
-        SecurityUtils.verifyUserIdMatch(userId);
+        Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.ok(clothesService.updateFavorite(userId, clothesId, request)));
     }
 
     @Operation(summary = "옷 정보 수정", description = "등록된 보유/미보유 옷 정보를 수정합니다.")
-    @PatchMapping("/users/{userId}/clothes/{clothesId}")
+    @PatchMapping("/clothes/{clothesId}")
     public ResponseEntity<ApiResponse<ClothesResponse>> updateClothes(
-            @PathVariable @Min(1) Long userId,
             @PathVariable @Min(1) Long clothesId,
             @Valid @RequestBody ClothesUpdateRequest request
     ) {
-        SecurityUtils.verifyUserIdMatch(userId);
+        Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.ok(clothesService.updateClothes(userId, clothesId, request)));
     }
 
     @Operation(summary = "옷 삭제", description = "등록된 보유/미보유 옷을 삭제합니다. 삭제 확인은 프론트에서 처리합니다.")
-    @DeleteMapping("/users/{userId}/clothes/{clothesId}")
+    @DeleteMapping("/clothes/{clothesId}")
     public ResponseEntity<Void> deleteClothes(
-            @PathVariable @Min(1) Long userId,
             @PathVariable @Min(1) Long clothesId
     ) {
-        SecurityUtils.verifyUserIdMatch(userId);
+        Long userId = SecurityUtils.getCurrentUserId();
         clothesService.deleteClothes(userId, clothesId);
         return ResponseEntity.noContent().build();
     }

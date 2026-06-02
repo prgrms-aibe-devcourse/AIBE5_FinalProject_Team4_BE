@@ -7,6 +7,7 @@ import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.SourceType;
+import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,6 +15,8 @@ import java.util.List;
 public record ClothesResponse(
         Long clothesId,
         Long wardrobeClothesId,
+        Long wardrobeId,
+        Long userId,
         String name,
         String brandName,
         String productCode,
@@ -75,6 +78,8 @@ public record ClothesResponse(
         return new ClothesResponse(
                 clothes.getId(),
                 wardrobeClothes != null ? wardrobeClothes.getId() : null,
+                resolveWardrobeId(wardrobeClothes),
+                resolveUserId(wardrobeClothes),
                 clothes.getName(),
                 clothes.getBrandName(),
                 clothes.getProductCode(),
@@ -107,6 +112,25 @@ public record ClothesResponse(
                 clothesColor.getLabel(),
                 clothesColor.getHex()
         );
+    }
+
+    private static Long resolveWardrobeId(WardrobeClothes wardrobeClothes) {
+        if (wardrobeClothes == null) {
+            return null;
+        }
+        Wardrobe wardrobe = wardrobeClothes.getWardrobe();
+        return wardrobe != null ? wardrobe.getId() : null;
+    }
+
+    private static Long resolveUserId(WardrobeClothes wardrobeClothes) {
+        if (wardrobeClothes == null) {
+            return null;
+        }
+        Wardrobe wardrobe = wardrobeClothes.getWardrobe();
+        if (wardrobe == null || wardrobe.getUser() == null) {
+            return null;
+        }
+        return wardrobe.getUser().getId();
     }
 
     public record ColorDisplayResponse(

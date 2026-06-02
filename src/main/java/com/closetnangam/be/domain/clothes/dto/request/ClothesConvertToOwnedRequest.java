@@ -10,7 +10,7 @@ public record ClothesConvertToOwnedRequest(
         @NotBlank @Size(max = 100) String productCode,
         @NotBlank @Size(max = 50) String size,
         @Size(max = 50) String season,
-        @NotBlank @Size(max = 500) @Pattern(regexp = ValidationPatterns.HTTP_URL) String userImageUrl,
+        @NotBlank @Size(max = 500) @Pattern(regexp = ValidationPatterns.STORED_IMAGE_URL) String userImageUrl,
         @NotNull Boolean isVerified
 ) {
 }
