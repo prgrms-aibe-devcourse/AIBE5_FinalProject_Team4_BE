@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-02
+last_updated: 2026-06-03
 ---
 
 # 도메인 규칙

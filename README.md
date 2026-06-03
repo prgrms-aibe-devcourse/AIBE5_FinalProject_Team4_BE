@@ -6,11 +6,20 @@
   사용자의 옷장 데이터와 스타일 취향을 바탕으로 어울리는 상품과 코디를 추천합니다.
 </p>
 
+<p align="center">
+  Frontend Repository :
+  <a href="https://github.com/prgrms-aibe-devcourse/AIBE5_FinalProject_Team4_FE">
+    AIBE5_FinalProject_Team4_FE
+  </a>
+</p>
+
 <h2 align="center"> 🗂️ Project Overview </h2>
 
 <p align="center">
   옷장난감은 사용자가 보유한 옷과 관심 상품을 디지털 옷장에 등록하고,<br />
   <strong>옷장 데이터와 취향 데이터를 기반으로 개인화된 상품과 코디를 추천받을 수 있는 서비스입니다.</strong>
+  <br />
+  이 저장소는 위 서비스의 API, 도메인 로직, 데이터 저장을 담당합니다.
   <br />
   <br />
   개발 기간 : 2026.05.19 ~ 2026.06.26

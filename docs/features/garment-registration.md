@@ -1,7 +1,7 @@
 ---
 doc_type: shared_with_be_details
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-02
+last_updated: 2026-06-03
 ---
 
 # 옷 등록 플로우 가이드
