@@ -9,7 +9,6 @@ import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
-import com.closetnangam.be.domain.clothes.enums.SourceType;
 import com.closetnangam.be.domain.clothes.enums.StyleRole;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.recommendation.dto.response.SimilarProductRecommendationResponse;
@@ -121,7 +120,7 @@ class SimilarProductRecommendationServiceTest {
                 .imageUrl("https://example.com/image.jpg")
                 .category(category)
                 .itemType(itemType)
-                .sourceType(SourceType.OWNED)
+                .ownershipStatus(OwnershipStatus.OWNED)
                 .infoSource(ClothesInfoSource.PHOTO)
                 .externalSource("NONE")
                 .externalProductId("NONE")

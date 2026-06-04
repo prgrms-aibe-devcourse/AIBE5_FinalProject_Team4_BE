@@ -17,6 +17,7 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             join fetch w.user
             join fetch wc.clothes c
             where wc.id = :wardrobeClothesId
+              and wc.deletedAt is null
             """)
     Optional<WardrobeClothes> findByIdWithDetails(@Param("wardrobeClothesId") Long wardrobeClothesId);
 
@@ -27,6 +28,7 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             join fetch w.user
             where w.user.id = :userId
               and wc.ownershipStatus = :ownershipStatus
+              and wc.deletedAt is null
             order by c.createdAt desc
             """)
     List<WardrobeClothes> findAllByUserIdAndOwnershipStatus(
@@ -42,6 +44,7 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             where w.user.id = :userId
               and wc.ownershipStatus = :ownershipStatus
               and wc.favorite = true
+              and wc.deletedAt is null
             order by wc.updatedAt desc
             """)
     List<WardrobeClothes> findFavoritesByUserIdAndOwnershipStatus(
@@ -49,6 +52,15 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             @Param("ownershipStatus") OwnershipStatus ownershipStatus
     );
 
+    /**
+     * {@code clothes_id} 기준 옷장 연결 조회. 소프트 딜리트된 항목도 포함합니다.
+     *
+     * <p>사용자 노출 용도에는 사용 금지. 피드·추천 등 {@link com.closetnangam.be.domain.clothes.entity.Clothes}
+     * 마스터 데이터만 필요한 경우 {@link ClothesRepository#findById}를 우선 사용하세요.</p>
+     *
+     * <p><b>Orphan 정책</b>: {@code WardrobeClothes} 소프트 딜리트 후 해당 {@code Clothes}를 참조하는
+     * 활성 행이 없어도 마스터 {@code Clothes}는 보존됩니다. 필요 시 별도 배치로 정리하세요.</p>
+     */
     @Query("""
             select wc from WardrobeClothes wc
             join fetch wc.clothes c
@@ -56,7 +68,7 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             join fetch w.user
             where c.id = :clothesId
             """)
-    Optional<WardrobeClothes> findByClothesIdWithDetails(@Param("clothesId") Long clothesId);
+    Optional<WardrobeClothes> findByClothesIdWithDetailsIncludeDeleted(@Param("clothesId") Long clothesId);
 
     @Query("""
             select wc from WardrobeClothes wc
@@ -65,14 +77,14 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             join fetch w.user
             left join fetch c.styleTags st
             left join fetch st.style
-            where c.id = :clothesId and w.user.id = :userId
+            where c.id = :clothesId
+              and w.user.id = :userId
+              and wc.deletedAt is null
             """)
     Optional<WardrobeClothes> findByClothesIdAndUserId(
             @Param("clothesId") Long clothesId,
             @Param("userId") Long userId
     );
-
-    void deleteByClothes_Id(Long clothesId);
 
     /**
      * 추천 후보 조회: 특정 사용자의 보유 옷 중 기준 옷과 다른 카테고리인 항목만 반환합니다.
@@ -94,6 +106,7 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             left join fetch st.style
             where w.user.id = :userId
               and wc.ownershipStatus = :ownershipStatus
+              and wc.deletedAt is null
               and c.id <> :excludeClothesId
               and c.category <> :excludeCategory
             order by c.createdAt desc
@@ -117,6 +130,7 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             left join fetch st.style
             where w.user.id = :userId
               and wc.ownershipStatus = :ownershipStatus
+              and wc.deletedAt is null
             """)
     List<WardrobeClothes> findOwnedForStatistics(
             @Param("userId") Long userId,
