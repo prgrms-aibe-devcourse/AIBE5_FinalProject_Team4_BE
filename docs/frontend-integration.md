@@ -322,7 +322,7 @@ api.interceptors.request.use((config) => {
 | 항목 | 이전 | 현재 |
 |------|------|------|
 | 보유/위시 구분 필드 | `sourceType` | `ownershipStatus` |
-| 옷 삭제 | hard delete | soft delete (204) |
+| 옷 삭제 | hard delete + 204 | soft delete + **200** `ApiResponse` (`data: null`) |
 
 ---
 
