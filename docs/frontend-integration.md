@@ -1,6 +1,7 @@
-# 프론트엔드 연동 가이드 (closetnangam-BE)
+﻿# 프론트엔드 연동 가이드 (closetnangam-BE)
 
-백엔드 API와 로컬 연동 시 참고 문서입니다.  
+백엔드 API와 로컬 연동 시 참고 문서입니다.
+
 상세 스펙은 Swagger UI(`http://localhost:8080/swagger-ui.html`)와 `CategoryReadme.md`를 함께 보세요.
 
 ---
@@ -122,7 +123,8 @@ User (1) ── (1) Wardrobe ── (N) WardrobeClothes ── (1) Clothes
 - **WardrobeClothes**: 옷장에 담긴 연결(사이즈, 시즌, 즐겨찾기, `ownershipStatus`)
 - **Clothes**: 옷 마스터(이름, 브랜드, 카테고리, 색/스타일 태그)
 
-옷 등록 API는 내부에서 `getOrCreateWardrobe`로 옷장을 **자동 생성**합니다.  
+옷 등록 API는 내부에서 `getOrCreateWardrobe`로 옷장을 **자동 생성**합니다.
+
 FE에서 반드시 `POST /wardrobes`를 먼저 호출할 필요는 없습니다.
 
 ### 5.2 옷장 API
@@ -190,10 +192,10 @@ Base: `/api/v1/wardrobes`
 
 ### 5.4 FE 옷장 화면 흐름 예시
 
-1. 로그인 → `userId` + JWT 저장  
-2. (선택) `GET /api/v1/wardrobes/users/{userId}`  
-3. 목록: `GET /api/v1/users/{userId}/clothes`  
-4. 통계 탭: `GET /api/v1/wardrobes/users/{userId}/statistics`  
+1. 로그인 → `userId` + JWT 저장
+2. (선택) `GET /api/v1/wardrobes/users/{userId}`
+3. 목록: `GET /api/v1/users/{userId}/clothes`
+4. 통계 탭: `GET /api/v1/wardrobes/users/{userId}/statistics`
 
 ---
 
@@ -272,7 +274,8 @@ Base: `/api/v1/wardrobes`
 
 ## 11. CORS
 
-백엔드에 **CORS 설정이 없습니다**.  
+백엔드에 **CORS 설정이 없습니다**.
+
 브라우저에서 `localhost:3000` → `localhost:8080` 직접 호출 시 preflight 오류가 날 수 있습니다.
 
 - Vite/Next **dev proxy** 사용, 또는
