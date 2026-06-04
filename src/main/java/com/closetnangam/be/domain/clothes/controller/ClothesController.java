@@ -112,12 +112,12 @@ public class ClothesController {
 
     @Operation(summary = "옷 삭제", description = "등록된 보유/미보유 옷을 삭제합니다. 삭제 확인은 프론트에서 처리합니다.")
     @DeleteMapping("/clothes/{clothesId}")
-    public ResponseEntity<Void> deleteClothes(
+    public ResponseEntity<ApiResponse<Void>> deleteClothes(
             @PathVariable @Min(1) Long clothesId
     ) {
         Long userId = SecurityUtils.getCurrentUserId();
         clothesService.deleteClothes(userId, clothesId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
     @Operation(

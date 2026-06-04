@@ -45,6 +45,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        getRedirectStrategy().sendRedirect(request, response, redirectUri);
+        // FE 마이그레이션: localStorage + ?token= 연동이 쿠키 전환 전까지 동작하도록 쿼리도 함께 전달
+        String targetUrl = redirectUri + (redirectUri.contains("?") ? "&" : "?") + "token=" + token;
+        getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

@@ -34,13 +34,24 @@ Authorization: Bearer {accessToken}
 
 ### 2.2 OAuth2 로그인
 
-성공 시 프론트로 리다이렉트:
+소셜 로그인 시작 (버튼이 이 URL로 **이동**해야 토큰이 발급됩니다):
+
+```
+GET http://localhost:8080/oauth2/authorization/kakao
+GET http://localhost:8080/oauth2/authorization/google
+GET http://localhost:8080/oauth2/authorization/naver
+```
+
+`setIsLoggedIn(true)`만 하면 JWT가 생기지 않습니다.
+
+성공 시 프론트로 리다이렉트 (쿠키 + 쿼리 병행):
 
 ```
 http://localhost:3000?token={jwt}
+Set-Cookie: access_token=...; HttpOnly
 ```
 
-(`application.yml` → `app.oauth2.redirect-uri`)
+(`application.yml` → `app.oauth2.redirect-uri`) — `?token=`을 파싱해 `localStorage`에 저장하거나, 추후 `credentials: 'include'` + 쿠키 인증으로 전환
 
 ### 2.3 개발용 mock 토큰 (`local` 프로필만)
 
@@ -82,7 +93,7 @@ GET /api/v1/auth/mock-token?userId=1
 | 404 | 리소스 없음 | `success: false`, `message` |
 | 409 | 중복·상태 충돌 | `success: false`, `message` |
 | 401 | 미인증 | 바디 없을 수 있음 |
-| 204 | 삭제 성공 | **바디 없음** (`DELETE` 옷 삭제) |
+| 200 | 삭제 성공 | `{ success: true, data: null }` (`DELETE` 옷 삭제) |
 
 ---
 
@@ -173,7 +184,8 @@ Base: `/api/v1/wardrobes`
 | 등록 | `POST /api/v1/users/{userId}/clothes` |
 | 수정 | `PATCH /api/v1/clothes/{clothesId}` |
 | 즐겨찾기 | `PATCH /api/v1/clothes/{clothesId}/favorite` |
-| 삭제 | `DELETE /api/v1/clothes/{clothesId}` → **204** |
+| 삭제 | `DELETE /api/v1/clothes/{clothesId}` → **200** + `{ success: true, data: null }` |
+| 미보유→보유 | `PATCH /api/clothes/{id}/convert-to-owned` 또는 **`/api/v1/clothes/{id}/convert-to-owned`** |
 | 코디 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations?limitPerCategory=5` |
 
 ### 5.4 FE 옷장 화면 흐름 예시
@@ -251,7 +263,8 @@ Base: `/api/v1/wardrobes`
 
 ## 10. 삭제 (soft delete)
 
-- `DELETE /api/v1/clothes/{clothesId}` → **204**, 바디 없음
+- `DELETE /api/v1/clothes/{clothesId}` → **200** + `ApiResponse` (`data: null`)
+- FE `unwrap()` 사용 시 204 No Content는 실패 처리되므로 BE는 JSON body를 반환합니다
 - 사용자 옷장 목록에서는 사라짐 (`wardrobe_clothes.deleted_at` 설정)
 - `clothes` 마스터 행은 유지 (피드·타 사용자 `clothes_id` 참조용)
 
