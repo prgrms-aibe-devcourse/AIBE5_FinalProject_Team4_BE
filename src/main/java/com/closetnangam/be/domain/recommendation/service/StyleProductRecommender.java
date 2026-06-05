@@ -49,7 +49,7 @@ public class StyleProductRecommender {
         // [1] 사용자 스타일 점수 로드
         List<UserStyle> userStyles = userStyleRepository.findAllByUserId(currentUserId);
         Map<String, Integer> userStyleWeights = userStyles.stream()
-                .collect(Collectors.toMap(us -> us.getStyleCode().name(), UserStyle::getCombinedWeight));
+                .collect(Collectors.toMap(us -> us.getStyle().getCode(), UserStyle::getCombinedWeight));
 
         // [2] 추천 제외 목록 로드
         Set<Long> excludedSet = new HashSet<>();

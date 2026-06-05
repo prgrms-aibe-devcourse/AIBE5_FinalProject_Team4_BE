@@ -13,7 +13,7 @@ import com.closetnangam.be.domain.wardrobe.dto.response.WardrobeStatisticsRespon
 import com.closetnangam.be.domain.wardrobe.dto.response.WardrobeStatisticsResponse.UserStyleWardrobePayload;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.repository.WardrobeRepository;
-import com.closetnangam.be.domain.catalog.enums.StyleCode;
+import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.entity.UserStyle;
 import com.closetnangam.be.domain.user.repository.UserRepository;
@@ -42,6 +42,7 @@ public class WardrobeStatisticsService {
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final UserStyleRepository userStyleRepository;
     private final UserRepository userRepository;
+    private final StyleRepository styleRepository;
 
     @Transactional
     public WardrobeStatisticsResponse getStatistics(Long userId) {
@@ -95,11 +96,13 @@ public class WardrobeStatisticsService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         for (UserStyleWardrobePayload payload : payloads) {
-            StyleCode styleCode = StyleCode.valueOf(payload.styleCode());
-            UserStyle userStyle = userStyleRepository.findByUserIdAndStyleCode(userId, styleCode)
+            Style style = styleRepository.findById(payload.styleId())
+                    .orElseThrow(() -> new IllegalArgumentException("스타일을 찾을 수 없습니다. styleId=" + payload.styleId()));
+
+            UserStyle userStyle = userStyleRepository.findByUserIdAndStyleId(userId, style.getId())
                     .orElseGet(() -> UserStyle.builder()
                             .user(user)
-                            .styleCode(styleCode)
+                            .style(style)
                             .build());
 
             userStyle.syncWardrobeWeight(payload.wardrobeWeight());
