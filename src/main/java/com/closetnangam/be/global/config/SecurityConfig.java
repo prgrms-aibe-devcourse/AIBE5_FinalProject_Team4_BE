@@ -24,7 +24,10 @@ public class SecurityConfig {
             "/oauth2/**",
             "/api/v1/categories/**",
             "/api/categories/**",   // TODO: FE /api/v1 마이그레이션 완료 후 제거 필요
-            "/api/v1/clothes/registration-methods"
+            "/api/v1/clothes/registration-methods",
+            "/api/naver/**",
+            "/api/weather/**",
+            "/api/v1/recommendations/**"
     };
 
     @Bean

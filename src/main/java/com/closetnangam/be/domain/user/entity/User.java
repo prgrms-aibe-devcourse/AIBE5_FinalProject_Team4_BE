@@ -64,4 +64,11 @@ public class User extends BaseEntity {
         this.withdrawn = true;
         this.withdrawnAt = LocalDateTime.now();
     }
+
+    public String getDefaultAnchorItemType() {
+        if (this.gender == Gender.FEMALE) {
+            return "SKIRT";
+        }
+        return "SHORT_SLEEVE";
+    }
 }

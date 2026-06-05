@@ -1,20 +1,27 @@
 package com.closetnangam.be.domain.recommendation.service;
 
+import com.closetnangam.be.domain.clothes.entity.Clothes;
+import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.TemperatureRange;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
+import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
+import com.closetnangam.be.domain.clothes.scoring.ColorCompatibilityTable;
+import com.closetnangam.be.domain.clothes.scoring.ItemTypeCompatibilityTable;
 import com.closetnangam.be.domain.recommendation.dto.response.RecommendResponse;
-import com.closetnangam.be.global.external.clothes.dto.response.ProductDto;
-import com.closetnangam.be.global.external.clothes.service.ExternalClothesService;
+import com.closetnangam.be.domain.recommendation.scoring.WeatherCompatibilityTable;
+import com.closetnangam.be.domain.user.entity.User;
+import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
+import com.closetnangam.be.domain.wardrobe.repository.WardrobeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -23,143 +30,153 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class StyleProductRecommender {
 
+    private static final int MAX_RESULTS = 20;
+    private static final double STYLE_WEIGHT = 0.6d;
+    private static final double WEATHER_WEIGHT = 0.4d;
+
     private final ClothesRepository clothesRepository;
-    private final ExternalClothesService externalClothesService;
+    private final WardrobeClothesRepository wardrobeClothesRepository;
+    private final WardrobeRepository wardrobeRepository;
 
     public List<RecommendResponse> recommendByStyle(Long wardrobeId) {
-        List<String> topStyles = findTopStyles(wardrobeId);
-        List<RecommendResponse> totalRecommendations = new ArrayList<>();
-
-        if (topStyles.isEmpty()) {
-            log.info("[추천 시스템] 선호 스타일 없음 - 기본 키워드 추천 작동");
-            return convertToRecommendResponse(searchProductsWithFallback("기본", "트렌디한 반팔 셔츠"));
-        }
-
-        for (String styleName : topStyles) {
-            String searchQuery = buildPrimarySearchQuery(styleName);
-
-            log.info("[추천 시스템] 선호 스타일 기반 검색어 생성: {}", searchQuery);
-
-            List<RecommendResponse> products = convertToRecommendResponse(searchProductsWithFallback(styleName, searchQuery));
-            log.info("[추천 시스템] 검색어 '{}' 로 가져온 결과 개수: {}", searchQuery, products.size());
-            totalRecommendations.addAll(products);
-        }
-
-        List<RecommendResponse> finalRecommendations = totalRecommendations.stream()
-                .distinct()
-                .limit(20)
-                .collect(Collectors.toList());
-
-        log.info("[Trace] StyleProductRecommender - 최종 추천 결과 개수: {}개", finalRecommendations.size());
-        return finalRecommendations;
+        return recommendByStyle(wardrobeId, 20.0d);
     }
 
-    private List<ProductDto> searchProductsWithFallback(String styleName, String primaryQuery) {
-        List<String> candidateQueries = buildCandidateQueries(styleName, primaryQuery);
+    public List<RecommendResponse> recommendByStyle(Long wardrobeId, double currentTemp) {
+        Wardrobe wardrobe = wardrobeRepository.findById(wardrobeId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 옷장입니다."));
 
-        for (String candidateQuery : candidateQueries) {
-            List<ProductDto> products = externalClothesService.searchProducts(candidateQuery);
-            if (products != null && !products.isEmpty()) {
-                if (!candidateQuery.equals(primaryQuery)) {
-                    log.info(
-                            "[추천 시스템] fallback 검색 성공: '{}' -> '{}' (style='{}')",
-                            primaryQuery,
-                            candidateQuery,
-                            styleName
-                    );
-                }
-                return products;
+        List<WardrobeClothes> wardrobeItems = wardrobeClothesRepository.findAllByWardrobeId(wardrobeId);
+
+        WardrobeProfile wardrobeProfile = extractProfile(wardrobe, wardrobeItems);
+
+        Set<Long> excludedClothesIds = wardrobeItems.stream()
+                .map(WardrobeClothes::getClothes)
+                .filter(Objects::nonNull)
+                .map(Clothes::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<Clothes> candidates = clothesRepository.findAllForRecommendation(PageRequest.of(0, 100));
+
+        log.info(
+                "Style recommendation processed. wardrobeId={}, currentTemp={}, candidatesFound={}",
+                wardrobeId, currentTemp, candidates.size()
+        );
+
+        if (candidates.isEmpty()) {
+            log.warn("No candidates found in DB for recommendation.");
+        }
+
+        return candidates.stream()
+                .filter(Objects::nonNull)
+                .filter(clothes -> clothes.getId() != null)
+                .filter(clothes -> !excludedClothesIds.contains(clothes.getId()))
+                .map(clothes -> scoreCandidate(wardrobeProfile, clothes, currentTemp))
+                .sorted(Comparator.comparingDouble(ScoredRecommendation::score)
+                        .reversed()
+                )
+                .limit(MAX_RESULTS)
+                .map(this::mapToRecommendResponse)
+                .toList();
+    }
+
+    private RecommendResponse mapToRecommendResponse(ScoredRecommendation scored) {
+        Clothes clothes = scored.clothes();
+        return new RecommendResponse(
+                clothes.getName(),
+                clothes.getExternalProductUrl(),
+                clothes.getImageUrl(),
+                "0", // 가격 정보는 엔티티에 직접 없을 수 있음
+                String.format("%.2f", scored.score()),
+                scored.reason()
+        );
+    }
+
+//    todo // 현재: 옷장 순회로 그때그때 계산 (USER_STYLES 미사용) 온보딩 완성 후 교체할 부분
+    private WardrobeProfile extractProfile(Wardrobe wardrobe, List<WardrobeClothes> wardrobeItems) {
+        if (wardrobeItems.isEmpty()) {
+            User user = wardrobe.getUser();
+            String defaultItemType = user.getDefaultAnchorItemType();
+            return new WardrobeProfile("CASUAL", null, defaultItemType);
+        }
+        // [1] 가중치 맵 합계 산출 (단일 패스)
+        Map<String, Double> styleWeights = new HashMap<>();
+        Map<String, Double> colorWeights = new HashMap<>();
+        Map<String, Double> itemTypeWeights = new HashMap<>();
+
+        for (WardrobeClothes wc : wardrobeItems) {
+            double weight = wc.getFavorite() ? 2.0d : 1.0d;
+            ClothesTagSnapshot snapshot = wc.getClothes().getRecommendationTagSnapshot();
+
+            // Style Tags
+            for (String styleCode : snapshot.styleCodes()) {
+                styleWeights.merge(styleCode, weight, Double::sum);
             }
 
-            log.warn(
-                    "[추천 시스템] 검색 결과 0건: query='{}', style='{}'",
-                    candidateQuery,
-                    styleName
-            );
+            // Colors
+            if (snapshot.primaryColor() != null) {
+                colorWeights.merge(snapshot.primaryColor(), weight, Double::sum);
+            }
+
+            // Item Type
+            String itemType = wc.getClothes().getItemType();
+            if (itemType != null) {
+                itemTypeWeights.merge(itemType, weight, Double::sum);
+            }
         }
 
-        return List.of();
+        String anchorStyle = styleWeights.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("CASUAL");
+
+        String anchorColor = colorWeights.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
+
+        String anchorItemType = itemTypeWeights.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
+
+        return new WardrobeProfile(anchorStyle, anchorColor, anchorItemType);
     }
 
-    private List<String> buildCandidateQueries(String styleName, String primaryQuery) {
-        Set<String> candidates = new LinkedHashSet<>();
-        addCandidate(candidates, primaryQuery);
-        addCandidate(candidates, stripBrandAndFillerWords(primaryQuery));
-        addCandidate(candidates, stripBrandAndFillerWords(styleName));
-        addCandidate(candidates, styleName);
-        return new ArrayList<>(candidates);
+    private ScoredRecommendation scoreCandidate(WardrobeProfile wardrobeProfile, Clothes clothes, double currentTemp) {
+        ClothesTagSnapshot snapshot = clothes.getRecommendationTagSnapshot();
+
+        // 1. 스타일 점수 (60%) - 사용자 취향 스타일과 매칭
+        // ItemTypeCompatibilityTable.score는 anchorItemType과 candidateItemType을 기대함.
+        // 하지만 현재 STYLE_WEIGHT로 사용되므로, 스타일 코드 간의 호환성을 체크하는 것이 의도임.
+        double styleScore = ItemTypeCompatibilityTable.score(
+                wardrobeProfile.anchorPrimaryStyle(),
+                snapshot.primaryStyleCode() != null ? snapshot.primaryStyleCode() : "CASUAL"
+        );
+
+        // 2. 날씨 점수 (40%) - 현재 기온에 따른 아이템 타입 적합도
+        double weatherScore = WeatherCompatibilityTable.getWeatherScore(currentTemp, clothes.getItemType());
+
+        // 최종 점수 계산 (가중치 합산)
+        double totalScore = (STYLE_WEIGHT * styleScore) + (WEATHER_WEIGHT * weatherScore);
+
+        String reason = String.format("Style: %.1f, Weather: %.1f",
+                styleScore, weatherScore);
+
+        log.debug("Scoring candidate: name={}, totalScore={}, reason={}",
+                clothes.getName(), totalScore, reason);
+
+        return new ScoredRecommendation(clothes, totalScore, reason);
     }
 
-    private void addCandidate(Set<String> candidates, String query) {
-        if (StringUtils.hasText(query)) {
-            candidates.add(query.trim());
-        }
+    private String resolvePrimaryColor(ClothesTagSnapshot snapshot) {
+        if (snapshot.primaryColor() != null && !snapshot.primaryColor().isEmpty()) return snapshot.primaryColor();
+        if (snapshot.weightedColors() != null && !snapshot.weightedColors().isEmpty()) return snapshot.weightedColors().get(0).code();
+        return "WHITE";
     }
 
-    private String buildPrimarySearchQuery(String styleName) {
-        String safeStyleName = StringUtils.hasText(styleName) ? styleName.trim() : "기본";
+    private record ScoredRecommendation(Clothes clothes, double score, String reason) {}
 
-        return switch (safeStyleName) {
-            case "캐주얼" -> "지오다노 티셔츠";
-            case "스트릿" -> "나이키 후드티";
-            case "미니멀" -> "무신사스탠다드 슬랙스";
-            default -> safeStyleName + " 브랜드 의류";
-        };
-    }
-
-    private String stripBrandAndFillerWords(String query) {
-        if (!StringUtils.hasText(query)) {
-            return "";
-        }
-
-        String normalized = query;
-        String[] removableTokens = {
-                "지오다노",
-                "나이키",
-                "무신사스탠다드",
-                "브랜드",
-                "의류",
-                "패션",
-                "추천",
-                "코디",
-                "트렌디한",
-                "데일리",
-                "남성",
-                "여성",
-                "남자",
-                "여자",
-                "신상",
-                "룩"
-        };
-
-        for (String token : removableTokens) {
-            normalized = normalized.replace(token, " ");
-        }
-
-        normalized = normalized.replaceAll("\\s+", " ").trim();
-        return normalized;
-    }
-
-    private List<RecommendResponse> convertToRecommendResponse(List<ProductDto> products) {
-        if (products == null || products.isEmpty()) {
-            log.warn("[Trace] StyleProductRecommender - ProductDto 입력이 비어 있어 RecommendResponse 변환을 건너뜁니다.");
-            return List.of();
-        }
-
-        log.info("[Trace] StyleProductRecommender - ProductDto 입력 개수: {}개", products.size());
-
-        List<RecommendResponse> mapped = products.stream()
-                .map(p -> new RecommendResponse(p.title(), p.link(), p.imageUrl(), p.lprice()))
-                .collect(Collectors.toList());
-
-        log.info("[Trace] StyleProductRecommender - RecommendResponse 변환 완료: {}개", mapped.size());
-        return mapped;
-    }
-
-    private List<String> findTopStyles(Long wardrobeId) {
-        return clothesRepository.countStyleTagsByWardrobe(wardrobeId, PageRequest.of(0, 3))
-                .stream()
-                .map(obj -> (String) obj[0])
-                .collect(Collectors.toList());
-    }
+    private record WardrobeProfile(String anchorPrimaryStyle, String anchorPrimaryColor, String anchorItemType) {}
 }

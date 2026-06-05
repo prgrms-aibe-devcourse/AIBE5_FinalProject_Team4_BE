@@ -14,5 +14,11 @@ public record RecommendResponse(
         String imageUrl,
 
         @Schema(description = "가격")
-        String price
+        String price,
+
+        @Schema(description = "추천 점수")
+        String score,
+
+        @Schema(description = "추천 이유")
+        String reason
 ) {}

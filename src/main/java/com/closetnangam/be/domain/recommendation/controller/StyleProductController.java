@@ -3,13 +3,11 @@ package com.closetnangam.be.domain.recommendation.controller;
 import com.closetnangam.be.domain.recommendation.dto.response.RecommendResponse;
 
 import com.closetnangam.be.domain.recommendation.service.StyleProductRecommender;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -21,11 +19,15 @@ public class StyleProductController {
 
     private final StyleProductRecommender styleProductRecommender;
 
-    // 특정 옷장의 스타일 기반 추천 API
+
+    @Operation(
+            summary = "취향 기반 상품 추천",
+            description = "옷장 내 의상 데이터와 현재 기온을 기반으로 스타일·색상·날씨 적합도를 분석하여 추천 상품 최대 20개를 반환합니다."
+    )
     @GetMapping("/{wardrobeId}")
-    public ResponseEntity<List<RecommendResponse>> getRecommendations(@PathVariable Long wardrobeId) {
-        List<RecommendResponse> recommendations = styleProductRecommender.recommendByStyle(wardrobeId);
-        log.info("[Trace] Controller - ResponseEntity 반환 직전 최종 데이터 개수: {}개, wardrobeId={}", recommendations.size(), wardrobeId);
-        return ResponseEntity.ok(recommendations);
+    public ResponseEntity<List<RecommendResponse>> getRecommendations(
+            @PathVariable Long wardrobeId,
+            @RequestParam(defaultValue = "20.0") double currentTemp) {
+        return ResponseEntity.ok(styleProductRecommender.recommendByStyle(wardrobeId, currentTemp));
     }
 }
