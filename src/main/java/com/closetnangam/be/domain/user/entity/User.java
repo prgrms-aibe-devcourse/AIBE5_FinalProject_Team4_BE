@@ -42,6 +42,12 @@ public class User extends BaseEntity {
     @Column(name = "profile_image_url", nullable = false, length = 500)
     private String profileImageUrl;
 
+    @Column(name = "profile_bio", nullable = false, length = 255)
+    private String profileBio;
+
+    @Column(name = "external_link_url", nullable = false, length = 255)
+    private String externalLinkUrl;
+
     @Column(name = "birth_date", nullable = false)
     private LocalDate birthDate;
 
@@ -77,6 +83,8 @@ public class User extends BaseEntity {
             String nickname,
             String email,
             String profileImageUrl,
+            String profileBio,
+            String externalLinkUrl,
             Gender gender,
             LocalDate birthDate,
             String regionName,
@@ -88,6 +96,8 @@ public class User extends BaseEntity {
         this.nickname = nickname;
         this.email = email;
         this.profileImageUrl = profileImageUrl;
+        this.profileBio = profileBio;
+        this.externalLinkUrl = externalLinkUrl;
         this.gender = gender;
         this.birthDate = birthDate;
         this.regionName = regionName;
@@ -101,6 +111,12 @@ public class User extends BaseEntity {
     void applyDefaults() {
         if (profileImageUrl == null) {
             profileImageUrl = "";
+        }
+        if (profileBio == null) {
+            profileBio = "";
+        }
+        if (externalLinkUrl == null) {
+            externalLinkUrl = "";
         }
         if (birthDate == null) {
             birthDate = DEFAULT_BIRTH_DATE;
@@ -131,6 +147,8 @@ public class User extends BaseEntity {
     public void updateProfile(
             String nickname,
             String profileImageUrl,
+            String profileBio,
+            String externalLinkUrl,
             Gender gender,
             LocalDate birthDate,
             String regionName,
@@ -138,6 +156,8 @@ public class User extends BaseEntity {
     ) {
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
+        this.profileBio = profileBio;
+        this.externalLinkUrl = externalLinkUrl;
         this.gender = gender;
         this.birthDate = birthDate;
         this.regionName = regionName;

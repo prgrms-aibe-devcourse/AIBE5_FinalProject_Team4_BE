@@ -2,8 +2,9 @@
 -- ERD v2.1 사용자 도메인 정합 마이그레이션
 --
 -- 대상:
---   - USERS: withdrawn 제거, status/region/marketing 컬럼 추가
---   - USER_ACCOUNTS → SOCIAL_ACCOUNTS (컬럼명 정합)
+--   - USERS: withdrawn 제거, status/region/marketing/profile_bio/external_link_url 추가
+--   - USER_ACCOUNTS → SOCIAL_ACCOUNTS (컬럼명 정합, updated_at 제거)
+--   - USER_EXTERNAL_LINKS: 신규 테이블
 --   - USER_STYLES: style_code → style_id FK, feedback_weight 추가
 --   - OUTFIT_BOOKS: audit 컬럼 제거
 --
@@ -71,6 +72,12 @@ ALTER TABLE users
 ALTER TABLE users
     DROP COLUMN withdrawn;
 
+ALTER TABLE users
+    ADD COLUMN profile_bio VARCHAR(255) NOT NULL DEFAULT '' AFTER profile_image_url;
+
+ALTER TABLE users
+    ADD COLUMN external_link_url VARCHAR(255) NOT NULL DEFAULT '' AFTER profile_bio;
+
 -- ---------------------------------------------------------------------------
 -- USER_ACCOUNTS → SOCIAL_ACCOUNTS
 -- (이미 social_accounts면 RENAME 구문은 스킵)
@@ -94,8 +101,29 @@ INNER JOIN users u ON u.user_id = sa.user_id
 SET sa.provider_email = u.email
 WHERE sa.provider_email = '';
 
+-- ERD: created_at, last_login_at만 유지 (updated_at 없음)
+ALTER TABLE social_accounts
+    DROP COLUMN updated_at;
+
 -- ---------------------------------------------------------------------------
--- USER_STYLES
+-- USER_EXTERNAL_LINKS
+-- ---------------------------------------------------------------------------
+CREATE TABLE user_external_links (
+    user_external_link_id BIGINT       NOT NULL AUTO_INCREMENT,
+    user_id               BIGINT       NOT NULL,
+    link_type             VARCHAR(30)  NOT NULL,
+    title                 VARCHAR(50)  NOT NULL,
+    url                   VARCHAR(500) NOT NULL,
+    sort_order            TINYINT      NOT NULL,
+    created_at            DATETIME     NOT NULL,
+    updated_at            DATETIME     NOT NULL,
+    PRIMARY KEY (user_external_link_id),
+    CONSTRAINT fk_user_external_links_user
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
+);
+
+-- ---------------------------------------------------------------------------
+-- USER_STYLES: style_code → style_id FK
 -- ---------------------------------------------------------------------------
 ALTER TABLE user_styles
     ADD COLUMN style_id BIGINT NULL AFTER user_id;
@@ -109,6 +137,13 @@ ALTER TABLE user_styles
 
 UPDATE user_styles
 SET combined_weight = preference_weight + wardrobe_weight + feedback_weight;
+
+-- backfill 검증: 아래 SELECT 결과가 0이어야 함. 0이 아니면 style_code를 유지한 채 수동 조치 후 재실행.
+-- SELECT user_style_id, user_id, style_code FROM user_styles WHERE style_id IS NULL;
+
+-- (user_id, style_code) UK가 style_code drop을 막으므로 먼저 제거
+ALTER TABLE user_styles
+    DROP INDEX uk_user_styles_user_style;
 
 ALTER TABLE user_styles
     DROP COLUMN style_code;

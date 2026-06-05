@@ -26,13 +26,14 @@ public class DevUserService {
             entityManager.createNativeQuery(
                             """
                                     INSERT INTO users (
-                                        user_id, nickname, email, profile_image_url, birth_date, gender,
-                                        region_name, region_code, marketing_agreed, marketing_agreed_at,
-                                        status, withdrawn_at, created_at, updated_at
+                                        user_id, nickname, email, profile_image_url, profile_bio,
+                                        external_link_url, birth_date, gender, region_name, region_code,
+                                        marketing_agreed, marketing_agreed_at, status, withdrawn_at,
+                                        created_at, updated_at
                                     )
                                     VALUES (
-                                        :id, :nickname, :email, '', '2000-01-01', 'OTHER',
-                                        '', '', 0, '1970-01-01 00:00:00',
+                                        :id, :nickname, :email, '', '', '',
+                                        '2000-01-01', 'OTHER', '', '', 0, '1970-01-01 00:00:00',
                                         'ACTIVE', '1970-01-01 00:00:00', NOW(), NOW()
                                     )
                                     """

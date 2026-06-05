@@ -1,8 +1,8 @@
 package com.closetnangam.be.domain.user.entity;
 
-import com.closetnangam.be.global.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -15,12 +15,15 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
 @Table(
         name = "social_accounts",
         uniqueConstraints = @UniqueConstraint(
@@ -28,7 +31,7 @@ import java.time.LocalDateTime;
                 columnNames = {"provider", "provider_user_id"}
         )
 )
-public class SocialAccount extends BaseEntity {
+public class SocialAccount {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,6 +50,10 @@ public class SocialAccount extends BaseEntity {
 
     @Column(name = "provider_email", nullable = false, length = 255)
     private String providerEmail;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     @Column(name = "last_login_at", nullable = false)
     private LocalDateTime lastLoginAt;
