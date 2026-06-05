@@ -8,7 +8,8 @@ import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
 import com.closetnangam.be.domain.clothes.scoring.ItemTypeCompatibilityTable;
 import com.closetnangam.be.domain.recommendation.dto.response.RecommendResponse;
 import com.closetnangam.be.domain.clothes.scoring.WeatherCompatibilityTable;
-import com.closetnangam.be.domain.user.entity.User;
+import com.closetnangam.be.domain.user.entity.UserStyle;
+import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.repository.WardrobeRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,12 +28,14 @@ import java.util.stream.Collectors;
 public class StyleProductRecommender {
 
     private static final int MAX_RESULTS = 20;
+    private static final int CANDIDATE_LIMIT = 500;
     private static final double STYLE_WEIGHT = 0.6d;
     private static final double WEATHER_WEIGHT = 0.4d;
 
     private final ClothesRepository clothesRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final WardrobeRepository wardrobeRepository;
+    private final UserStyleRepository userStyleRepository;
 
 
     public List<RecommendResponse> recommendByStyle(Long currentUserId, Long wardrobeId, double currentTemp) {
@@ -43,39 +46,85 @@ public class StyleProductRecommender {
             throw new org.springframework.security.access.AccessDeniedException("본인의 옷장만 추천받을 수 있습니다.");
         }
 
+        // [1] 사용자 스타일 점수 로드
+        List<UserStyle> userStyles = userStyleRepository.findAllByUserId(currentUserId);
+        Map<String, Integer> userStyleWeights = userStyles.stream()
+                .collect(Collectors.toMap(us -> us.getStyleCode().name(), UserStyle::getCombinedWeight));
+
+        // [2] 추천 제외 목록 로드
+        Set<Long> excludedSet = new HashSet<>();
+
+        // 이미 보유한 옷 제외
         List<WardrobeClothes> wardrobeItems = wardrobeClothesRepository.findAllByWardrobeId(wardrobeId);
-
-        WardrobeProfile wardrobeProfile = extractProfile(wardrobe, wardrobeItems);
-
-        Set<Long> excludedClothesIds = wardrobeItems.stream()
+        wardrobeItems.stream()
                 .map(WardrobeClothes::getClothes)
                 .filter(Objects::nonNull)
                 .map(Clothes::getId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+                .forEach(excludedSet::add);
 
-        List<Clothes> candidates = clothesRepository.findAllForRecommendation(PageRequest.of(0, 100));
+        // [3] 후보군 로드
+        List<Clothes> candidates = clothesRepository.findAllForRecommendation(PageRequest.of(0, CANDIDATE_LIMIT));
 
         log.info(
-                "Style recommendation processed. wardrobeId={}, currentTemp={}, candidatesFound={}",
-                wardrobeId, currentTemp, candidates.size()
+                "Style recommendation processed. userId={}, wardrobeId={}, currentTemp={}, candidatesFound={}",
+                currentUserId, wardrobeId, currentTemp, candidates.size()
         );
 
-        if (candidates.isEmpty()) {
-            log.warn("No candidates found in DB for recommendation.");
-        }
+        // todo // 현재: 옷장 순회로 그때그때 계산 (USER_STYLES 미사용) 온보딩 완성 후 교체할 부분
 
-        return candidates.stream()
+        // [4] 점수 계산 및 필터링
+        List<ScoredRecommendation> scoredRecommendations = candidates.stream()
                 .filter(Objects::nonNull)
                 .filter(clothes -> clothes.getId() != null)
-                .filter(clothes -> !excludedClothesIds.contains(clothes.getId()))
-                .map(clothes -> scoreCandidate(wardrobeProfile, clothes, currentTemp))
-                .sorted(Comparator.comparingDouble(ScoredRecommendation::score)
-                        .reversed()
-                )
+                .filter(clothes -> !excludedSet.contains(clothes.getId()))
+                .map(clothes -> scoreCandidateWithUserStyles(userStyleWeights, clothes, currentTemp))
+                .collect(Collectors.toList());
+
+        // [5] 정렬 및 동점자 처리
+        // 1순위: 점수 내림차순
+        // 2순위: 동점인 경우 랜덤 (Shuffle)
+        Collections.shuffle(scoredRecommendations); // 먼저 섞음으로써 동점자 랜덤 효과
+        scoredRecommendations.sort(Comparator.comparingDouble(ScoredRecommendation::score).reversed());
+
+        return scoredRecommendations.stream()
                 .limit(MAX_RESULTS)
                 .map(this::mapToRecommendResponse)
                 .toList();
+    }
+
+    private ScoredRecommendation scoreCandidateWithUserStyles(Map<String, Integer> userStyleWeights, Clothes clothes, double currentTemp) {
+        ClothesTagSnapshot snapshot = clothes.getRecommendationTagSnapshot();
+        
+        // 1. 스타일 점수 (60%)
+        // 사용자 스타일 가중치 중 가장 높은 호환성 점수를 찾음
+        double maxStyleCompatibility = 0.0;
+        
+        if (userStyleWeights.isEmpty()) {
+            // 정보가 없으면 기본값 CASUAL 기준 호환성 적용
+            maxStyleCompatibility = ItemTypeCompatibilityTable.score("CASUAL", 
+                    snapshot.primaryStyleCode() != null ? snapshot.primaryStyleCode() : "CASUAL");
+        } else {
+            for (Map.Entry<String, Integer> entry : userStyleWeights.entrySet()) {
+                String userStyleCode = entry.getKey();
+                double weightFactor = entry.getValue() / 100.0; // 정규화 가정 (추후 조정 가능)
+                
+                double compatibility = ItemTypeCompatibilityTable.score(userStyleCode, 
+                        snapshot.primaryStyleCode() != null ? snapshot.primaryStyleCode() : "CASUAL");
+                
+                // 가중치가 적용된 호환성 점수
+                double weightedCompatibility = compatibility * (1.0 + weightFactor);
+                maxStyleCompatibility = Math.max(maxStyleCompatibility, weightedCompatibility);
+            }
+        }
+
+        // 2. 날씨 점수 (40%)
+        double weatherScore = WeatherCompatibilityTable.getWeatherScore(currentTemp, clothes.getItemType());
+
+        double totalScore = (STYLE_WEIGHT * maxStyleCompatibility) + (WEATHER_WEIGHT * weatherScore);
+
+        String reason = String.format("Style Match: %.1f, Weather Match: %.1f", maxStyleCompatibility, weatherScore);
+
+        return new ScoredRecommendation(clothes, totalScore, reason);
     }
 
     private RecommendResponse mapToRecommendResponse(ScoredRecommendation scored) {
@@ -90,82 +139,5 @@ public class StyleProductRecommender {
         );
     }
 
-//    todo // 현재: 옷장 순회로 그때그때 계산 (USER_STYLES 미사용) 온보딩 완성 후 교체할 부분
-    private WardrobeProfile extractProfile(Wardrobe wardrobe, List<WardrobeClothes> wardrobeItems) {
-        if (wardrobeItems.isEmpty()) {
-            User user = wardrobe.getUser();
-            String defaultItemType = user.getDefaultAnchorItemType();
-            return new WardrobeProfile("CASUAL", null, defaultItemType);
-        }
-        // [1] 가중치 맵 합계 산출 (단일 패스)
-        Map<String, Double> styleWeights = new HashMap<>();
-        Map<String, Double> colorWeights = new HashMap<>();
-        Map<String, Double> itemTypeWeights = new HashMap<>();
-
-        for (WardrobeClothes wc : wardrobeItems) {
-            double weight = wc.getFavorite() ? 2.0d : 1.0d;
-            ClothesTagSnapshot snapshot = wc.getClothes().getRecommendationTagSnapshot();
-
-            // Style Tags
-            for (String styleCode : snapshot.styleCodes()) {
-                styleWeights.merge(styleCode, weight, Double::sum);
-            }
-
-            // Colors
-            if (snapshot.primaryColor() != null) {
-                colorWeights.merge(snapshot.primaryColor(), weight, Double::sum);
-            }
-
-            // Item Type
-            String itemType = wc.getClothes().getItemType();
-            if (itemType != null) {
-                itemTypeWeights.merge(itemType, weight, Double::sum);
-            }
-        }
-
-        String anchorStyle = styleWeights.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse("CASUAL");
-
-        String anchorColor = colorWeights.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(null);
-
-        String anchorItemType = itemTypeWeights.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(null);
-
-        return new WardrobeProfile(anchorStyle, anchorColor, anchorItemType);
-    }
-
-    private ScoredRecommendation scoreCandidate(WardrobeProfile wardrobeProfile, Clothes clothes, double currentTemp) {
-        ClothesTagSnapshot snapshot = clothes.getRecommendationTagSnapshot();
-
-        // 1. 스타일 점수 (60%) - 사용자 취향 스타일과 매칭
-        double styleScore = ItemTypeCompatibilityTable.score(
-                wardrobeProfile.anchorPrimaryStyle(),
-                snapshot.primaryStyleCode() != null ? snapshot.primaryStyleCode() : "CASUAL"
-        );
-
-        // 2. 날씨 점수 (40%) - 현재 기온에 따른 아이템 타입 적합도
-        double weatherScore = WeatherCompatibilityTable.getWeatherScore(currentTemp, clothes.getItemType());
-
-        // 최종 점수 계산 (가중치 합산)
-        double totalScore = (STYLE_WEIGHT * styleScore) + (WEATHER_WEIGHT * weatherScore);
-
-        String reason = String.format("Style: %.1f, Weather: %.1f",
-                styleScore, weatherScore);
-
-        log.debug("Scoring candidate: name={}, totalScore={}, reason={}",
-                clothes.getName(), totalScore, reason);
-
-        return new ScoredRecommendation(clothes, totalScore, reason);
-    }
-
     private record ScoredRecommendation(Clothes clothes, double score, String reason) {}
-
-    private record WardrobeProfile(String anchorPrimaryStyle, String anchorPrimaryColor, String anchorItemType) {}
 }
