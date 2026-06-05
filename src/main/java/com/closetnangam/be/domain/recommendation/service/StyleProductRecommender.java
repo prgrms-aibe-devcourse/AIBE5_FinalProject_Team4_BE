@@ -2,24 +2,20 @@ package com.closetnangam.be.domain.recommendation.service;
 
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
-import com.closetnangam.be.domain.clothes.enums.TemperatureRange;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
-import com.closetnangam.be.domain.clothes.scoring.ColorCompatibilityTable;
 import com.closetnangam.be.domain.clothes.scoring.ItemTypeCompatibilityTable;
 import com.closetnangam.be.domain.recommendation.dto.response.RecommendResponse;
-import com.closetnangam.be.domain.recommendation.scoring.WeatherCompatibilityTable;
+import com.closetnangam.be.domain.clothes.scoring.WeatherCompatibilityTable;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.repository.WardrobeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -38,13 +34,14 @@ public class StyleProductRecommender {
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final WardrobeRepository wardrobeRepository;
 
-    public List<RecommendResponse> recommendByStyle(Long wardrobeId) {
-        return recommendByStyle(wardrobeId, 20.0d);
-    }
 
-    public List<RecommendResponse> recommendByStyle(Long wardrobeId, double currentTemp) {
+    public List<RecommendResponse> recommendByStyle(Long currentUserId, Long wardrobeId, double currentTemp) {
         Wardrobe wardrobe = wardrobeRepository.findById(wardrobeId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 옷장입니다."));
+
+        if (!wardrobe.getUser().getId().equals(currentUserId)) {
+            throw new org.springframework.security.access.AccessDeniedException("본인의 옷장만 추천받을 수 있습니다.");
+        }
 
         List<WardrobeClothes> wardrobeItems = wardrobeClothesRepository.findAllByWardrobeId(wardrobeId);
 
@@ -148,8 +145,6 @@ public class StyleProductRecommender {
         ClothesTagSnapshot snapshot = clothes.getRecommendationTagSnapshot();
 
         // 1. 스타일 점수 (60%) - 사용자 취향 스타일과 매칭
-        // ItemTypeCompatibilityTable.score는 anchorItemType과 candidateItemType을 기대함.
-        // 하지만 현재 STYLE_WEIGHT로 사용되므로, 스타일 코드 간의 호환성을 체크하는 것이 의도임.
         double styleScore = ItemTypeCompatibilityTable.score(
                 wardrobeProfile.anchorPrimaryStyle(),
                 snapshot.primaryStyleCode() != null ? snapshot.primaryStyleCode() : "CASUAL"
@@ -168,12 +163,6 @@ public class StyleProductRecommender {
                 clothes.getName(), totalScore, reason);
 
         return new ScoredRecommendation(clothes, totalScore, reason);
-    }
-
-    private String resolvePrimaryColor(ClothesTagSnapshot snapshot) {
-        if (snapshot.primaryColor() != null && !snapshot.primaryColor().isEmpty()) return snapshot.primaryColor();
-        if (snapshot.weightedColors() != null && !snapshot.weightedColors().isEmpty()) return snapshot.weightedColors().get(0).code();
-        return "WHITE";
     }
 
     private record ScoredRecommendation(Clothes clothes, double score, String reason) {}

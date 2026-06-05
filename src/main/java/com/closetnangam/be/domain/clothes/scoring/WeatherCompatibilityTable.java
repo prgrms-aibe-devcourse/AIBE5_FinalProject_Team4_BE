@@ -1,4 +1,4 @@
-package com.closetnangam.be.domain.recommendation.scoring;
+package com.closetnangam.be.domain.clothes.scoring;
 
 import com.closetnangam.be.domain.clothes.enums.TemperatureRange;
 
@@ -9,7 +9,6 @@ public class WeatherCompatibilityTable {
      */
     public static double getWeatherScore(double temp, String itemType) {
         TemperatureRange range = TemperatureRange.from(temp);
-        
         if (itemType == null) return 0.5;
         String type = itemType.toUpperCase();
 

@@ -1,8 +1,8 @@
 package com.closetnangam.be.domain.recommendation.controller;
 
 import com.closetnangam.be.domain.recommendation.dto.response.RecommendResponse;
-
 import com.closetnangam.be.domain.recommendation.service.StyleProductRecommender;
+import com.closetnangam.be.global.auth.util.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +28,7 @@ public class StyleProductController {
     public ResponseEntity<List<RecommendResponse>> getRecommendations(
             @PathVariable Long wardrobeId,
             @RequestParam(defaultValue = "20.0") double currentTemp) {
-        return ResponseEntity.ok(styleProductRecommender.recommendByStyle(wardrobeId, currentTemp));
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(styleProductRecommender.recommendByStyle(currentUserId, wardrobeId, currentTemp));
     }
 }
