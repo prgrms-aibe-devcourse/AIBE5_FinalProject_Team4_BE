@@ -33,7 +33,7 @@ last_updated: 2026-06-03
 | REG-003 | 옷 등록 | 외부 쇼핑몰 상품 저장 | 외부 쇼핑몰 상품 정보를 공통 옷 정보로 저장 | `POST /api/v1/external/clothes/naver`, `EXTERNAL_SHOPPING` | 추천 상세, 외부 검색 |
 | CATALOG-001 | 카탈로그 | 카테고리/타입/색상/스타일 조회 | 옷 등록과 필터에 필요한 기준값 제공 | `GET /api/v1/categories` | 옷 등록, 필터 |
 | RECO-001 | 추천 | 추천 메인 | 메인 페이지를 추천 중심 화면으로 사용 | 추천 도메인 | 추천 메인 |
-| RECO-002 | 추천 | 취향 기반 상품 추천 | 사용자 스타일 점수를 기반으로 상품 추천 | `USER_STYLES`, `RECOMMENDATION_FEEDBACKS` | 추천 메인 |
+| RECO-002 | 추천 | 취향 기반 상품 추천 | 사용자 스타일 점수를 기반으로 상품 추천 | `USER_STYLES`, `RECOMMENDATION_FEEDBACKS` | 추천 메인 | GET /api/v1/recommendations/{wardrobeId}  | 취향 기반 상품 추천 조회 |
 | RECO-003 | 추천 | 유사 상품 추천 | 선택한 옷과 유사한 상품 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/similar-products` | 옷 상세, 추천 상세 |
 | RECO-004 | 추천 | 보유 옷 기준 상품 추천 | 보유 옷과 어울리는 상의/하의/아우터/신발 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 추천 상세 |
 | RECO-005 | 추천 | 날씨/계절/지역 기반 추천 | 사용자 지역과 날씨 정보를 추천에 반영 | `GET /api/weather` | 추천 메인 |
