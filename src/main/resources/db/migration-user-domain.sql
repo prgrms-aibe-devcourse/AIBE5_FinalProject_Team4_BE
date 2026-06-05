@@ -13,8 +13,13 @@
 -- ---------------------------------------------------------------------------
 -- USERS
 -- ---------------------------------------------------------------------------
+-- develop에는 profile_image_url이 이미 있음 → ADD COLUMN 하지 않고 backfill 후 강화
+UPDATE users
+SET profile_image_url = ''
+WHERE profile_image_url IS NULL;
+
 ALTER TABLE users
-    ADD COLUMN profile_image_url VARCHAR(500) NOT NULL DEFAULT '' AFTER nickname;
+    MODIFY COLUMN profile_image_url VARCHAR(500) NOT NULL DEFAULT '';
 
 ALTER TABLE users
     ADD COLUMN region_name VARCHAR(50) NOT NULL DEFAULT '' AFTER gender;
@@ -42,6 +47,17 @@ WHERE withdrawn_at IS NULL;
 UPDATE users
 SET withdrawn_at = '1970-01-01 00:00:00'
 WHERE withdrawn = 0;
+
+-- OAuth 등으로 비어 있던 기존 row backfill (@PrePersist는 신규 insert에만 적용)
+UPDATE users
+SET birth_date = '2000-01-01'
+WHERE birth_date IS NULL
+   OR TRIM(CAST(birth_date AS CHAR)) = '';
+
+UPDATE users
+SET gender = 'OTHER'
+WHERE gender IS NULL
+   OR TRIM(gender) = '';
 
 ALTER TABLE users
     MODIFY COLUMN birth_date DATE NOT NULL;
