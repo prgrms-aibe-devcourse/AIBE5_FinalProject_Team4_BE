@@ -7,13 +7,15 @@ import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
-import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.global.external.clothes.dto.record.NaverProductCreateRequest;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothesStyleDto;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothingColorDto;
+import com.closetnangam.be.global.external.clothes.dto.response.ProductDto;
+import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
+import com.closetnangam.be.global.external.naver.service.NaverApiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,23 @@ public class ExternalClothesService {
     private final ClothesRepository clothesRepository;
     private final StyleRepository styleRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
+    private final NaverApiService naverApiService;
+
+    public List<ProductDto> searchProducts(String keyword) {
+        List<NaverShoppingProductResponse> naverProducts = naverApiService.searchShoppingProducts(keyword);
+        if (naverProducts == null || naverProducts.isEmpty()) {
+            return List.of();
+        }
+
+        return naverProducts.stream()
+                .map(n -> new ProductDto(
+                        n.title(),
+                        n.image(),
+                        n.lowestPrice() != null ? String.valueOf(n.lowestPrice()) : "0",
+                        n.link()
+                ))
+                .toList();
+    }
 
 
     @Transactional
@@ -83,12 +102,11 @@ public class ExternalClothesService {
             clothes = Clothes.builder()
                     .name(cleanTitle) // 태그와 품번이 세탁된 깔끔한 이름
                     .brandName(brandName)
-                    .infoSource(ClothesInfoSource.EXTERNAL_SHOPPING) // 이 부분 추가!
+                    .clothesInfoSource(ClothesInfoSource.EXTERNAL_SHOPPING)
                     .productCode(extractedProductCode)
                     .imageUrl(request.image())
                     .category(category)
                     .itemType(refineItemType(category, request.category3(), cleanTitle))
-                    .ownershipStatus(OwnershipStatus.WISHLIST)
                     .externalSource("NAVER")
                     .externalProductId(productId)
                     .externalProductUrl(request.link())

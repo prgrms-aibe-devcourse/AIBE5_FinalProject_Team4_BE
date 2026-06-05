@@ -23,8 +23,8 @@ public record OutfitBookResponse(
                 outfits.stream()
                         .map(OutfitResponse::from)
                         .toList(),
-                outfitBook.getCreatedAt(),
-                outfitBook.getUpdatedAt()
+                null,
+                null
         );
     }
 }

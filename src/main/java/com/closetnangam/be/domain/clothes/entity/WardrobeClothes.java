@@ -55,7 +55,7 @@ public class WardrobeClothes extends BaseEntity {
     @Column(nullable = false)
     private Boolean favorite = false;
 
-    /** clothes.info_source와 동기화되는 비정규화 컬럼(레거시). 빌더에서 clothes 기준으로만 설정합니다. */
+    /** clothes.clothes_info_source와 동기화되는 비정규화 컬럼(레거시). 빌더에서 clothes 기준으로만 설정합니다. */
     @Enumerated(EnumType.STRING)
     @Column(name = "registration_source", nullable = false, length = 50)
     private ClothesInfoSource registrationSource;
@@ -84,10 +84,10 @@ public class WardrobeClothes extends BaseEntity {
         this.season = season;
         this.favorite = favorite != null ? favorite : false;
         this.userImageUrl = userImageUrl;
-        if (clothes.getInfoSource() == null) {
+        if (clothes.getClothesInfoSource() == null) {
             throw new IllegalArgumentException("옷 정보 출처가 설정되지 않았습니다.");
         }
-        this.registrationSource = clothes.getInfoSource();
+        this.registrationSource = clothes.getClothesInfoSource();
     }
 
     public void updateFavorite(Boolean favorite) {
@@ -101,11 +101,14 @@ public class WardrobeClothes extends BaseEntity {
     }
 
     public void convertToOwned(String size, String season, String userImageUrl) {
+        if (this.ownershipStatus != OwnershipStatus.WISHLIST) {
+            throw new IllegalArgumentException("미보유 옷만 보유 옷으로 전환할 수 있습니다.");
+        }
         this.ownershipStatus = OwnershipStatus.OWNED;
         this.size = size;
         this.season = season;
         this.userImageUrl = userImageUrl;
-        this.registrationSource = this.clothes.getInfoSource();
+        this.registrationSource = this.clothes.getClothesInfoSource();
     }
 
     public boolean isDeleted() {

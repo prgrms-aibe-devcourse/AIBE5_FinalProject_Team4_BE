@@ -1,7 +1,6 @@
 package com.closetnangam.be.domain.outfit.entity;
 
 import com.closetnangam.be.domain.user.entity.User;
-import com.closetnangam.be.global.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -24,7 +23,7 @@ import lombok.NoArgsConstructor;
         name = "outfit_books",
         uniqueConstraints = @UniqueConstraint(name = "uk_outfit_books_user_id", columnNames = "user_id")
 )
-public class OutfitBook extends BaseEntity {
+public class OutfitBook {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

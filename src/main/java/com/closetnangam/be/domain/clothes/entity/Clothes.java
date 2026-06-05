@@ -1,7 +1,6 @@
 package com.closetnangam.be.domain.clothes.entity;
 
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
-import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
 import com.closetnangam.be.global.common.entity.BaseEntity;
 import jakarta.persistence.CascadeType;
@@ -60,12 +59,8 @@ public class Clothes extends BaseEntity {
     private String itemType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "source_type", nullable = false, length = 50)
-    private OwnershipStatus ownershipStatus;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "info_source", nullable = false, length = 50)
-    private ClothesInfoSource infoSource;
+    @Column(name = "clothes_info_source", nullable = false, length = 50)
+    private ClothesInfoSource clothesInfoSource;
 
     @Column(name = "external_source", nullable = false, length = 50)
     private String externalSource;
@@ -110,8 +105,7 @@ public class Clothes extends BaseEntity {
             String imageUrl,
             String category,
             String itemType,
-            OwnershipStatus ownershipStatus,
-            ClothesInfoSource infoSource,
+            ClothesInfoSource clothesInfoSource,
             String externalSource,
             String externalProductId,
             String externalProductUrl,
@@ -123,11 +117,10 @@ public class Clothes extends BaseEntity {
         this.imageUrl = imageUrl;
         this.category = category;
         this.itemType = itemType;
-        this.ownershipStatus = ownershipStatus;
-        if (infoSource == null) {
+        if (clothesInfoSource == null) {
             throw new IllegalArgumentException("옷 정보 출처는 필수입니다.");
         }
-        this.infoSource = infoSource;
+        this.clothesInfoSource = clothesInfoSource;
         this.externalSource = externalSource;
         this.externalProductId = externalProductId;
         this.externalProductUrl = externalProductUrl;
@@ -253,11 +246,7 @@ public class Clothes extends BaseEntity {
     }
 
     public void convertToOwned(String productCode, Boolean isVerified) {
-        if (this.ownershipStatus != OwnershipStatus.WISHLIST) {
-            throw new IllegalArgumentException("미보유 옷만 보유 옷으로 전환할 수 있습니다.");
-        }
-        this.ownershipStatus = OwnershipStatus.OWNED;
-        this.infoSource = ClothesInfoSource.PURCHASE_HISTORY;
+        this.clothesInfoSource = ClothesInfoSource.PURCHASE_HISTORY;
         this.externalSource = EXTERNAL_NONE;
         this.externalProductId = EXTERNAL_NONE;
         this.externalProductUrl = EXTERNAL_NONE;

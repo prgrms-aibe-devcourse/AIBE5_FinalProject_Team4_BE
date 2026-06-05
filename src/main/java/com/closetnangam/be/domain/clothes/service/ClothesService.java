@@ -81,7 +81,6 @@ public class ClothesService {
                 request.imageUrl(),
                 request.category(),
                 request.itemType(),
-                OwnershipStatus.OWNED,
                 ClothesInfoSource.PURCHASE_HISTORY,
                 Clothes.EXTERNAL_NONE,
                 Clothes.EXTERNAL_NONE,
@@ -125,7 +124,6 @@ public class ClothesService {
                 request.imageUrl(),
                 request.category(),
                 request.itemType(),
-                OwnershipStatus.WISHLIST,
                 ClothesInfoSource.EXTERNAL_SHOPPING,
                 request.externalSource(),
                 request.externalProductId(),
@@ -224,8 +222,7 @@ public class ClothesService {
             String imageUrl,
             String category,
             String itemType,
-            OwnershipStatus ownershipStatus,
-            ClothesInfoSource infoSource,
+            ClothesInfoSource clothesInfoSource,
             String externalSource,
             String externalProductId,
             String externalProductUrl,
@@ -241,8 +238,7 @@ public class ClothesService {
                 .imageUrl(imageUrl)
                 .category(category)
                 .itemType(itemType)
-                .ownershipStatus(ownershipStatus)
-                .infoSource(infoSource)
+                .clothesInfoSource(clothesInfoSource)
                 .externalSource(externalSource)
                 .externalProductId(externalProductId)
                 .externalProductUrl(externalProductUrl)
