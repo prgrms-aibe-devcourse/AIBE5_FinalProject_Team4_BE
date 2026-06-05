@@ -102,8 +102,7 @@ public class PurchaseCaptureRegistrationService {
                 .imageUrl(capture.getImageUrl())
                 .category(request.category())
                 .itemType(request.itemType())
-                .ownershipStatus(OwnershipStatus.OWNED)
-                .infoSource(ClothesInfoSource.PURCHASE_HISTORY)
+                .clothesInfoSource(ClothesInfoSource.PURCHASE_HISTORY)
                 .externalSource(request.externalSource())
                 .externalProductId(Clothes.EXTERNAL_NONE)
                 .externalProductUrl(Clothes.EXTERNAL_NONE)
@@ -132,7 +131,7 @@ public class PurchaseCaptureRegistrationService {
                 capture.getId(),
                 wardrobeClothes.getUserImageUrl(),
                 wardrobeClothes.getOwnershipStatus(),
-                savedClothes.getInfoSource(),
+                savedClothes.getClothesInfoSource(),
                 savedClothes.getExternalSource(),
                 wardrobeClothes.getSize(),
                 wardrobeClothes.getSeason(),

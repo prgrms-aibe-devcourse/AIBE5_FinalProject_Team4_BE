@@ -24,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -106,7 +107,7 @@ class SimilarProductRecommendationServiceTest {
                 .nickname("test-user-" + userId)
                 .email("test" + userId + "@example.com")
                 .gender(gender)
-                .birthDate("1990-01-01")
+                .birthDate(LocalDate.of(1990, 1, 1))
                 .build();
         ReflectionTestUtils.setField(user, "id", userId);
 
@@ -120,8 +121,7 @@ class SimilarProductRecommendationServiceTest {
                 .imageUrl("https://example.com/image.jpg")
                 .category(category)
                 .itemType(itemType)
-                .ownershipStatus(OwnershipStatus.OWNED)
-                .infoSource(ClothesInfoSource.PHOTO)
+                .clothesInfoSource(ClothesInfoSource.PHOTO)
                 .externalSource("NONE")
                 .externalProductId("NONE")
                 .externalProductUrl("NONE")
