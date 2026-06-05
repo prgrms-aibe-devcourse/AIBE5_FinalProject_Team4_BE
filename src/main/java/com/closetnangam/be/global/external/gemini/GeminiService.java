@@ -88,10 +88,16 @@ public class GeminiService {
                 brandName을 모르면 "UNKNOWN"을 사용하세요.
                 optionText에는 사이즈·색상·옵션 등 주문 옵션 텍스트를 그대로 넣으세요.
                 suggestedExternalSource는 화면/로고/URL로 추정 가능한 쇼핑몰 코드입니다. 불확실하면 null.
+                imageUrl에는 캡처 화면에 실제로 보이는 http(s) 상품 썸네일 URL만 넣으세요. URL을 읽을 수 없으면 null.
+
+                상품이 2개 이상이면 items 배열에 각 주문 행을 위에서 아래 순서대로 넣으세요.
+                각 item에는 반드시 thumbnailRegion을 포함하세요.
+                thumbnailRegion은 해당 주문 행 왼쪽의 정사각형 상품 썸네일 영역을 0~1000 정규화 좌표(ymin,xmin,ymax,xmax)로 표시합니다.
+                상품이 1개뿐이면 기존처럼 최상위 flat 필드만 사용해도 됩니다.
 
                 %s
 
-                반드시 아래 JSON 형식만 반환하세요.
+                단일 상품 예시:
                 {
                   "name": "string",
                   "brandName": "string",
@@ -101,7 +107,27 @@ public class GeminiService {
                   "secondaryColors": [],
                   "styles": ["CASUAL"],
                   "optionText": "M / 네이비",
-                  "suggestedExternalSource": "MUSINSA"
+                  "suggestedExternalSource": "MUSINSA",
+                  "imageUrl": "https://cdn.example.com/product.jpg"
+                }
+
+                복수 상품 예시:
+                {
+                  "items": [
+                    {
+                      "name": "string",
+                      "brandName": "string",
+                      "category": "TOP",
+                      "itemType": "SHORT_SLEEVE",
+                      "primaryColor": "WHITE",
+                      "secondaryColors": [],
+                      "styles": ["CASUAL"],
+                      "optionText": "M / 네이비",
+                      "suggestedExternalSource": "MUSINSA",
+                      "imageUrl": null,
+                      "thumbnailRegion": { "ymin": 120, "xmin": 24, "ymax": 220, "xmax": 124 }
+                    }
+                  ]
                 }
                 """.formatted(extractionGuide);
 

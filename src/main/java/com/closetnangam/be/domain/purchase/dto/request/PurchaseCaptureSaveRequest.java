@@ -1,6 +1,7 @@
 package com.closetnangam.be.domain.purchase.dto.request;
 
 import com.closetnangam.be.domain.catalog.constants.CatalogLimits;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -21,6 +22,7 @@ public record PurchaseCaptureSaveRequest(
         @NotBlank @Size(max = 50) String size,
         @Size(max = 50) String season,
         @NotNull Boolean favorite,
-        @NotNull Boolean isVerified
+        @NotNull Boolean isVerified,
+        @Min(0) Integer itemIndex
 ) {
 }

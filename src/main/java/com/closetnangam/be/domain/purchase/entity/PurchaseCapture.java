@@ -80,6 +80,9 @@ public class PurchaseCapture extends BaseEntity {
     @Column(name = "draft_external_source", length = 50)
     private String draftExternalSource;
 
+    @Column(name = "draft_items_json", columnDefinition = "TEXT")
+    private String draftItemsJson;
+
     @Column(name = "raw_ai_response", columnDefinition = "TEXT")
     private String rawAiResponse;
 
@@ -121,6 +124,7 @@ public class PurchaseCapture extends BaseEntity {
             String draftStylesJson,
             String draftOptionText,
             String draftExternalSource,
+            String draftItemsJson,
             String rawAiResponse
     ) {
         this.analysisStatus = AiAnalysisStatus.SUCCESS;
@@ -134,6 +138,7 @@ public class PurchaseCapture extends BaseEntity {
         this.draftStylesJson = draftStylesJson;
         this.draftOptionText = draftOptionText;
         this.draftExternalSource = draftExternalSource;
+        this.draftItemsJson = draftItemsJson;
         this.rawAiResponse = rawAiResponse;
     }
 

@@ -18,6 +18,7 @@ public record PurchaseCaptureDraftResponse(
         List<String> secondaryColors,
         List<String> styles,
         String optionText,
-        String suggestedExternalSource
+        String suggestedExternalSource,
+        List<PurchaseCaptureItemDraft> items
 ) {
 }

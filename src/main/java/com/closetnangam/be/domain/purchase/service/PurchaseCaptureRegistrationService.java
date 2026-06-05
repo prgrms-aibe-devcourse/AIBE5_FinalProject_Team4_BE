@@ -15,20 +15,19 @@ import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureRegistrat
 import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureUploadResponse;
 import com.closetnangam.be.domain.purchase.entity.PurchaseCapture;
 import com.closetnangam.be.domain.purchase.repository.PurchaseCaptureRepository;
+import com.closetnangam.be.domain.purchase.support.PurchaseCaptureDraftSupport;
+import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureItem;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
 import com.closetnangam.be.global.storage.LocalImageStorageService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -69,7 +68,7 @@ public class PurchaseCaptureRegistrationService {
 
     public PurchaseCaptureDraftResponse getDraft(Long userId, Long captureId) {
         PurchaseCapture capture = getOwnedCapture(userId, captureId);
-        return toDraftResponse(capture);
+        return PurchaseCaptureDraftSupport.toDraftResponse(capture, objectMapper);
     }
 
     @Transactional
@@ -92,6 +91,7 @@ public class PurchaseCaptureRegistrationService {
         if (capture.isAlreadySaved()) {
             throw new IllegalStateException("이미 저장된 구매내역 캡처입니다.");
         }
+        validateItemIndex(capture, request.itemIndex());
 
         Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
 
@@ -151,50 +151,15 @@ public class PurchaseCaptureRegistrationService {
                 .orElseThrow(() -> new IllegalArgumentException("업로드한 구매내역 캡처를 찾을 수 없습니다."));
     }
 
-    private PurchaseCaptureDraftResponse toDraftResponse(PurchaseCapture capture) {
-        return new PurchaseCaptureDraftResponse(
-                capture.getId(),
-                capture.getAnalysisStatus(),
-                capture.getImageUrl(),
-                capture.getFailureMessage(),
-                capture.getAnalysisStatus() == AiAnalysisStatus.FAILED,
-                capture.getDraftName(),
-                capture.getDraftBrandName(),
-                capture.getDraftCategory(),
-                capture.getDraftItemType(),
-                capture.getDraftPrimaryColor(),
-                parseColors(capture.getDraftSecondaryColorsJson()),
-                parseStyles(capture.getDraftStylesJson()),
-                capture.getDraftOptionText(),
-                capture.getDraftExternalSource()
+    private void validateItemIndex(PurchaseCapture capture, Integer itemIndex) {
+        List<GeminiPurchaseCaptureItem> items = PurchaseCaptureDraftSupport.parseItems(
+                capture.getDraftItemsJson(),
+                objectMapper
         );
-    }
-
-    private List<String> parseColors(String draftSecondaryColorsJson) {
-        if (!StringUtils.hasText(draftSecondaryColorsJson)) {
-            return Collections.emptyList();
+        if (items.isEmpty()) {
+            PurchaseCaptureDraftSupport.resolveItemIndex(itemIndex, 1);
+            return;
         }
-        try {
-            return objectMapper.readValue(
-                    draftSecondaryColorsJson,
-                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
-            );
-        } catch (JsonProcessingException exception) {
-            return Collections.emptyList();
-        }
-    }
-
-    private List<String> parseStyles(String draftStylesJson) {
-        if (!StringUtils.hasText(draftStylesJson)) {
-            return Collections.emptyList();
-        }
-        try {
-            return objectMapper.readValue(
-                    draftStylesJson,
-                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
-            );
-        } catch (JsonProcessingException exception) {
-            return Collections.emptyList();
-        }
+        PurchaseCaptureDraftSupport.resolveItemIndex(itemIndex, items.size());
     }
 }

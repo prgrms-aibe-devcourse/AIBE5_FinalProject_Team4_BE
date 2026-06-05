@@ -1,15 +1,9 @@
 package com.closetnangam.be.domain.purchase.dto.response;
 
-import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
-
 import java.util.List;
 
-public record PurchaseCaptureAnalyzeResponse(
-        Long captureId,
-        AiAnalysisStatus analysisStatus,
-        String previewUrl,
-        String failureMessage,
-        Boolean aiFailed,
+public record PurchaseCaptureItemDraft(
+        int itemIndex,
         String name,
         String brandName,
         String category,
@@ -19,6 +13,6 @@ public record PurchaseCaptureAnalyzeResponse(
         List<String> styles,
         String optionText,
         String suggestedExternalSource,
-        List<PurchaseCaptureItemDraft> items
+        String imageUrl
 ) {
 }

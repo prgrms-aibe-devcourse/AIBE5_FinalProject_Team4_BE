@@ -4,8 +4,10 @@ import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureAnalyzeResponse;
 import com.closetnangam.be.domain.purchase.entity.PurchaseCapture;
 import com.closetnangam.be.domain.purchase.repository.PurchaseCaptureRepository;
+import com.closetnangam.be.domain.purchase.support.PurchaseCaptureDraftSupport;
 import com.closetnangam.be.global.external.gemini.GeminiService;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureExtractionResult;
+import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureItem;
 import com.closetnangam.be.global.storage.LocalImageStorageService;
 import com.closetnangam.be.global.storage.StoredImageAnalysisContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -18,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -31,6 +32,7 @@ public class PurchaseCaptureAiService {
     private final CategoryCatalogService categoryCatalogService;
     private final GeminiService geminiService;
     private final LocalImageStorageService localImageStorageService;
+    private final PurchaseCaptureThumbnailService purchaseCaptureThumbnailService;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
 
@@ -39,6 +41,7 @@ public class PurchaseCaptureAiService {
             CategoryCatalogService categoryCatalogService,
             GeminiService geminiService,
             LocalImageStorageService localImageStorageService,
+            PurchaseCaptureThumbnailService purchaseCaptureThumbnailService,
             ObjectMapper objectMapper,
             PlatformTransactionManager transactionManager
     ) {
@@ -46,6 +49,7 @@ public class PurchaseCaptureAiService {
         this.categoryCatalogService = categoryCatalogService;
         this.geminiService = geminiService;
         this.localImageStorageService = localImageStorageService;
+        this.purchaseCaptureThumbnailService = purchaseCaptureThumbnailService;
         this.objectMapper = objectMapper;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
@@ -73,7 +77,10 @@ public class PurchaseCaptureAiService {
                     ctx.contentType(),
                     categoryCatalogService.getPurchaseCaptureExtractionGuide()
             );
-            validateExtractionResult(result);
+            List<GeminiPurchaseCaptureItem> items = normalizeItems(
+                    PurchaseCaptureDraftSupport.resolveItems(result)
+            );
+            PurchaseCaptureDraftSupport.validateExtractionItems(items, categoryCatalogService);
         } catch (IllegalArgumentException e) {
             log.warn("[구매내역AI] 이미지 파일을 읽지 못했습니다. userId={}, captureId={}: {}", userId, captureId, e.getMessage());
             failureMessage = "업로드된 이미지를 찾을 수 없습니다.";
@@ -91,25 +98,37 @@ public class PurchaseCaptureAiService {
             PurchaseCapture capture = purchaseCaptureRepository.findByIdAndUser_IdForUpdate(captureId, userId)
                     .orElseThrow(() -> new IllegalArgumentException("업로드한 구매내역 캡처를 찾을 수 없습니다."));
             if (capture.isAlreadySaved()) {
-                return toAnalyzeResponse(capture);
+                return PurchaseCaptureDraftSupport.toAnalyzeResponse(capture, objectMapper);
             }
             if (finalResult != null) {
+                List<GeminiPurchaseCaptureItem> items = normalizeItems(
+                        PurchaseCaptureDraftSupport.resolveItems(finalResult)
+                );
+                items = purchaseCaptureThumbnailService.enrichWithItemThumbnails(
+                        userId,
+                        capture.getId(),
+                        capture.getImageUrl(),
+                        capture.getStoredPath(),
+                        items
+                );
+                GeminiPurchaseCaptureItem first = items.get(0);
                 capture.applyAnalysisSuccess(
-                        finalResult.name(),
-                        finalResult.brandName(),
-                        finalResult.category(),
-                        finalResult.itemType(),
-                        finalResult.primaryColor(),
-                        toColorsJson(finalResult.secondaryColors()),
-                        toStylesJson(finalResult.styles()),
-                        finalResult.optionText(),
-                        normalizeSuggestedExternalSource(finalResult.suggestedExternalSource()),
+                        first.name(),
+                        first.brandName(),
+                        first.category(),
+                        first.itemType(),
+                        first.primaryColor(),
+                        PurchaseCaptureDraftSupport.toColorsJson(first.secondaryColors(), objectMapper),
+                        PurchaseCaptureDraftSupport.toStylesJson(first.styles(), objectMapper),
+                        first.optionText(),
+                        normalizeSuggestedExternalSource(first.suggestedExternalSource()),
+                        PurchaseCaptureDraftSupport.toItemsJson(items, objectMapper),
                         toRawJson(finalResult)
                 );
             } else {
                 capture.applyAnalysisFailure(finalFailure, null);
             }
-            return toAnalyzeResponse(capture);
+            return PurchaseCaptureDraftSupport.toAnalyzeResponse(capture, objectMapper);
         });
         if (response == null) {
             throw new IllegalStateException("분석 결과 저장 중 오류가 발생했습니다.");
@@ -119,76 +138,39 @@ public class PurchaseCaptureAiService {
 
     @Transactional(readOnly = true)
     public PurchaseCaptureAnalyzeResponse getAnalyzeResult(Long userId, Long captureId) {
-        return toAnalyzeResponse(getOwnedCapture(userId, captureId));
-    }
-
-    private PurchaseCapture getOwnedCapture(Long userId, Long captureId) {
-        return purchaseCaptureRepository.findByIdAndUser_Id(captureId, userId)
+        PurchaseCapture capture = purchaseCaptureRepository.findByIdAndUser_Id(captureId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("업로드한 구매내역 캡처를 찾을 수 없습니다."));
+        return PurchaseCaptureDraftSupport.toAnalyzeResponse(capture, objectMapper);
     }
 
-    private void validateExtractionResult(GeminiPurchaseCaptureExtractionResult result) {
-        if (!StringUtils.hasText(result.name())) {
-            throw new IllegalStateException("AI 추출 결과에 상품명이 없습니다.");
-        }
-        if (StringUtils.hasText(result.category()) && StringUtils.hasText(result.itemType())) {
-            categoryCatalogService.validateCategoryAndItemType(result.category(), result.itemType());
-        }
-        if (StringUtils.hasText(result.primaryColor())) {
-            categoryCatalogService.validateClothesColors(
-                    result.primaryColor(),
-                    normalizeSecondaryColors(result.secondaryColors())
-            );
-        }
-        if (result.styles() != null && !result.styles().isEmpty()) {
-            categoryCatalogService.validateStyleCodes(result.styles());
-        }
-        String normalizedExternalSource = normalizeExternalSourceCode(result.suggestedExternalSource());
-        if (normalizedExternalSource != null) {
-            categoryCatalogService.validateExternalSource(normalizedExternalSource);
-        }
+    private List<GeminiPurchaseCaptureItem> normalizeItems(List<GeminiPurchaseCaptureItem> items) {
+        return items.stream()
+                .map(item -> new GeminiPurchaseCaptureItem(
+                        item.name(),
+                        item.brandName(),
+                        item.category(),
+                        item.itemType(),
+                        item.primaryColor(),
+                        item.secondaryColors(),
+                        item.styles(),
+                        item.optionText(),
+                        normalizeSuggestedExternalSource(item.suggestedExternalSource()),
+                        item.imageUrl(),
+                        item.thumbnailRegion()
+                ))
+                .toList();
     }
 
     private String normalizeSuggestedExternalSource(String suggestedExternalSource) {
-        String normalized = normalizeExternalSourceCode(suggestedExternalSource);
-        if (normalized == null) {
+        if (!StringUtils.hasText(suggestedExternalSource)) {
             return null;
         }
+        String normalized = suggestedExternalSource.trim().toUpperCase(Locale.ROOT);
         try {
             categoryCatalogService.validateExternalSource(normalized);
             return normalized;
         } catch (IllegalArgumentException exception) {
             return null;
-        }
-    }
-
-    private String normalizeExternalSourceCode(String suggestedExternalSource) {
-        if (!StringUtils.hasText(suggestedExternalSource)) {
-            return null;
-        }
-        return suggestedExternalSource.trim().toUpperCase(Locale.ROOT);
-    }
-
-    private List<String> normalizeSecondaryColors(List<String> secondaryColors) {
-        return secondaryColors == null ? Collections.emptyList() : secondaryColors;
-    }
-
-    private String toColorsJson(List<String> secondaryColors) {
-        try {
-            return objectMapper.writeValueAsString(normalizeSecondaryColors(secondaryColors));
-        } catch (JsonProcessingException exception) {
-            throw new IllegalStateException("AI 추출 결과를 저장하지 못했습니다.");
-        }
-    }
-
-    private String toStylesJson(List<String> styles) {
-        if (styles == null || styles.isEmpty()) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(styles);
-        } catch (JsonProcessingException exception) {
-            throw new IllegalStateException("AI 추출 결과를 저장하지 못했습니다.");
         }
     }
 
@@ -199,52 +181,4 @@ public class PurchaseCaptureAiService {
             return result.toString();
         }
     }
-
-    private PurchaseCaptureAnalyzeResponse toAnalyzeResponse(PurchaseCapture capture) {
-        return new PurchaseCaptureAnalyzeResponse(
-                capture.getId(),
-                capture.getAnalysisStatus(),
-                capture.getImageUrl(),
-                capture.getFailureMessage(),
-                capture.getAnalysisStatus() == com.closetnangam.be.domain.ai.enums.AiAnalysisStatus.FAILED,
-                capture.getDraftName(),
-                capture.getDraftBrandName(),
-                capture.getDraftCategory(),
-                capture.getDraftItemType(),
-                capture.getDraftPrimaryColor(),
-                parseColors(capture.getDraftSecondaryColorsJson()),
-                parseStyles(capture.getDraftStylesJson()),
-                capture.getDraftOptionText(),
-                capture.getDraftExternalSource()
-        );
-    }
-
-    private List<String> parseColors(String draftSecondaryColorsJson) {
-        if (!StringUtils.hasText(draftSecondaryColorsJson)) {
-            return Collections.emptyList();
-        }
-        try {
-            return objectMapper.readValue(
-                    draftSecondaryColorsJson,
-                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
-            );
-        } catch (JsonProcessingException exception) {
-            return Collections.emptyList();
-        }
-    }
-
-    private List<String> parseStyles(String draftStylesJson) {
-        if (!StringUtils.hasText(draftStylesJson)) {
-            return Collections.emptyList();
-        }
-        try {
-            return objectMapper.readValue(
-                    draftStylesJson,
-                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
-            );
-        } catch (JsonProcessingException exception) {
-            return Collections.emptyList();
-        }
-    }
-
 }
