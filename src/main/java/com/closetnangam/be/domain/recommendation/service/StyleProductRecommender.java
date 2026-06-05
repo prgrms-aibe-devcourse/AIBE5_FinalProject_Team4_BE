@@ -101,14 +101,14 @@ public class StyleProductRecommender {
         
         if (userStyleWeights.isEmpty()) {
             // 정보가 없으면 기본값 CASUAL 기준 호환성 적용
-            maxStyleCompatibility = ItemTypeCompatibilityTable.score("CASUAL", 
+            maxStyleCompatibility = ItemTypeCompatibilityTable.score("CASUAL",
                     snapshot.primaryStyleCode() != null ? snapshot.primaryStyleCode() : "CASUAL");
         } else {
             for (Map.Entry<String, Integer> entry : userStyleWeights.entrySet()) {
                 String userStyleCode = entry.getKey();
                 double weightFactor = entry.getValue() / 100.0; // 정규화 가정 (추후 조정 가능)
                 
-                double compatibility = ItemTypeCompatibilityTable.score(userStyleCode, 
+                double compatibility = ItemTypeCompatibilityTable.score(userStyleCode,
                         snapshot.primaryStyleCode() != null ? snapshot.primaryStyleCode() : "CASUAL");
                 
                 // 가중치가 적용된 호환성 점수
