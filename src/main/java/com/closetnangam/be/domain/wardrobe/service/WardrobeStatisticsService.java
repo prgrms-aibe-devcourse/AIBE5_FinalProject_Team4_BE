@@ -13,6 +13,11 @@ import com.closetnangam.be.domain.wardrobe.dto.response.WardrobeStatisticsRespon
 import com.closetnangam.be.domain.wardrobe.dto.response.WardrobeStatisticsResponse.UserStyleWardrobePayload;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.repository.WardrobeRepository;
+import com.closetnangam.be.domain.catalog.enums.StyleCode;
+import com.closetnangam.be.domain.user.entity.User;
+import com.closetnangam.be.domain.user.entity.UserStyle;
+import com.closetnangam.be.domain.user.repository.UserRepository;
+import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +40,10 @@ public class WardrobeStatisticsService {
 
     private final WardrobeRepository wardrobeRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
+    private final UserStyleRepository userStyleRepository;
+    private final UserRepository userRepository;
 
+    @Transactional
     public WardrobeStatisticsResponse getStatistics(Long userId) {
         Wardrobe wardrobe = wardrobeRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new IllegalArgumentException("옷장을 찾을 수 없습니다."));
@@ -70,13 +78,33 @@ public class WardrobeStatisticsService {
             }
         }
 
+        List<UserStyleWardrobePayload> stylePayloads = toUserStylePayloads(styleAccumulators);
+        syncUserStyles(userId, stylePayloads);
+
         return new WardrobeStatisticsResponse(
                 userId,
                 wardrobe.getId(),
                 ownedClothes.size(),
                 toItemTypeCounts(itemTypeCounts),
-                toUserStylePayloads(styleAccumulators)
+                stylePayloads
         );
+    }
+
+    private void syncUserStyles(Long userId, List<UserStyleWardrobePayload> payloads) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        for (UserStyleWardrobePayload payload : payloads) {
+            StyleCode styleCode = StyleCode.valueOf(payload.styleCode());
+            UserStyle userStyle = userStyleRepository.findByUserIdAndStyleCode(userId, styleCode)
+                    .orElseGet(() -> UserStyle.builder()
+                            .user(user)
+                            .styleCode(styleCode)
+                            .build());
+
+            userStyle.syncWardrobeWeight(payload.wardrobeWeight());
+            userStyleRepository.save(userStyle);
+        }
     }
 
     private List<ItemTypeCount> toItemTypeCounts(Map<String, Integer> itemTypeCounts) {

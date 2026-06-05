@@ -28,6 +28,9 @@ public record NaverProductCreateRequest(
         @Size(max = 500, message = "링크 주소가 너무 깁니다.")
         String link,
 
+        @Size(max = 50) String size,
+        @Size(max = 50) String season,
+
         @JsonProperty("colors")
         @Valid
         List<ClothingColorDto> colors,

@@ -1,6 +1,7 @@
 package com.closetnangam.be.domain.clothes.scoring;
 
 import com.closetnangam.be.domain.catalog.enums.ClothesItemType;
+import com.closetnangam.be.domain.catalog.enums.StyleCode;
 
 import java.util.Collections;
 import java.util.EnumSet;
@@ -16,10 +17,11 @@ import java.util.Set;
  */
 public final class ItemTypeCompatibilityTable {
 
-    public static final double GOOD  = 1.0;
-    public static final double SOSO  = 0.5;
+    public static final double PERFECT = 1.0;
+    public static final double GOOD  = 0.9;
+    public static final double SOSO  = 0.7;
+    public static final double NEUTRAL = 0.5;
     public static final double CLASH = 0.3;
-    public static final double NEUTRAL = 0.7;
 
     private enum CohesionGroup {
         CASUAL, SMART, FORMAL, ATHLETIC, STREET, OUTDOOR, SUMMER, WINTER
@@ -165,27 +167,65 @@ public final class ItemTypeCompatibilityTable {
         pair("SINGLE_COAT", "BOOTS", GOOD);
         pair("SINGLE_COAT", "SANDALS_SLIPPERS", CLASH);
         pair("SINGLE_COAT", "LOAFER", GOOD);
+
+        // STYLE COMPATIBILITY
+        for (StyleCode style : StyleCode.values()) {
+            pair(style.name(), style.name(), PERFECT);
+        }
+
+        // CASUAL 관련
+        pair("CASUAL", "CITYBOY", GOOD);
+        pair("CASUAL", "RETRO", GOOD);
+        pair("CASUAL", "STREET", SOSO);
+        pair("CASUAL", "MINIMAL", SOSO);
+        pair("CASUAL", "SPORTY", SOSO);
+        pair("CASUAL", "WORKWEAR", SOSO);
+
+        // STREET 관련
+        pair("STREET", "WORKWEAR", GOOD);
+        pair("STREET", "GORPCORE", GOOD);
+        pair("STREET", "RETRO", SOSO);
+        pair("STREET", "SPORTY", SOSO);
+
+        // MINIMAL 관련
+        pair("MINIMAL", "CHIC", GOOD);
+        pair("MINIMAL", "CLASSIC", GOOD);
+        pair("MINIMAL", "CITYBOY", SOSO);
+
+        // CLASSIC 관련
+        pair("CLASSIC", "CHIC", GOOD);
+        pair("CLASSIC", "RETRO", SOSO);
+
+        // GORPCORE 관련
+        pair("GORPCORE", "WORKWEAR", GOOD);
+        pair("GORPCORE", "SPORTY", GOOD);
+
+        // CITYBOY 관련
+        pair("CITYBOY", "WORKWEAR", GOOD);
     }
 
     private ItemTypeCompatibilityTable() {}
 
     /**
-     * anchorItemType과 candidateItemType의 코디 어울림 점수 (0.0 ~ 1.0).
-     * 명시 페어가 있으면 우선 적용, 없으면 cohesion group Jaccard 점수를 사용합니다.
+     * anchor와 candidate의 코디 어울림 점수 (0.0 ~ 1.0).
+     * itemType 또는 styleCode 모두 지원합니다.
+     * 명시 페어가 있으면 우선 적용, 없으면 itemType의 경우 cohesion group Jaccard 점수를 사용합니다.
      */
-    public static double score(String anchorItemType, String candidateItemType) {
-        if (anchorItemType == null || candidateItemType == null) {
+    public static double score(String anchor, String candidate) {
+        if (anchor == null || candidate == null) {
             return NEUTRAL;
         }
-        if (anchorItemType.equals(candidateItemType)) {
+        if (anchor.equals(candidate)) {
+            Double explicit = lookupExplicit(anchor, candidate);
+            if (explicit != null) return explicit;
             return SOSO;
         }
 
-        Double explicit = lookupExplicit(anchorItemType, candidateItemType);
+        Double explicit = lookupExplicit(anchor, candidate);
         if (explicit != null) {
             return explicit;
         }
-        return groupScore(anchorItemType, candidateItemType);
+        return groupScore(anchor, candidate);
     }
 
     private static Double lookupExplicit(String a, String b) {
