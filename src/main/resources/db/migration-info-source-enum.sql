@@ -8,6 +8,10 @@
 --   - PHOTO                         → PHOTO (유지)
 --
 -- 실행 순서: 백업 → (info_source 컬럼 DDL) → 본 스크립트 → 앱 배포
+--
+-- [중요] migration-clothes-schema.sql 에 백필+rename+drop 이 통합되었습니다.
+--        운영 DB는 migration-clothes-schema.sql 만 실행하세요.
+--        본 파일을 rename/drop 이후에 실행하면 source_type·info_source 부재로 실패합니다.
 -- =====================================================================
 
 -- 1) wardrobe_clothes.registration_source 레거시 값 보정 (앱 기동 전 필수)

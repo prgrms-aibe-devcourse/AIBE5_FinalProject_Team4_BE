@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,7 +29,7 @@ public record ClothesResponse(
         List<SecondaryColorResponse> secondaryColors,
         List<StyleTagResponse> styles,
         OwnershipStatus ownershipStatus,
-        ClothesInfoSource clothesInfoSource,
+        @JsonProperty("infoSource") ClothesInfoSource clothesInfoSource,
         String externalSource,
         String externalProductId,
         String externalProductUrl,

@@ -209,7 +209,7 @@ Base: `/api/v1/wardrobes`
 | `wardrobeClothesId` | 옷장 연결 ID |
 | `wardrobeId`, `userId` | 옷장/회원 |
 | `ownershipStatus` | `OWNED` \| `WISHLIST` |
-| `infoSource` | `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |
+| `infoSource` | `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` (JSON 필드명 유지; DB 컬럼은 `clothes_info_source`) |
 | `primaryColor` | code 문자열 |
 | `primaryColorDisplay` | `{ code, name, hex }` |
 | `secondaryColors[]` | `{ code, colorDisplay, sortOrder }` |

@@ -2,6 +2,7 @@ package com.closetnangam.be.domain.clothes.dto.response;
 
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record PhotoClothesRegistrationResponse(
         Long wardrobeClothesId,
@@ -9,7 +10,7 @@ public record PhotoClothesRegistrationResponse(
         Long photoId,
         String userImageUrl,
         OwnershipStatus ownershipStatus,
-        ClothesInfoSource clothesInfoSource,
+        @JsonProperty("infoSource") ClothesInfoSource clothesInfoSource,
         String size,
         String season,
         Boolean favorite,
