@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface ClothesRepository extends JpaRepository<Clothes, Long> {
     Optional<Clothes> findByExternalProductId(String externalProductId);
 
-    @Query("SELECT c FROM Clothes c WHERE c.infoSource IN ('EXTERNAL_SHOPPING', 'PURCHASE_HISTORY') ORDER BY c.createdAt DESC")
+    @Query("SELECT c FROM Clothes c WHERE c.clothesInfoSource IN ('EXTERNAL_SHOPPING', 'PURCHASE_HISTORY') ORDER BY c.createdAt DESC")
     List<Clothes> findAllForRecommendation(Pageable pageable);
 
     @Query("""

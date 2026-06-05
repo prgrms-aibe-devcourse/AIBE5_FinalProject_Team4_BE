@@ -10,7 +10,7 @@ public record PurchaseCaptureRegistrationResponse(
         Long captureId,
         String userImageUrl,
         OwnershipStatus ownershipStatus,
-        ClothesInfoSource infoSource,
+        ClothesInfoSource clothesInfoSource,
         String externalSource,
         String size,
         String season,

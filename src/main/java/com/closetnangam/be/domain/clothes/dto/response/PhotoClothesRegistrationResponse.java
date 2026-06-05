@@ -9,7 +9,7 @@ public record PhotoClothesRegistrationResponse(
         Long photoId,
         String userImageUrl,
         OwnershipStatus ownershipStatus,
-        ClothesInfoSource infoSource,
+        ClothesInfoSource clothesInfoSource,
         String size,
         String season,
         Boolean favorite,
