@@ -17,6 +17,7 @@ public record GeminiPurchaseCaptureItem(
         @JsonAlias("option_text") String optionText,
         @JsonAlias("suggested_external_source") String suggestedExternalSource,
         @JsonAlias("image_url") String imageUrl,
-        @JsonAlias("thumbnail_region") GeminiThumbnailRegion thumbnailRegion
+        @JsonAlias("thumbnail_region") GeminiThumbnailRegion thumbnailRegion,
+        @JsonAlias("order_status") String orderStatus
 ) {
 }

@@ -25,6 +25,7 @@ public final class PurchaseCaptureDraftSupport {
         if (result.items() != null && !result.items().isEmpty()) {
             return result.items();
         }
+        // Gemini가 복수 행 화면에서 첫 상품만 flat으로 주는 경우가 있어, flat은 단일 후보만 복원합니다.
         if (!StringUtils.hasText(result.name())) {
             return List.of();
         }
@@ -39,39 +40,70 @@ public final class PurchaseCaptureDraftSupport {
                 result.optionText(),
                 result.suggestedExternalSource(),
                 result.imageUrl(),
-                result.thumbnailRegion()
+                result.thumbnailRegion(),
+                result.orderStatus()
         ));
     }
 
-    public static void validateExtractionItems(
-            List<GeminiPurchaseCaptureItem> items,
-            CategoryCatalogService categoryCatalogService
-    ) {
+    /**
+     * 반품·환불·취소 등 옷장 등록 대상이 아닌 주문 행을 제거합니다.
+     */
+    public static List<GeminiPurchaseCaptureItem> filterRegistrableItems(List<GeminiPurchaseCaptureItem> items) {
+        return items.stream()
+                .filter(item -> !isExcludedOrderStatus(item.orderStatus()))
+                .toList();
+    }
+
+    public static boolean isExcludedOrderStatus(String orderStatus) {
+        if (!StringUtils.hasText(orderStatus)) {
+            return false;
+        }
+        String normalized = orderStatus.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+        return normalized.contains("반품")
+                || normalized.contains("환불")
+                || normalized.contains("주문취소")
+                || normalized.contains("취소완료")
+                || normalized.startsWith("취소");
+    }
+
+    /**
+     * 분석 단계 검증: 상품명만 필수. 카탈로그 코드는 사용자가 폼에서 수정할 수 있도록 느슨하게 둡니다.
+     */
+    public static void validateExtractionItems(List<GeminiPurchaseCaptureItem> items) {
         if (items.isEmpty()) {
-            throw new IllegalStateException("AI 추출 결과에 상품이 없습니다.");
+            throw new IllegalStateException("등록 가능한 구매 상품이 없습니다. 반품·취소 내역만 있는 캡처인지 확인해 주세요.");
         }
         for (int index = 0; index < items.size(); index++) {
             GeminiPurchaseCaptureItem item = items.get(index);
             if (!StringUtils.hasText(item.name())) {
                 throw new IllegalStateException("AI 추출 결과 " + (index + 1) + "번째 상품에 상품명이 없습니다.");
             }
-            if (StringUtils.hasText(item.category()) && StringUtils.hasText(item.itemType())) {
-                categoryCatalogService.validateCategoryAndItemType(item.category(), item.itemType());
-            }
-            if (StringUtils.hasText(item.primaryColor())) {
-                categoryCatalogService.validateClothesColors(
-                        item.primaryColor(),
-                        normalizeSecondaryColors(item.secondaryColors())
-                );
-            }
-            if (item.styles() != null && !item.styles().isEmpty()) {
-                categoryCatalogService.validateStyleCodes(item.styles());
-            }
-            String normalizedExternalSource = normalizeExternalSourceCode(item.suggestedExternalSource());
-            if (normalizedExternalSource != null) {
-                categoryCatalogService.validateExternalSource(normalizedExternalSource);
-            }
         }
+    }
+
+    public static List<GeminiPurchaseCaptureItem> normalizeExtractionItems(List<GeminiPurchaseCaptureItem> items) {
+        List<GeminiPurchaseCaptureItem> normalized = new ArrayList<>(items.size());
+        for (GeminiPurchaseCaptureItem item : items) {
+            List<String> styles = item.styles();
+            if (styles == null || styles.isEmpty()) {
+                styles = List.of("CASUAL");
+            }
+            normalized.add(new GeminiPurchaseCaptureItem(
+                    item.name(),
+                    StringUtils.hasText(item.brandName()) ? item.brandName() : "UNKNOWN",
+                    item.category(),
+                    item.itemType(),
+                    item.primaryColor(),
+                    normalizeSecondaryColors(item.secondaryColors()),
+                    styles,
+                    item.optionText(),
+                    item.suggestedExternalSource(),
+                    item.imageUrl(),
+                    item.thumbnailRegion(),
+                    item.orderStatus()
+            ));
+        }
+        return normalized;
     }
 
     public static String toItemsJson(List<GeminiPurchaseCaptureItem> items, ObjectMapper objectMapper) {
@@ -148,14 +180,28 @@ public final class PurchaseCaptureDraftSupport {
 
     private static DraftView buildDraftView(PurchaseCapture capture, ObjectMapper objectMapper) {
         List<GeminiPurchaseCaptureItem> storedItems = parseItems(capture.getDraftItemsJson(), objectMapper);
-        boolean multiItem = storedItems.size() > 1;
 
-        if (multiItem) {
+        if (!storedItems.isEmpty()) {
             List<PurchaseCaptureItemDraft> itemDrafts = new ArrayList<>();
             for (int index = 0; index < storedItems.size(); index++) {
                 itemDrafts.add(toItemDraft(index, storedItems.get(index), capture.getImageUrl()));
             }
-            return new DraftView(null, null, null, null, null, null, null, null, null, itemDrafts);
+            if (storedItems.size() > 1) {
+                return new DraftView(null, null, null, null, null, null, null, null, null, itemDrafts);
+            }
+            GeminiPurchaseCaptureItem first = storedItems.get(0);
+            return new DraftView(
+                    first.name(),
+                    first.brandName(),
+                    first.category(),
+                    first.itemType(),
+                    first.primaryColor(),
+                    first.secondaryColors(),
+                    first.styles(),
+                    first.optionText(),
+                    normalizeSuggestedExternalSource(first.suggestedExternalSource()),
+                    itemDrafts
+            );
         }
 
         return new DraftView(

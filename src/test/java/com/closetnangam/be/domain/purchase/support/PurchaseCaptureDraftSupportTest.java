@@ -25,6 +25,7 @@ class PurchaseCaptureDraftSupportTest {
                 "MUSINSA",
                 "https://cdn.example.com/tee.jpg",
                 null,
+                "구매 확정",
                 null
         );
 
@@ -38,14 +39,14 @@ class PurchaseCaptureDraftSupportTest {
     void resolveItems_prefersItemsArrayForMultipleProducts() {
         GeminiPurchaseCaptureItem first = new GeminiPurchaseCaptureItem(
                 "티셔츠", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "M", "MUSINSA",
-                "https://cdn.example.com/tee.jpg", null
+                "https://cdn.example.com/tee.jpg", null, "구매 확정"
         );
         GeminiPurchaseCaptureItem second = new GeminiPurchaseCaptureItem(
                 "팬츠", "B", "BOTTOM", "JEANS", "BLUE", List.of(), List.of("CASUAL"), "32", "MUSINSA",
-                "https://cdn.example.com/jeans.jpg", null
+                "https://cdn.example.com/jeans.jpg", null, "구매 확정"
         );
         GeminiPurchaseCaptureExtractionResult result = new GeminiPurchaseCaptureExtractionResult(
-                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null,
                 List.of(first, second)
         );
 
@@ -71,6 +72,38 @@ class PurchaseCaptureDraftSupportTest {
                 "http://localhost:8080/capture.jpg",
                 "http://localhost:8080/capture.jpg"
         )).isNull();
+    }
+
+    @Test
+    void normalizeExtractionItems_defaultsBrandAndStyle() {
+        GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(
+                "슬랙스", null, "BOTTOM", "SLACKS", "BLACK", List.of(), List.of(), "36", "MUSINSA",
+                null, null, "구매 확정"
+        );
+
+        List<GeminiPurchaseCaptureItem> normalized = PurchaseCaptureDraftSupport.normalizeExtractionItems(List.of(item));
+
+        assertThat(normalized.get(0).brandName()).isEqualTo("UNKNOWN");
+        assertThat(normalized.get(0).styles()).containsExactly("CASUAL");
+    }
+
+    @Test
+    void filterRegistrableItems_excludesReturnOrders() {
+        GeminiPurchaseCaptureItem returned = new GeminiPurchaseCaptureItem(
+                "데님", "A", "BOTTOM", "JEANS", "BLACK", List.of(), List.of("CASUAL"), "38", "MUSINSA",
+                null, null, "반품 완료"
+        );
+        GeminiPurchaseCaptureItem owned = new GeminiPurchaseCaptureItem(
+                "슬랙스", "B", "BOTTOM", "SLACKS", "BLACK", List.of(), List.of("CASUAL"), "36", "MUSINSA",
+                null, null, "구매 확정"
+        );
+
+        List<GeminiPurchaseCaptureItem> filtered = PurchaseCaptureDraftSupport.filterRegistrableItems(
+                List.of(returned, returned, owned)
+        );
+
+        assertThat(filtered).hasSize(1);
+        assertThat(filtered.get(0).name()).isEqualTo("슬랙스");
     }
 
     @Test

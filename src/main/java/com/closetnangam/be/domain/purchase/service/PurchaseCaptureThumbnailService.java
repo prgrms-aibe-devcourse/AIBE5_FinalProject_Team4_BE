@@ -221,7 +221,8 @@ public class PurchaseCaptureThumbnailService {
                 item.optionText(),
                 item.suggestedExternalSource(),
                 imageUrl,
-                item.thumbnailRegion()
+                item.thumbnailRegion(),
+                item.orderStatus()
         );
     }
 
