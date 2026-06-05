@@ -83,11 +83,13 @@ public class AiService {
         } catch (IllegalArgumentException e) {
             // 파일 미존재 등 입력 문제
             log.warn("[AI분석] 이미지 파일을 읽지 못했습니다. userId={}, photoId={}: {}", userId, photoId, e.getMessage());
-            failureMessage = "업로드된 이미지를 찾을 수 없습니다.";
+            failureMessage = StringUtils.hasText(e.getMessage())
+                    ? e.getMessage()
+                    : "업로드된 이미지를 찾을 수 없습니다.";
         } catch (IllegalStateException e) {
             // Gemini API 실패, 응답 파싱 실패, AI 결과 불충분(유효하지 않은 category/color/style 포함)
             log.warn("[AI분석] AI 분석 실패. userId={}, photoId={}: {}", userId, photoId, e.getMessage());
-            failureMessage = "AI가 옷 이미지를 분석하지 못했습니다. 직접 입력해 주세요.";
+            failureMessage = resolveAnalysisFailureMessage(e);
         } catch (Exception e) {
             // 예기치 않은 런타임 오류도 FAILED로 처리해 ANALYZING 상태 고착 방지
             log.error("[AI분석] 예상치 못한 오류. userId={}, photoId={}", userId, photoId, e);
@@ -155,6 +157,21 @@ public class AiService {
             // AI가 유효하지 않은 category/color/style 코드를 반환한 경우
             throw new IllegalStateException("AI가 유효하지 않은 분류 결과를 반환했습니다: " + e.getMessage(), e);
         }
+    }
+
+    private String resolveAnalysisFailureMessage(IllegalStateException exception) {
+        String message = exception.getMessage();
+        if (!StringUtils.hasText(message)) {
+            return "AI가 옷 이미지를 분석하지 못했습니다. 직접 입력해 주세요.";
+        }
+        if (message.contains("API 키")
+                || message.contains("API 호출")
+                || message.contains("응답을 해석")
+                || message.contains("판별 결과가 충분하지 않")
+                || message.contains("유효하지 않은 분류")) {
+            return message;
+        }
+        return "AI가 옷 이미지를 분석하지 못했습니다. 직접 입력해 주세요.";
     }
 
     private List<String> normalizeSecondaryColors(List<String> secondaryColors) {
