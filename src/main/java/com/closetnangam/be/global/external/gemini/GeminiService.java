@@ -10,7 +10,10 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -21,6 +24,8 @@ import java.util.Map;
 
 @Service
 public class GeminiService {
+
+    private static final Logger log = LoggerFactory.getLogger(GeminiService.class);
 
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
@@ -33,7 +38,7 @@ public class GeminiService {
             RestTemplateBuilder restTemplateBuilder,
             @Value("${gemini.api-key:}") String apiKey,
             @Value("${gemini.base-url:https://generativelanguage.googleapis.com/v1beta}") String baseUrl,
-            @Value("${gemini.model:gemini-2.0-flash}") String model
+            @Value("${gemini.model:gemini-3.5-flash}") String model
     ) {
         this.objectMapper = objectMapper;
         this.restTemplate = restTemplateBuilder
@@ -133,8 +138,28 @@ public class GeminiService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             return parseJsonResult(response.getBody(), resultType);
         } catch (RestClientException exception) {
-            throw new IllegalStateException("AI API 호출에 실패했습니다.");
+            throw new IllegalStateException(resolveApiFailureMessage(exception), exception);
         }
+    }
+
+    private String resolveApiFailureMessage(RestClientException exception) {
+        if (exception instanceof HttpStatusCodeException httpException) {
+            int status = httpException.getStatusCode().value();
+            String body = httpException.getResponseBodyAsString();
+            log.warn("Gemini API call failed: status={}, model={}", status, model);
+            if (status == 429 || (body != null && body.contains("RESOURCE_EXHAUSTED"))) {
+                return "AI API 사용 한도를 초과했습니다. 잠시 후 다시 시도하거나 Google AI Studio 요금제·할당량을 확인해 주세요.";
+            }
+            if (status == 401 || status == 403) {
+                return "Gemini API 키가 유효하지 않습니다. .env의 GEMINI_API_KEY를 확인해 주세요.";
+            }
+            if (status == 404) {
+                return "Gemini 모델을 찾을 수 없습니다. application.yml의 gemini.model 설정을 확인해 주세요.";
+            }
+        } else {
+            log.warn("Gemini API call failed: {}", exception.getMessage());
+        }
+        return "AI API 호출에 실패했습니다.";
     }
 
     private <T> T parseJsonResult(String responseBody, Class<T> resultType) {

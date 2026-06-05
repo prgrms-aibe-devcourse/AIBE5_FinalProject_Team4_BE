@@ -1,5 +1,6 @@
 package com.closetnangam.be.global.common.controller;
 
+import com.closetnangam.be.global.auth.dev.DevUserService;
 import com.closetnangam.be.global.auth.jwt.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,9 +21,11 @@ import java.util.Map;
 public class MockAuthController {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final DevUserService devUserService;
 
-    public MockAuthController(JwtTokenProvider jwtTokenProvider) {
+    public MockAuthController(JwtTokenProvider jwtTokenProvider, DevUserService devUserService) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.devUserService = devUserService;
     }
 
     @Operation(summary = "테스트용 JWT 토큰 발급", description = "로그인 없이 고유 ID를 지정해 임시 액세스 토큰을 생성합니다.")
@@ -30,7 +33,8 @@ public class MockAuthController {
     public ResponseEntity<Map<String, Object>> getMockToken(
             @RequestParam(defaultValue = "1") Long userId
     ) {
-        // JwtTokenProvider의 팩토리 메서드를 이용해 토큰 생성
+        devUserService.ensureDevUser(userId);
+
         String accessToken = jwtTokenProvider.createAccessToken(userId);
 
         Map<String, Object> response = new HashMap<>();
