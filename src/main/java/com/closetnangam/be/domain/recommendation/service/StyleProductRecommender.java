@@ -94,11 +94,10 @@ public class StyleProductRecommender {
 
     private ScoredRecommendation scoreCandidateWithUserStyles(Map<String, Integer> userStyleWeights, Clothes clothes, double currentTemp) {
         ClothesTagSnapshot snapshot = clothes.getRecommendationTagSnapshot();
-        
         // 1. 스타일 점수 (60%)
         // 사용자 스타일 가중치 중 가장 높은 호환성 점수를 찾음
         double maxStyleCompatibility = 0.0;
-        
+
         if (userStyleWeights.isEmpty()) {
             // 정보가 없으면 기본값 CASUAL 기준 호환성 적용
             maxStyleCompatibility = ItemTypeCompatibilityTable.score("CASUAL",
@@ -107,10 +106,10 @@ public class StyleProductRecommender {
             for (Map.Entry<String, Integer> entry : userStyleWeights.entrySet()) {
                 String userStyleCode = entry.getKey();
                 double weightFactor = entry.getValue() / 100.0; // 정규화 가정 (추후 조정 가능)
-                
+
                 double compatibility = ItemTypeCompatibilityTable.score(userStyleCode,
                         snapshot.primaryStyleCode() != null ? snapshot.primaryStyleCode() : "CASUAL");
-                
+
                 // 가중치가 적용된 호환성 점수
                 double weightedCompatibility = compatibility * (1.0 + weightFactor);
                 maxStyleCompatibility = Math.max(maxStyleCompatibility, weightedCompatibility);
@@ -119,11 +118,8 @@ public class StyleProductRecommender {
 
         // 2. 날씨 점수 (40%)
         double weatherScore = WeatherCompatibilityTable.getWeatherScore(currentTemp, clothes.getItemType());
-
         double totalScore = (STYLE_WEIGHT * maxStyleCompatibility) + (WEATHER_WEIGHT * weatherScore);
-
         String reason = String.format("Style Match: %.1f, Weather Match: %.1f", maxStyleCompatibility, weatherScore);
-
         return new ScoredRecommendation(clothes, totalScore, reason);
     }
 
