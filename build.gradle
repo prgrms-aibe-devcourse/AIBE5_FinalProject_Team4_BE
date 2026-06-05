@@ -32,6 +32,7 @@ dependencies {
 	// Security & OAuth2
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 
 	// JWT
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
@@ -60,19 +61,28 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+def loadDotEnvInto(Task task) {
+	def envFile = rootProject.file('.env')
+	if (!envFile.exists()) {
+		return
+	}
+	envFile.readLines().each { line ->
+		line = line.trim()
+		if (line.isEmpty() || line.startsWith('#') || !line.contains('=')) {
+			return
+		}
+		def idx = line.indexOf('=')
+		def key = line.substring(0, idx).trim()
+		def value = line.substring(idx + 1).trim()
+		task.environment key, value
+	}
+}
+
+tasks.named('bootRun') {
+	loadDotEnvInto(it)
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
-
-	def envFile = rootProject.file('.env')
-	if (envFile.exists()) {
-		envFile.readLines().each { line ->
-			line = line.trim()
-			if (!line.startsWith('#') && line.contains('=')) {
-				def idx = line.indexOf('=')
-				def key = line.substring(0, idx).trim()
-				def value = line.substring(idx + 1).trim()
-				environment key, value
-			}
-		}
-	}
+	loadDotEnvInto(it)
 }
