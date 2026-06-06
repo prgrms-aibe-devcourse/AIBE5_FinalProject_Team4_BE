@@ -164,14 +164,16 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
       "title": "상품명",
       "link": "https://...",
       "imageUrl": "https://...",
-      "price": "25000",
-      "score": "95",
-      "reason": "현재 기온(20도)에 적합하며, 선호하시는 미니멀 스타일의 슬랙스입니다."
+      "price": "0",
+      "score": "0.95",
+      "reason": "Style Match: 0.9, Weather Match: 1.0"
     }
   ],
   "message": null
 }
 ```
+
+> **Note**: 현재 `price`는 placeholder("0")이며, `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
 
 ### 날씨
 

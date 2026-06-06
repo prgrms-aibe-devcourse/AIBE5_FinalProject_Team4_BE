@@ -34,6 +34,7 @@ last_updated: 2026-06-03
 | `USER_STYLES.wardrobe_weight` 산정 범위 | `/statistics` API의 `userStylePayloads`는 보유 옷 기준 스타일 가중치 후보값으로 계산 | `wardrobe_weight`는 사용자의 옷장에 등록된 옷 스타일 기반 점수라는 기준을 따름 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | 추천 동점 처리 | 보유 옷 기준 추천 API가 점수 내림차순으로만 정렬하고 동점 그룹 랜덤 처리는 하지 않음 | 같은 점수 그룹 안에서는 랜덤 노출 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | 이미지 저장 방식 | 현재 이미지 업로드/조회 구현은 로컬 파일 저장소와 `/api/v1/images/**` 조회 endpoint를 사용 | 운영 기준은 AWS S3 저장과 이미지 URL 관리 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md) |
+| 추천 응답 형식 | `RECO-002` 추천 응답의 `price`는 "0" 고정, `score`는 0~1 문자열, `reason`은 기술적 매칭 결과 반환 | 실제 가격, 백분율 점수, 사용자 친화적 자연어 추천 이유 제공 | [api-contract.md](../api/api-contract.md), [home-recommendation.md](../features/home-recommendation.md) |
 | 개발/임시 API 경계 | local mock token API와 임시 `/login` endpoint가 코드에 존재 | 공식 서비스 API는 [api-contract.md](../api/api-contract.md)의 엔드포인트 인덱스를 기준으로 판단 | [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) |
 
 ## Feature ID 연결표
@@ -44,6 +45,7 @@ last_updated: 2026-06-03
 | `STYLE-002` | `USER_STYLES.wardrobe_weight` | `WardrobeStatisticsService`, `WardrobeStatisticsResponse.userStylePayloads` | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [erd.md](../database/erd.md) | 보유 옷 기준 스타일 가중치 후보값 계산. 옷장 전체 등록 기준 반영 여부 확인 필요 |
 | `RECO-004` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 그룹 랜덤 노출 기준 반영 여부 확인 필요 |
 | `EXT-002` | 이미지 저장과 조회 | `LocalImageStorageService`, `ImageController`, `StorageProperties` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md) | 현재 로컬 저장소 기반. 운영 기준인 AWS S3 전환 여부 확인 필요 |
+| `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [api-contract.md](../api/api-contract.md), [home-recommendation.md](../features/home-recommendation.md) | `price` placeholder("0"), 0~1 점수 형식, 기술적 추천 이유 제공. 기준 문서와 응답 형식 차이 존재 |
 | 개발/임시 API | `GET /api/v1/auth/mock-token`, `GET /login` | `MockAuthController`, `WeatherController` | [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) | 공식 사용자 기능으로 보지 않음. local 또는 임시 개발 경계 확인 필요 |
 
 ## BE 코드와 공식 기준 확인 필요
@@ -133,6 +135,24 @@ src/main/java/com/closetnangam/be/global/storage/ImageController.java
 
 따라서 현재 코드의 이미지 저장 방식은 운영 기준인 AWS S3가 아니라 로컬 개발 저장소 기준으로 이해합니다. S3 저장소로 전환하거나 로컬 저장소를 공식 기준으로 확정한다면 [api-contract.md](../api/api-contract.md), [domain/invariants.md](../domain/invariants.md), [garment-registration.md](../features/garment-registration.md), [data-lifecycle.md](../database/data-lifecycle.md)를 같은 PR에서 함께 수정합니다.
 
+### `RECO-002` 취향 기반 상품 추천 응답 형식
+
+공식 기준 문서 및 [api-contract.md](../api/api-contract.md)에서는 추천 상품의 가격(`price`), 백분율 점수(`score`), 그리고 사용자 친화적인 자연어 추천 이유(`reason`)를 예시로 제시합니다.
+
+현재 BE 구현(`StyleProductRecommender.java`)은 아래와 같은 placeholder 및 기술적 데이터를 반환합니다.
+
+- `price`: 항상 `"0"` 반환 (현재 상품 엔티티에 가격 정보가 없음)
+- `score`: `0.00` ~ `1.00` 사이의 점수를 문자열로 반환 (예: `"0.85"`)
+- `reason`: `"Style Match: 0.8, Weather Match: 1.0"` 형태의 기술적 매칭 점수 요약 반환
+
+FE는 이 응답을 UI에 그대로 노출하기보다는, 아래와 같은 처리가 필요하거나 BE의 향후 개선을 기다려야 합니다.
+
+- 가격 정보가 `"0"`인 경우 처리 (예: 노출 제외 또는 placeholder 문구)
+- 점수를 백분율로 환산하여 표시 (예: `score * 100`)
+- 기술적 추천 이유를 사용자에게 적절히 가공하여 표시
+
+향후 실제 가격 데이터 연동 및 자연어 추천 생성 로직이 도입될 때 이 gap을 해소할 예정입니다.
+
 ### 개발/임시 API와 공식 API 계약 경계
 
 현재 BE 코드에는 공식 API 계약에 포함하지 않은 개발 또는 임시 성격의 엔드포인트가 있습니다.
@@ -160,7 +180,8 @@ AI 코드리뷰 또는 API 문서 검토 시 공식 서비스 API 여부는 [api
 | 2 | `USER_STYLES.wardrobe_weight` 산정 범위 | 사용자 취향 점수와 추천 개인화 기준에 영향 |
 | 3 | `RECO-004` 동점 랜덤 노출 | 현재 제공 추천 API의 노출 순서와 추천 정책 기준에 영향 |
 | 4 | `EXT-002` 이미지 저장 방식 | 운영 저장소 기준과 현재 로컬 저장 구현 차이에 영향 |
-| 5 | 개발/임시 API 경계 | AI와 FE가 local/mock endpoint를 공식 서비스 API로 오해할 가능성 |
+| 5 | `RECO-002` 추천 응답 형식 | FE 추천 UI의 데이터 표시 및 해석 방식에 직접 영향 |
+| 6 | 개발/임시 API 경계 | AI와 FE가 local/mock endpoint를 공식 서비스 API로 오해할 가능성 |
 
 ## 문서 변경 기준
 
