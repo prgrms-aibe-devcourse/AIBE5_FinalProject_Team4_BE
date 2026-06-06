@@ -83,12 +83,11 @@ public class ExternalClothesService {
             clothes = Clothes.builder()
                     .name(cleanTitle) // 태그와 품번이 세탁된 깔끔한 이름
                     .brandName(brandName)
-                    .infoSource(ClothesInfoSource.EXTERNAL_SHOPPING) // 이 부분 추가!
+                    .clothesInfoSource(ClothesInfoSource.EXTERNAL_SHOPPING)
                     .productCode(extractedProductCode)
                     .imageUrl(request.image())
                     .category(category)
                     .itemType(refineItemType(category, request.category3(), cleanTitle))
-                    .ownershipStatus(OwnershipStatus.WISHLIST)
                     .externalSource("NAVER")
                     .externalProductId(productId)
                     .externalProductUrl(request.link())

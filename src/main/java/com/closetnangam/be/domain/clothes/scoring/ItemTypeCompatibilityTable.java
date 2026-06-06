@@ -21,6 +21,34 @@ public final class ItemTypeCompatibilityTable {
     public static final double CLASH = 0.3;
     public static final double NEUTRAL = 0.7;
 
+    private static final Map<String, Map<String, Double>> STYLE_COMPATIBILITY;
+
+    static {
+        STYLE_COMPATIBILITY = new HashMap<>();
+
+        // MINIMAL 호환성
+        addStyleComp("MINIMAL", "MINIMAL", 1.0);
+        addStyleComp("MINIMAL", "CASUAL", 0.9);
+        addStyleComp("MINIMAL", "CITY_BOY", 0.7);
+
+        // STREET 호환성
+        addStyleComp("STREET", "STREET", 1.0);
+        addStyleComp("STREET", "CASUAL", 0.8);
+        addStyleComp("STREET", "WORK_WEAR", 0.7);
+
+        // CASUAL 호환성
+        addStyleComp("CASUAL", "CASUAL", 1.0);
+        addStyleComp("CASUAL", "MINIMAL", 0.8);
+        addStyleComp("CASUAL", "STREET", 0.8);
+        addStyleComp("CASUAL", "CITY_BOY", 0.8);
+        addStyleComp("CASUAL", "VINTAGE", 0.7);
+    }
+
+    private static void addStyleComp(String styleA, String styleB, double score) {
+        STYLE_COMPATIBILITY.computeIfAbsent(styleA, k -> new HashMap<>()).put(styleB, score);
+        STYLE_COMPATIBILITY.computeIfAbsent(styleB, k -> new HashMap<>()).put(styleA, score);
+    }
+
     private enum CohesionGroup {
         CASUAL, SMART, FORMAL, ATHLETIC, STREET, OUTDOOR, SUMMER, WINTER
     }
@@ -173,19 +201,25 @@ public final class ItemTypeCompatibilityTable {
      * anchorItemType과 candidateItemType의 코디 어울림 점수 (0.0 ~ 1.0).
      * 명시 페어가 있으면 우선 적용, 없으면 cohesion group Jaccard 점수를 사용합니다.
      */
-    public static double score(String anchorItemType, String candidateItemType) {
-        if (anchorItemType == null || candidateItemType == null) {
+    public static double score(String anchor, String candidate) {
+        if (anchor == null || candidate == null) {
             return NEUTRAL;
         }
-        if (anchorItemType.equals(candidateItemType)) {
+
+        // 스타일 코드 호환성 우선 확인
+        if (STYLE_COMPATIBILITY.containsKey(anchor)) {
+            return STYLE_COMPATIBILITY.get(anchor).getOrDefault(candidate, 0.5);
+        }
+
+        if (anchor.equals(candidate)) {
             return SOSO;
         }
 
-        Double explicit = lookupExplicit(anchorItemType, candidateItemType);
+        Double explicit = lookupExplicit(anchor, candidate);
         if (explicit != null) {
             return explicit;
         }
-        return groupScore(anchorItemType, candidateItemType);
+        return groupScore(anchor, candidate);
     }
 
     private static Double lookupExplicit(String a, String b) {
