@@ -11,7 +11,6 @@ import java.util.Optional;
 
 public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes, Long> {
 
-    List<WardrobeClothes> findAllByWardrobeId(Long wardrobeId);
 
     @Query("""
             select wc from WardrobeClothes wc
