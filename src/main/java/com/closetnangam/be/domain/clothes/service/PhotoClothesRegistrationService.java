@@ -101,8 +101,7 @@ public class PhotoClothesRegistrationService {
                 .imageUrl(photo.getImageUrl())
                 .category(request.category())
                 .itemType(request.itemType())
-                .ownershipStatus(OwnershipStatus.OWNED)
-                .infoSource(ClothesInfoSource.PHOTO)
+                .clothesInfoSource(ClothesInfoSource.PHOTO)
                 .externalSource(Clothes.EXTERNAL_NONE)
                 .externalProductId(Clothes.EXTERNAL_NONE)
                 .externalProductUrl(Clothes.EXTERNAL_NONE)
@@ -131,7 +130,7 @@ public class PhotoClothesRegistrationService {
                 photo.getId(),
                 wardrobeClothes.getUserImageUrl(),
                 wardrobeClothes.getOwnershipStatus(),
-                savedClothes.getInfoSource(),
+                savedClothes.getClothesInfoSource(),
                 wardrobeClothes.getSize(),
                 wardrobeClothes.getSeason(),
                 wardrobeClothes.getFavorite(),

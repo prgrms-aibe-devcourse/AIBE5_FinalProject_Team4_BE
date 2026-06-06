@@ -1,8 +1,8 @@
 package com.closetnangam.be.global.auth.oauth;
 
+import com.closetnangam.be.domain.user.entity.SocialAccount;
 import com.closetnangam.be.domain.user.entity.User;
-import com.closetnangam.be.domain.user.entity.UserAccount;
-import com.closetnangam.be.domain.user.repository.UserAccountRepository;
+import com.closetnangam.be.domain.user.repository.SocialAccountRepository;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -11,7 +11,6 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import org.springframework.util.StringUtils;
 
 import java.util.Map;
@@ -22,7 +21,7 @@ import java.util.UUID;
 public class OAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
-    private final UserAccountRepository userAccountRepository;
+    private final SocialAccountRepository socialAccountRepository;
 
     @Override
     @Transactional
@@ -30,17 +29,21 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
         OAuth2User oAuth2User = super.loadUser(userRequest);
         String provider = userRequest.getClientRegistration().getRegistrationId();
 
-        String providerId = extractProviderId(provider, oAuth2User);
+        String providerUserId = extractProviderUserId(provider, oAuth2User);
         String email = extractEmail(provider, oAuth2User);
         String rawName = extractName(provider, oAuth2User);
 
-        UserAccount account = userAccountRepository.findByProviderAndProviderId(provider, providerId)
-                .orElseGet(() -> createAccount(provider, providerId, email, rawName));
+        SocialAccount account = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
+                .map(existing -> {
+                    existing.recordLogin(email);
+                    return existing;
+                })
+                .orElseGet(() -> createAccount(provider, providerUserId, email, rawName));
 
         return new CustomOAuth2User(oAuth2User, account.getUser().getId());
     }
 
-    private UserAccount createAccount(String provider, String providerId, String email, String rawName) {
+    private SocialAccount createAccount(String provider, String providerUserId, String email, String rawName) {
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> userRepository.save(
                         User.builder()
@@ -48,11 +51,12 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
                                 .nickname(buildUniqueNickname(rawName))
                                 .build()
                 ));
-        return userAccountRepository.save(
-                UserAccount.builder()
+        return socialAccountRepository.save(
+                SocialAccount.builder()
                         .user(user)
                         .provider(provider)
-                        .providerId(providerId)
+                        .providerUserId(providerUserId)
+                        .providerEmail(email)
                         .build()
         );
     }
@@ -66,7 +70,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
     }
 
     @SuppressWarnings("unchecked")
-    private String extractProviderId(String provider, OAuth2User user) {
+    private String extractProviderUserId(String provider, OAuth2User user) {
         return switch (provider) {
             case "kakao" -> String.valueOf(user.getAttributes().get("id"));
             case "naver" -> {
@@ -90,9 +94,8 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
             }
             default -> String.valueOf(user.getAttributes().get("email")); // google
         };
-        // 이메일 동의 거부 또는 필드 누락 시 provider+id 기반 고유 fallback 사용
         if (!StringUtils.hasText(email) || "null".equals(email)) {
-            return provider + "_" + extractProviderId(provider, user) + "@noreply.invalid";
+            return provider + "_" + extractProviderUserId(provider, user) + "@noreply.invalid";
         }
         return email;
     }
@@ -110,7 +113,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
                 Object name = response.get("name");
                 yield name != null ? String.valueOf(name) : "user";
             }
-            default -> { // google
+            default -> {
                 Object name = user.getAttributes().get("name");
                 yield name != null ? String.valueOf(name) : "user";
             }

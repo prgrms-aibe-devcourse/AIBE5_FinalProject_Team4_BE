@@ -138,4 +138,16 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             @Param("userId") Long userId,
             @Param("ownershipStatus") OwnershipStatus ownershipStatus
     );
+
+    @Query("""
+            select distinct wc from WardrobeClothes wc
+            join fetch wc.clothes c
+            join fetch wc.wardrobe w
+            join fetch w.user u
+            left join fetch c.styleTags st
+            left join fetch st.style
+            where w.id = :wardrobeId
+              and wc.deletedAt is null
+            """)
+    List<WardrobeClothes> findAllByWardrobeId(@Param("wardrobeId") Long wardrobeId);
 }

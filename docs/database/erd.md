@@ -1,7 +1,7 @@
 ---
 doc_type: be_database
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-03
+last_updated: 2026-06-02
 erd_version: v2.1
 ---
 
@@ -113,6 +113,41 @@ erd_version: v2.1
 | `disliked_at` | 추천 싫어요 시점 |
 | `excluded` | 추천 제외 여부 |
 | `excluded_at` | 추천 제외 시점 |
+
+### `USERS` (프로필)
+
+| 컬럼 | 의미 |
+| --- | --- |
+| `profile_bio` | 프로필 소개 문구 |
+| `external_link_url` | 대표 외부 링크 URL (단일) |
+
+### `SOCIAL_ACCOUNTS`
+
+| 컬럼 | 의미 |
+| --- | --- |
+| `created_at` | OAuth 계정 최초 연결 시각 |
+| `last_login_at` | 마지막 로그인 시각 |
+
+`updated_at`은 ERD에 없으며 BE `SocialAccount` 엔티티에도 매핑하지 않습니다.
+
+### `USER_EXTERNAL_LINKS`
+
+| 컬럼 | 의미 |
+| --- | --- |
+| `link_type` | 링크 유형 코드 |
+| `title` | 표시 제목 |
+| `url` | 외부 URL |
+| `sort_order` | 프로필 노출 순서 |
+
+## BE 구현 범위 (ERD v2.1 명칭 정합)
+
+| 대상 | BE 엔티티 | 비고 |
+| --- | --- | --- |
+| `USERS` | `User` | `profile_bio`, `external_link_url` 매핑 완료 |
+| `SOCIAL_ACCOUNTS` | `SocialAccount` | `created_at` + `last_login_at`만 매핑 |
+| `USER_EXTERNAL_LINKS` | `UserExternalLink` | 엔티티·Repository만. **마이페이지 CRUD API는 후속 (USER-002)** |
+| `FEED_*`, `USER_FOLLOWS` | 미구현 | 엔티티 셸 또는 없음. 룩피드 도메인 후속 |
+| `RECOMMENDATION_FEEDBACKS` | 미구현 | 추천 피드백 도메인 후속 |
 
 ## 데이터 보존 기준
 
