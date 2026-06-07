@@ -16,10 +16,10 @@ import java.util.Set;
  */
 public final class ItemTypeCompatibilityTable {
 
-    public static final double GOOD  = 1.0;
-    public static final double SOSO  = 0.5;
-    public static final double CLASH = 0.3;
-    public static final double NEUTRAL = 0.7;
+    public static final double GOOD    = 1.0;
+    public static final double SOSO    = 0.7;  // 명시된 보통 조합
+    public static final double NEUTRAL = 0.5;  // unknown
+    public static final double CLASH   = 0.3;
 
     private enum CohesionGroup {
         CASUAL, SMART, FORMAL, ATHLETIC, STREET, OUTDOOR, SUMMER, WINTER
