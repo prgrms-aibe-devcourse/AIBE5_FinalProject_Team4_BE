@@ -152,7 +152,33 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | --- | --- | --- |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/similar-products` | 유사 상품 추천 조회 |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 보유 옷 기준 추천 조회 |
-| GET | `/api/v1/recommendations/{wardrobeId}` | 취향 기반 상품 추천 |
+| GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
+
+#### 취향 기반 상품 추천 응답 (RecommendResponse)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "title": "상품명",
+      "link": "https://...",
+      "imageUrl": "https://...",
+      "price": "0",
+      "score": "0.95",
+      "reason": "Style Match: 0.9, Weather Match: 1.0"
+    }
+  ],
+  "message": null
+}
+```
+
+> **Note**: 현재 `price`는 placeholder("0")이며, `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
+
+### 날씨
+
+| Method | Path | 설명 |
+| --- | --- | --- |
 | GET | `/api/weather` | 날씨 정보 조회 |
 
 ### 코디북/코디
