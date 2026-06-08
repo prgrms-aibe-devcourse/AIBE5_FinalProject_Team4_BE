@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.outfit.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -33,5 +34,6 @@ public class OutfitUpdateRequest {
 
     private Boolean favorite = Boolean.FALSE;
 
+    @Valid
     private List<OutfitItemRequest> items = new ArrayList<>();
 }

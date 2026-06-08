@@ -2,8 +2,9 @@ package com.closetnangam.be.domain.outfit.dto.request;
 
 import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitBook;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size; // 이걸 추가해줘
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -37,6 +38,7 @@ public class OutfitCreateRequest {
 
     private Boolean favorite = Boolean.FALSE;
 
+    @Valid
     private List<OutfitItemRequest> items = new ArrayList<>();
 
     public Outfit toEntity(OutfitBook outfitBook) {
