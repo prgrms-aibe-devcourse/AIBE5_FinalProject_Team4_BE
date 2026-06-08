@@ -120,13 +120,97 @@ public class OotdRecommendationService {
                 .map(wc -> {
                     double weatherScore = WeatherCompatibilityTable.getWeatherScore(temp, wc.getClothes().getItemType());
                     double favoriteWeight = wc.getFavorite() ? 1.5 : 1.0;
-                    
                     double styleScore = 0.0;
                     // 의상의 스타일 태그들 중 유저 선호 스타일과 일치하는 최대 combined_weight 반영
                     List<String> itemStyleCodes = wc.getClothes().getSortedStyleTags().stream()
                             .map(st -> st.getStyle().getCode())
                             .toList();
-                    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     for (String code : itemStyleCodes) {
                         Integer weight = styleWeights.get(code);
                         if (weight != null) {

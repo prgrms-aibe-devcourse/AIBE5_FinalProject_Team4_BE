@@ -159,28 +159,44 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 
 ```json
 {
-  "combinations": [
-    {
-      "top": {
-        "id": 1,
-        "name": "상의 이름",
-        "brand": "브랜드",
-        "color": "BLACK",
-        "imageUrl": "https://...",
-        "externalProductUrl": "https://...",
-        "category": "TOP",
-        "itemType": "SHORT_SLEEVE",
-        "favorite": true
-      },
-      "bottom": { ... },
-      "outer": { ... },
-      "totalScore": 2.5
-    }
-  ],
-  "weatherLabel": "오늘 20°C — 얇은 셔츠·면바지 추천",
-  "currentTemp": 20.0
+  "success": true,
+  "data": {
+    "combinations": [
+      {
+        "top": {
+          "id": 1,
+          "name": "상의 이름",
+          "brand": "브랜드",
+          "color": "BLACK",
+          "imageUrl": "https://...",
+          "externalProductUrl": "https://...",
+          "category": "TOP",
+          "itemType": "SHORT_SLEEVE",
+          "favorite": true
+        },
+        "bottom": {
+          "id": 2,
+          "name": "하의 이름",
+          "brand": "브랜드",
+          "color": "BLUE",
+          "imageUrl": "https://...",
+          "externalProductUrl": "https://...",
+          "category": "BOTTOM",
+          "itemType": "DENIM",
+          "favorite": false
+        },
+        "outer": null,
+        "totalScore": 2.5
+      }
+    ],
+    "weatherLabel": "오늘 20°C — 얇은 셔츠·면바지 추천",
+    "currentTemp": 20.0
+  },
+  "message": null
 }
 ```
+
+> **Note**: `outer` 필드는 기온에 따라 외투가 필요 없는 경우(HOT, WARM) `null`로 반환됩니다.
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 
