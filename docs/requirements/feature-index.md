@@ -29,7 +29,7 @@ last_updated: 2026-06-08
 | CLOTH-006 | 옷 | 미보유 옷 조회 | 미보유 옷 목록 및 즐겨찾기 조회 | `GET /api/users/{userId}/wishlist-clothes`                                | 옷장 미보유 탭 |
 | CLOTH-007 | 옷 | 미보유에서 보유 전환 | 구매한 관심 상품을 보유 옷으로 전환 | `PATCH /api/clothes/{clothesId}/convert-to-owned`                         | 옷 상세 |
 | REG-001 | 옷 등록 | 사진 기반 등록 | 사용자가 옷 사진을 올리고 AI 분석 결과를 바탕으로 옷 등록 | `/api/v1/users/{userId}/clothes/photos/**`, `PHOTO`                       | 옷 등록 |
-| REG-002 | 옷 등록 | 구매내역 기반 등록 | 구매내역 캡처 이미지를 분석해 옷 후보를 만들고 저장 | `/api/v1/users/{userId}/clothes/purchase-captures/**`, `PURCHASE_HISTORY` | 옷 등록 |
+| REG-002 | 옷 등록 | 구매내역 기반 등록 | 구매내역 캡처를 분석해 복수 상품 후보(`items[]`)를 만들고 `itemIndex`별 저장·건너뛰기로 순차 등록 | `POST .../purchase-captures`, `.../analyze`, `.../draft`, `.../save`, `.../items/{itemIndex}/skip`, `PURCHASE_HISTORY` | 옷 등록 |
 | REG-003 | 옷 등록 | 외부 쇼핑몰 상품 저장 | 외부 쇼핑몰 상품 정보를 공통 옷 정보로 저장 | `POST /api/v1/external/clothes/naver`, `EXTERNAL_SHOPPING`                | 추천 상세, 외부 검색 |
 | CATALOG-001 | 카탈로그 | 카테고리/타입/색상/스타일 조회 | 옷 등록과 필터에 필요한 기준값 제공 | `GET /api/v1/categories`                                                  | 옷 등록, 필터 |
 | RECO-001 | 추천 | 추천 메인 | 메인 페이지를 추천 중심 화면으로 사용 | 추천 도메인                                                                    | 추천 메인 |

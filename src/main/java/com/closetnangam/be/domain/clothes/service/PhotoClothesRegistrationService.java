@@ -5,6 +5,7 @@ import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
 import com.closetnangam.be.domain.ai.repository.ClothingAiPhotoRepository;
 import com.closetnangam.be.domain.clothes.dto.request.PhotoClothesSaveRequest;
 import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
+import com.closetnangam.be.domain.clothes.helper.WardrobeDuplicateGuard;
 import com.closetnangam.be.domain.clothes.dto.response.PhotoClothesDraftResponse;
 import com.closetnangam.be.domain.clothes.dto.response.PhotoClothesRegistrationResponse;
 import com.closetnangam.be.domain.clothes.dto.response.PhotoUploadResponse;
@@ -39,6 +40,7 @@ public class PhotoClothesRegistrationService {
     private final ClothesRepository clothesRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final ClothesTagHelper clothesTagHelper;
+    private final WardrobeDuplicateGuard wardrobeDuplicateGuard;
     private final WardrobeService wardrobeService;
     private final UserRepository userRepository;
     private final LocalImageStorageService localImageStorageService;
@@ -91,6 +93,16 @@ public class PhotoClothesRegistrationService {
         if (photo.isAlreadySaved()) {
             throw new IllegalStateException("이미 저장된 사진입니다.");
         }
+
+        wardrobeDuplicateGuard.rejectIfAlreadyInWardrobe(
+                userId,
+                request.brandName(),
+                request.name(),
+                request.category(),
+                request.itemType(),
+                request.primaryColor(),
+                request.productCode()
+        );
 
         Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
 

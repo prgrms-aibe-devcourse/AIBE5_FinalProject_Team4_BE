@@ -7,6 +7,7 @@ public record PurchaseCaptureRegistrationResponse(
         Long wardrobeClothesId,
         Long clothesId,
         Long captureId,
+        int itemIndex,
         String userImageUrl,
         OwnershipStatus ownershipStatus,
         ClothesInfoSource clothesInfoSource,
@@ -14,6 +15,8 @@ public record PurchaseCaptureRegistrationResponse(
         String size,
         String season,
         Boolean favorite,
+        int pendingItemCount,
+        boolean captureCompleted,
         ClothesResponse clothes
 ) {
 }
