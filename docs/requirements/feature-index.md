@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-03
+last_updated: 2026-06-08
 ---
 
 # 기능 인덱스
@@ -37,7 +37,7 @@ last_updated: 2026-06-03
 | RECO-003 | 추천 | 유사 상품 추천 | 선택한 옷과 유사한 상품 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/similar-products`         | 옷 상세, 추천 상세 |
 | RECO-004 | 추천 | 보유 옷 기준 상품 추천 | 보유 옷과 어울리는 상의/하의/아우터/신발 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations`          | 추천 상세 |
 | RECO-005 | 추천 | 날씨/계절/지역 기반 추천 | 사용자 지역과 날씨 정보를 추천에 반영 | `GET /api/weather`                                                        | 추천 메인 |
-| RECO-006 | 추천 | AI MD 추천 | 추천 이유와 스타일링 설명을 AI가 생성 | Gemini 연동                                                                 | 추천 상세 |
+| RECO-006 | 추천 | AI MD 추천 | 사용자 성별에 맞는 AI MD가 보유 옷과 외부 상품 후보를 바탕으로 상품 또는 저장 가능한 코디를 추천 | `GET /api/v1/users/{userId}/recommendations/ai-md/personas`, `GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products`, `POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits`, `OUTFITS`, `OUTFIT_ITEMS`, Gemini, 네이버쇼핑 | 추천 상세, 코디북 |
 | RECO-007 | 추천 | 추천 싫어요/제외 | 비선호 상품에 피드백을 남기고 추천에서 제외 | `RECOMMENDATION_FEEDBACKS`                                                | 추천 상세 |
 | OUTFIT-001 | 코디북 | 사용자별 단일 코디북 | 회원마다 1개의 코디북 생성 및 관리 | `OUTFIT_BOOKS`, `/api/v1/outfit-books`                                    | 코디북 |
 | OUTFIT-002 | 코디 | 코디 저장/조회 | 추천받거나 직접 구성한 코디를 저장하고 조회 | `OUTFITS`, `OUTFIT_ITEMS`                                                 | 코디북, 코디 상세 |

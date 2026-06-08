@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-03
+last_updated: 2026-06-08
 ---
 
 # API 계약
@@ -153,6 +153,9 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/similar-products` | 유사 상품 추천 조회 |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 보유 옷 기준 추천 조회 |
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
+| GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 사용자 성별에 맞는 AI MD 목록 조회 |
+| GET | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/products` | 선택한 AI MD 기준 외부 상품 추천 |
+| POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 추천 및 저장 |
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 
@@ -174,6 +177,114 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 ```
 
 > **Note**: 현재 `price`는 placeholder("0")이며, `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
+
+#### AI MD 목록 응답 (AiMdPersonaResponse)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "taesik",
+      "name": "태식이",
+      "gender": "MALE",
+      "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
+      "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
+      "speechStyle": "가볍고 친구같은 말투",
+      "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
+    }
+  ],
+  "message": null
+}
+```
+
+> **Note**: AI MD 목록은 JWT 사용자와 path의 `userId`가 일치해야 조회할 수 있으며, 사용자 성별에 맞는 MD만 반환합니다. 남성 사용자는 `taesik`, `junsik`, 여성 사용자는 `sesoon`, `gahyun`, `seongmi`를 선택할 수 있습니다.
+
+#### AI MD 상품 추천 응답 (AiMdProductRecommendationResponse)
+
+```json
+{
+  "success": true,
+  "data": {
+    "md": {
+      "id": "taesik",
+      "name": "태식이",
+      "gender": "MALE",
+      "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
+      "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
+      "speechStyle": "가볍고 친구같은 말투",
+      "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
+    },
+    "query": "남성 블랙 스트릿 코디 아이템",
+    "products": [
+      {
+        "product": {
+          "title": "상품명",
+          "link": "https://...",
+          "image": "https://...",
+          "lowestPrice": 59000,
+          "highestPrice": null,
+          "mallName": "쇼핑몰명",
+          "productId": "123",
+          "productType": "1",
+          "brand": "브랜드",
+          "maker": "제조사",
+          "category1": "패션의류",
+          "category2": "남성의류",
+          "category3": "티셔츠",
+          "category4": ""
+        },
+        "reason": "MD 말투가 반영된 추천 이유"
+      }
+    ]
+  },
+  "message": null
+}
+```
+
+> **Note**: 상품 추천은 사용자 보유 옷과 MD 스타일을 기반으로 네이버쇼핑 후보를 조회한 뒤 Gemini가 최대 10개 상품과 추천 이유를 선별합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
+
+#### AI MD 코디 추천 및 저장 응답 (AiMdOutfitRecommendationResponse)
+
+```json
+{
+  "success": true,
+  "data": {
+    "md": {
+      "id": "taesik",
+      "name": "태식이",
+      "gender": "MALE",
+      "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
+      "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
+      "speechStyle": "가볍고 친구같은 말투",
+      "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
+    },
+    "outfits": [
+      {
+        "outfit": {
+          "outfitId": 1,
+          "outfitBookId": 1,
+          "title": "코디 제목",
+          "description": "코디 설명",
+          "thumbnailUrl": "https://...",
+          "situation": "DAILY",
+          "season": "ALL_SEASON",
+          "favorite": false,
+          "createdAt": "2026-06-08T12:00:00",
+          "updatedAt": "2026-06-08T12:00:00"
+        },
+        "reason": "MD 말투가 반영된 코디 추천 이유",
+        "stylingTip": "스타일링 팁",
+        "ownedItems": [],
+        "externalItems": []
+      }
+    ]
+  },
+  "message": null
+}
+```
+
+> **Note**: 코디 추천은 Gemini가 4개 코디를 구성하고 즉시 `OUTFITS`, `OUTFIT_ITEMS`에 저장합니다. 각 코디는 보유 옷을 최소 1개 포함해야 하며, 외부 상품은 필요할 때만 `EXTERNAL_SHOPPING` 옷 정보로 저장해 코디에 연결합니다.
 
 ### 날씨
 

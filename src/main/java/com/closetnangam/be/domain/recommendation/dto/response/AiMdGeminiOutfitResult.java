@@ -25,5 +25,13 @@ public record AiMdGeminiOutfitResult(
             List<Long> wardrobeClothesIds,
             List<String> externalProductIds
     ) {
+        public OutfitCandidate {
+            /*
+             * Gemini는 선택 필드를 생략하거나 null로 반환할 수 있다.
+             * 코디는 보유 옷만으로도 유효하므로, 외부 상품 목록은 서비스 저장 단계에서 빈 컬렉션처럼 다루도록 정규화한다.
+             */
+            wardrobeClothesIds = wardrobeClothesIds == null ? List.of() : wardrobeClothesIds;
+            externalProductIds = externalProductIds == null ? List.of() : externalProductIds;
+        }
     }
 }
