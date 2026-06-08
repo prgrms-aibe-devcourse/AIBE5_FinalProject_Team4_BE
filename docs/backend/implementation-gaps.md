@@ -1,7 +1,7 @@
 ---
 doc_type: be_implementation_gaps
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-03
+last_updated: 2026-06-08
 ---
 
 # BE 구현 정합성 현황
@@ -35,6 +35,7 @@ last_updated: 2026-06-03
 | 추천 동점 처리 | 보유 옷 기준 추천 API가 점수 내림차순으로만 정렬하고 동점 그룹 랜덤 처리는 하지 않음 | 같은 점수 그룹 안에서는 랜덤 노출 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | 이미지 저장 방식 | 현재 이미지 업로드/조회 구현은 로컬 파일 저장소와 `/api/v1/images/**` 조회 endpoint를 사용 | 운영 기준은 AWS S3 저장과 이미지 URL 관리 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md) |
 | 추천 응답 형식 | `RECO-002` 추천 응답의 `price`는 "0" 고정, `score`는 0~1 문자열, `reason`은 기술적 매칭 결과 반환 | 실제 가격, 백분율 점수, 사용자 친화적 자연어 추천 이유 제공 | [api-contract.md](../api/api-contract.md), [home-recommendation.md](../features/home-recommendation.md) |
+| AI MD 추천 검증 범위 | `RECO-006` API는 구현되어 있으나 Gemini 응답 변형과 저장 롤백 경로에 대한 직접 테스트가 부족 | AI 응답 null/누락 필드, 보유 옷만 포함한 코디, 외부 상품 혼합 코디를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | 개발/임시 API 경계 | local mock token API와 임시 `/login` endpoint가 코드에 존재 | 공식 서비스 API는 [api-contract.md](../api/api-contract.md)의 엔드포인트 인덱스를 기준으로 판단 | [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) |
 
 ## Feature ID 연결표
@@ -46,6 +47,7 @@ last_updated: 2026-06-03
 | `RECO-004` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 그룹 랜덤 노출 기준 반영 여부 확인 필요 |
 | `EXT-002` | 이미지 저장과 조회 | `LocalImageStorageService`, `ImageController`, `StorageProperties` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md) | 현재 로컬 저장소 기반. 운영 기준인 AWS S3 전환 여부 확인 필요 |
 | `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [api-contract.md](../api/api-contract.md), [home-recommendation.md](../features/home-recommendation.md) | `price` placeholder("0"), 0~1 점수 형식, 기술적 추천 이유 제공. 기준 문서와 응답 형식 차이 존재 |
+| `RECO-006` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 상품 추천, 코디 추천/저장 구현. Gemini 응답 변형과 저장 실패 경로에 대한 직접 테스트 보강 필요 |
 | 개발/임시 API | `GET /api/v1/auth/mock-token`, `GET /login` | `MockAuthController`, `WeatherController` | [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) | 공식 사용자 기능으로 보지 않음. local 또는 임시 개발 경계 확인 필요 |
 
 ## BE 코드와 공식 기준 확인 필요
@@ -153,6 +155,35 @@ FE는 이 응답을 UI에 그대로 노출하기보다는, 아래와 같은 처�
 
 향후 실제 가격 데이터 연동 및 자연어 추천 생성 로직이 도입될 때 이 gap을 해소할 예정입니다.
 
+### `RECO-006` AI MD 추천 검증 범위
+
+AI MD 추천 API는 사용자 성별에 맞는 MD 목록 조회, MD별 상품 추천, MD별 코디 후보 추천, 선택 코디 저장을 제공합니다.
+
+```text
+src/main/java/com/closetnangam/be/domain/recommendation/controller/RecommendationController.java
+- GET /api/v1/users/{userId}/recommendations/ai-md/personas
+- GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products
+- POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits
+- POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save
+
+src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendationService.java
+- Gemini 응답을 기반으로 상품 추천 10개 구성
+- Gemini 응답을 기반으로 저장 전 코디 후보 4개 구성
+- 사용자가 선택한 코디 후보 1개 저장
+- 코디별 보유 옷 최소 1개 포함 검증
+```
+
+현재 구현은 외부 상품을 선택하지 않은 보유 옷 단독 코디도 유효한 응답으로 처리합니다. Gemini가 `externalProductIds`를 생략하거나 null로 반환해도 빈 목록으로 정규화합니다.
+
+다만 이 기능은 Gemini와 네이버쇼핑 응답을 조합하는 흐름이라, 아래 경로는 서비스 단위 테스트로 고정할 필요가 있습니다.
+
+- `externalProductIds`가 null이거나 생략된 코디 후보 추천 및 선택 저장
+- 외부 상품을 1개 이상 포함한 코디 후보 선택 저장
+- Gemini가 4개 미만 코디를 반환했을 때 실패 처리
+- Gemini가 존재하지 않는 `wardrobeClothesId` 또는 `productId`를 반환했을 때 필터링/검증 처리
+
+해당 테스트가 추가되기 전까지는 로컬/CI의 Spring context 테스트와 수동 API 테스트만으로 동작을 확인한 상태로 봅니다.
+
 ### 개발/임시 API와 공식 API 계약 경계
 
 현재 BE 코드에는 공식 API 계약에 포함하지 않은 개발 또는 임시 성격의 엔드포인트가 있습니다.
@@ -181,7 +212,8 @@ AI 코드리뷰 또는 API 문서 검토 시 공식 서비스 API 여부는 [api
 | 3 | `RECO-004` 동점 랜덤 노출 | 현재 제공 추천 API의 노출 순서와 추천 정책 기준에 영향 |
 | 4 | `EXT-002` 이미지 저장 방식 | 운영 저장소 기준과 현재 로컬 저장 구현 차이에 영향 |
 | 5 | `RECO-002` 추천 응답 형식 | FE 추천 UI의 데이터 표시 및 해석 방식에 직접 영향 |
-| 6 | 개발/임시 API 경계 | AI와 FE가 local/mock endpoint를 공식 서비스 API로 오해할 가능성 |
+| 6 | `RECO-006` AI MD 추천 검증 범위 | Gemini 응답 변형과 코디 저장 롤백 경로에 영향 |
+| 7 | 개발/임시 API 경계 | AI와 FE가 local/mock endpoint를 공식 서비스 API로 오해할 가능성 |
 
 ## 문서 변경 기준
 

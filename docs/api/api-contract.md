@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-03
+last_updated: 2026-06-08
 ---
 
 # API 계약
@@ -169,6 +169,10 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/similar-products` | 유사 상품 추천 조회 |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 보유 옷 기준 추천 조회 |
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
+| GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 사용자 성별에 맞는 AI MD 목록 조회 |
+| GET | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/products` | 선택한 AI MD 기준 외부 상품 추천 |
+| POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
+| POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save` | 선택한 AI MD 코디 후보 저장 |
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 
@@ -191,6 +195,123 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 
 > **Note**: 현재 `price`는 placeholder("0")이며, `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
 
+#### AI MD 목록 응답 (AiMdPersonaResponse)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "taesik",
+      "name": "태식이",
+      "gender": "MALE",
+      "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
+      "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
+      "speechStyle": "가볍고 친구같은 말투",
+      "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
+    }
+  ],
+  "message": null
+}
+```
+
+> **Note**: AI MD 목록은 JWT 사용자와 path의 `userId`가 일치해야 조회할 수 있으며, 사용자 성별에 맞는 MD만 반환합니다. 남성 사용자는 `taesik`, `junsik`, 여성 사용자는 `sesoon`, `gahyun`, `seongmi`를 선택할 수 있습니다.
+
+#### AI MD 상품 추천 응답 (AiMdProductRecommendationResponse)
+
+```json
+{
+  "success": true,
+  "data": {
+    "md": {
+      "id": "taesik",
+      "name": "태식이",
+      "gender": "MALE",
+      "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
+      "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
+      "speechStyle": "가볍고 친구같은 말투",
+      "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
+    },
+    "query": "남성 블랙 스트릿 코디 아이템",
+    "products": [
+      {
+        "product": {
+          "title": "상품명",
+          "link": "https://...",
+          "image": "https://...",
+          "lowestPrice": 59000,
+          "highestPrice": null,
+          "mallName": "쇼핑몰명",
+          "productId": "123",
+          "productType": "1",
+          "brand": "브랜드",
+          "maker": "제조사",
+          "category1": "패션의류",
+          "category2": "남성의류",
+          "category3": "티셔츠",
+          "category4": ""
+        },
+        "reason": "MD 말투가 반영된 추천 이유"
+      }
+    ]
+  },
+  "message": null
+}
+```
+
+> **Note**: 상품 추천은 사용자 보유 옷과 MD 스타일을 기반으로 네이버쇼핑 후보를 조회한 뒤 Gemini가 최대 10개 상품과 추천 이유를 선별합니다. 이 단계에서는 저장하지 않습니다. 사용자가 상품 카드에서 저장 버튼을 누르면 `POST /api/users/{userId}/wishlist-clothes`로 미보유 옷을 저장합니다. 유사 상품 추천 결과도 같은 저장 API를 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
+
+#### AI MD 코디 추천 응답 (AiMdOutfitRecommendationResponse)
+
+```json
+{
+  "success": true,
+  "data": {
+    "md": {
+      "id": "taesik",
+      "name": "태식이",
+      "gender": "MALE",
+      "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
+      "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
+      "speechStyle": "가볍고 친구같은 말투",
+      "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
+    },
+    "outfits": [
+      {
+        "title": "코디 제목",
+        "description": "코디 설명",
+        "situation": "DAILY",
+        "season": "ALL_SEASON",
+        "reason": "MD 말투가 반영된 코디 추천 이유",
+        "stylingTip": "스타일링 팁",
+        "ownedItems": [],
+        "externalProducts": []
+      }
+    ]
+  },
+  "message": null
+}
+```
+
+> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 보유 옷을 최소 1개 포함해야 합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
+
+#### AI MD 추천 코디 저장 요청/응답
+
+```json
+{
+  "title": "코디 제목",
+  "description": "코디 설명",
+  "situation": "DAILY",
+  "season": "ALL_SEASON",
+  "reason": "MD 말투가 반영된 코디 추천 이유",
+  "stylingTip": "스타일링 팁",
+  "wardrobeClothesIds": [1],
+  "externalProducts": []
+}
+```
+
+저장 성공 시에는 선택된 코디 1개가 `OUTFITS`, `OUTFIT_ITEMS`에 저장되고, 응답은 저장된 `outfit`과 구성 옷 목록을 포함합니다. 저장된 구성 옷은 코디북 조회 응답의 `outfits[].items`에서도 다시 조회할 수 있습니다.
+
 ### 날씨
 
 | Method | Path | 설명 |
@@ -205,6 +326,52 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 | GET | `/api/v1/outfit-books` | 코디북 목록 조회 |
 | GET | `/api/v1/outfit-books/{bookId}` | 코디북 상세 조회 |
 | POST | `/api/v1/outfit-books/{bookId}/outfits` | 코디 저장 |
+
+#### 코디북 조회 응답 (OutfitBookResponse)
+
+```json
+{
+  "success": true,
+  "data": {
+    "outfitBookId": 1,
+    "userId": 1,
+    "outfitCount": 1,
+    "outfits": [
+      {
+        "outfitId": 1,
+        "outfitBookId": 1,
+        "title": "코디 제목",
+        "description": "코디 설명",
+        "thumbnailUrl": "https://...",
+        "situation": "DAILY",
+        "season": "ALL_SEASON",
+        "favorite": false,
+        "items": [
+          {
+            "outfitItemId": 1,
+            "itemRole": "TOP",
+            "layerOrder": 0,
+            "clothes": {
+              "clothesId": 1,
+              "wardrobeClothesId": 1,
+              "name": "보유 옷 또는 외부 상품명",
+              "brandName": "브랜드명",
+              "clothesInfoSource": "PHOTO"
+            }
+          }
+        ],
+        "createdAt": "2026-06-08T12:00:00",
+        "updatedAt": "2026-06-08T12:00:00"
+      }
+    ],
+    "createdAt": null,
+    "updatedAt": null
+  },
+  "message": null
+}
+```
+
+> **Note**: `items[].clothes`가 사용자 옷장에 연결된 보유 옷이면 `wardrobeClothesId`, `wardrobeId`, `userId`, `size`, `season` 등이 함께 채워집니다. AI MD가 섞은 외부 상품처럼 옷장 연결이 없는 옷은 해당 필드가 `null`입니다.
 
 ### 이미지
 
