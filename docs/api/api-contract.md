@@ -155,7 +155,8 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 사용자 성별에 맞는 AI MD 목록 조회 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/products` | 선택한 AI MD 기준 외부 상품 추천 |
-| POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 추천 및 저장 |
+| POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
+| POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save` | 선택한 AI MD 코디 후보 저장 |
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 
@@ -242,9 +243,9 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 }
 ```
 
-> **Note**: 상품 추천은 사용자 보유 옷과 MD 스타일을 기반으로 네이버쇼핑 후보를 조회한 뒤 Gemini가 최대 10개 상품과 추천 이유를 선별합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
+> **Note**: 상품 추천은 사용자 보유 옷과 MD 스타일을 기반으로 네이버쇼핑 후보를 조회한 뒤 Gemini가 최대 10개 상품과 추천 이유를 선별합니다. 이 단계에서는 저장하지 않습니다. 사용자가 상품 카드에서 저장 버튼을 누르면 `POST /api/users/{userId}/wishlist-clothes`로 미보유 옷을 저장합니다. 유사 상품 추천 결과도 같은 저장 API를 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
 
-#### AI MD 코디 추천 및 저장 응답 (AiMdOutfitRecommendationResponse)
+#### AI MD 코디 추천 응답 (AiMdOutfitRecommendationResponse)
 
 ```json
 {
@@ -261,36 +262,14 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
     },
     "outfits": [
       {
-        "outfit": {
-          "outfitId": 1,
-          "outfitBookId": 1,
-          "title": "코디 제목",
-          "description": "코디 설명",
-          "thumbnailUrl": "https://...",
-          "situation": "DAILY",
-          "season": "ALL_SEASON",
-          "favorite": false,
-          "items": [
-            {
-              "outfitItemId": 1,
-              "itemRole": "TOP",
-              "layerOrder": 0,
-              "clothes": {
-                "clothesId": 1,
-                "wardrobeClothesId": 1,
-                "name": "보유 옷 또는 외부 상품명",
-                "brandName": "브랜드명",
-                "clothesInfoSource": "PHOTO"
-              }
-            }
-          ],
-          "createdAt": "2026-06-08T12:00:00",
-          "updatedAt": "2026-06-08T12:00:00"
-        },
+        "title": "코디 제목",
+        "description": "코디 설명",
+        "situation": "DAILY",
+        "season": "ALL_SEASON",
         "reason": "MD 말투가 반영된 코디 추천 이유",
         "stylingTip": "스타일링 팁",
         "ownedItems": [],
-        "externalItems": []
+        "externalProducts": []
       }
     ]
   },
@@ -298,7 +277,24 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 }
 ```
 
-> **Note**: 코디 추천은 Gemini가 4개 코디를 구성하고 즉시 `OUTFITS`, `OUTFIT_ITEMS`에 저장합니다. 각 코디는 보유 옷을 최소 1개 포함해야 하며, 외부 상품은 필요할 때만 `EXTERNAL_SHOPPING` 옷 정보로 저장해 코디에 연결합니다. 저장된 구성 옷은 코디북 조회 응답의 `outfits[].items`에서도 다시 조회할 수 있습니다.
+> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 보유 옷을 최소 1개 포함해야 합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
+
+#### AI MD 추천 코디 저장 요청/응답
+
+```json
+{
+  "title": "코디 제목",
+  "description": "코디 설명",
+  "situation": "DAILY",
+  "season": "ALL_SEASON",
+  "reason": "MD 말투가 반영된 코디 추천 이유",
+  "stylingTip": "스타일링 팁",
+  "wardrobeClothesIds": [1],
+  "externalProducts": []
+}
+```
+
+저장 성공 시에는 선택된 코디 1개가 `OUTFITS`, `OUTFIT_ITEMS`에 저장되고, 응답은 저장된 `outfit`과 구성 옷 목록을 포함합니다. 저장된 구성 옷은 코디북 조회 응답의 `outfits[].items`에서도 다시 조회할 수 있습니다.
 
 ### 날씨
 

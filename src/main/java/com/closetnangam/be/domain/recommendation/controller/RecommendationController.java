@@ -1,6 +1,8 @@
 package com.closetnangam.be.domain.recommendation.controller;
 
+import com.closetnangam.be.domain.recommendation.dto.request.AiMdOutfitSaveRequest;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdOutfitRecommendationResponse;
+import com.closetnangam.be.domain.recommendation.dto.response.AiMdOutfitRecommendationResponse.SavedOutfitRecommendation;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdPersonaResponse;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse;
 import com.closetnangam.be.domain.recommendation.dto.response.SimilarProductRecommendationResponse;
@@ -10,12 +12,14 @@ import com.closetnangam.be.global.auth.util.SecurityUtils;
 import com.closetnangam.be.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -64,8 +68,8 @@ public class RecommendationController {
     }
 
     @Operation(
-            summary = "AI MD 코디 추천 및 저장",
-            description = "선택한 AI MD가 Gemini로 코디 4개를 구성하고 코디북에 저장합니다."
+            summary = "AI MD 코디 추천",
+            description = "선택한 AI MD가 Gemini로 코디 후보 4개를 구성합니다. 이 단계에서는 저장하지 않습니다."
     )
     @PostMapping("/users/{userId}/recommendations/ai-md/{mdId}/outfits")
     public ResponseEntity<ApiResponse<AiMdOutfitRecommendationResponse>> recommendAiMdOutfits(
@@ -74,6 +78,20 @@ public class RecommendationController {
     ) {
         SecurityUtils.verifyUserIdMatch(userId);
         return ResponseEntity.ok(ApiResponse.ok(aiMdRecommendationService.recommendOutfits(userId, mdId)));
+    }
+
+    @Operation(
+            summary = "AI MD 추천 코디 저장",
+            description = "AI MD가 추천한 코디 후보 중 사용자가 선택한 1개 코디를 코디북에 저장합니다."
+    )
+    @PostMapping("/users/{userId}/recommendations/ai-md/{mdId}/outfits/save")
+    public ResponseEntity<ApiResponse<SavedOutfitRecommendation>> saveAiMdOutfit(
+            @PathVariable Long userId,
+            @PathVariable String mdId,
+            @Valid @RequestBody AiMdOutfitSaveRequest request
+    ) {
+        SecurityUtils.verifyUserIdMatch(userId);
+        return ResponseEntity.ok(ApiResponse.ok(aiMdRecommendationService.saveRecommendedOutfit(userId, mdId, request)));
     }
 
     @Operation(

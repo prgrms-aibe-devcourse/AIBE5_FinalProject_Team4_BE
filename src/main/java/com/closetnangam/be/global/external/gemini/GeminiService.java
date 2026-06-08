@@ -184,18 +184,18 @@ public class GeminiService {
         try {
             root = objectMapper.readTree(responseBody);
         } catch (Exception exception) {
-            throw new IllegalStateException("AI 응답을 해석하지 못했습니다.");
+            throw new ExternalApiException("AI 응답을 해석하지 못했습니다.", exception);
         }
 
         JsonNode textNode = root.path("candidates").path(0).path("content").path("parts").path(0).path("text");
         if (textNode.isMissingNode() || textNode.asText().isBlank()) {
-            throw new IllegalStateException("AI 응답을 해석할 수 없습니다.");
+            throw new ExternalApiException("AI 응답을 해석할 수 없습니다.");
         }
 
         try {
             return objectMapper.readValue(textNode.asText(), resultType);
         } catch (Exception exception) {
-            throw new IllegalStateException("AI 응답을 해석하지 못했습니다.");
+            throw new ExternalApiException("AI 응답을 해석하지 못했습니다.", exception);
         }
     }
 }

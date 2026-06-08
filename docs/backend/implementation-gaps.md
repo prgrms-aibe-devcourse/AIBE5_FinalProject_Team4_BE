@@ -157,17 +157,19 @@ FE는 이 응답을 UI에 그대로 노출하기보다는, 아래와 같은 처�
 
 ### `RECO-006` AI MD 추천 검증 범위
 
-AI MD 추천 API는 사용자 성별에 맞는 MD 목록 조회, MD별 상품 추천, MD별 코디 추천 및 저장을 제공합니다.
+AI MD 추천 API는 사용자 성별에 맞는 MD 목록 조회, MD별 상품 추천, MD별 코디 후보 추천, 선택 코디 저장을 제공합니다.
 
 ```text
 src/main/java/com/closetnangam/be/domain/recommendation/controller/RecommendationController.java
 - GET /api/v1/users/{userId}/recommendations/ai-md/personas
 - GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products
 - POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits
+- POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save
 
 src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendationService.java
 - Gemini 응답을 기반으로 상품 추천 10개 구성
-- Gemini 응답을 기반으로 코디 4개 저장
+- Gemini 응답을 기반으로 저장 전 코디 후보 4개 구성
+- 사용자가 선택한 코디 후보 1개 저장
 - 코디별 보유 옷 최소 1개 포함 검증
 ```
 
@@ -175,8 +177,8 @@ src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendati
 
 다만 이 기능은 Gemini와 네이버쇼핑 응답을 조합하는 흐름이라, 아래 경로는 서비스 단위 테스트로 고정할 필요가 있습니다.
 
-- `externalProductIds`가 null이거나 생략된 코디 저장
-- 외부 상품을 1개 이상 포함한 코디 저장
+- `externalProductIds`가 null이거나 생략된 코디 후보 추천 및 선택 저장
+- 외부 상품을 1개 이상 포함한 코디 후보 선택 저장
 - Gemini가 4개 미만 코디를 반환했을 때 실패 처리
 - Gemini가 존재하지 않는 `wardrobeClothesId` 또는 `productId`를 반환했을 때 필터링/검증 처리
 

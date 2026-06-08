@@ -20,9 +20,11 @@ import com.closetnangam.be.domain.outfit.entity.OutfitItem;
 import com.closetnangam.be.domain.outfit.repository.OutfitBookRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitItemRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitRepository;
+import com.closetnangam.be.domain.recommendation.dto.request.AiMdOutfitSaveRequest;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdGeminiOutfitResult;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdGeminiProductResult;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdOutfitRecommendationResponse;
+import com.closetnangam.be.domain.recommendation.dto.response.AiMdOutfitRecommendationResponse.OutfitRecommendation;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdOutfitRecommendationResponse.SavedOutfitRecommendation;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdPersonaResponse;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse;
@@ -90,25 +92,63 @@ public class AiMdRecommendationService {
                 AiMdGeminiOutfitResult.class
         );
 
-        List<AiMdGeminiOutfitResult.OutfitCandidate> validOutfits = validOutfits(aiResult);
-        if (validOutfits.size() < OUTFIT_COUNT) {
-            throw new IllegalStateException("AI MD가 저장 가능한 코디 4개를 구성하지 못했습니다.");
-        }
-
-        OutfitBook outfitBook = outfitBookRepository.findByUser_Id(userId)
-                .orElseGet(() -> outfitBookRepository.save(OutfitBook.create(user)));
         Map<Long, WardrobeClothes> wardrobeById = wardrobeItems.stream()
                 .collect(Collectors.toMap(WardrobeClothes::getId, Function.identity(), (left, right) -> left));
         Map<String, NaverShoppingProductResponse> productById = externalProducts.stream()
                 .filter(product -> StringUtils.hasText(product.productId()))
                 .collect(Collectors.toMap(NaverShoppingProductResponse::productId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
 
-        List<SavedOutfitRecommendation> savedOutfits = validOutfits.stream()
-                .limit(OUTFIT_COUNT)
-                .map(candidate -> saveOutfitRecommendation(persona, outfitBook, candidate, wardrobeById, productById))
+        List<AiMdGeminiOutfitResult.OutfitCandidate> savableOutfits = savableOutfits(aiResult, wardrobeById);
+        if (savableOutfits.size() < OUTFIT_COUNT) {
+            throw new IllegalStateException("AI MD가 저장 가능한 코디 4개를 구성하지 못했습니다.");
+        }
+
+        /*
+         * 추천 조회 단계에서는 DB에 아무것도 저장하지 않는다.
+         * 사용자가 마음에 드는 코디를 선택하고 저장 버튼을 눌렀을 때만 saveRecommendedOutfit에서 저장한다.
+         */
+        List<OutfitRecommendation> outfitRecommendations = savableOutfits.stream()
+                .map(candidate -> toOutfitRecommendation(persona, candidate, wardrobeById, productById))
                 .toList();
 
-        return new AiMdOutfitRecommendationResponse(persona.toResponse(), savedOutfits);
+        return new AiMdOutfitRecommendationResponse(persona.toResponse(), outfitRecommendations);
+    }
+
+    @Transactional
+    public SavedOutfitRecommendation saveRecommendedOutfit(Long userId, String mdId, AiMdOutfitSaveRequest request) {
+        User user = findUser(userId);
+        AiMdPersona persona = resolvePersonaForUser(user, mdId);
+        List<WardrobeClothes> wardrobeItems = findOwnedWardrobeItems(userId);
+        Map<Long, WardrobeClothes> wardrobeById = wardrobeItems.stream()
+                .collect(Collectors.toMap(WardrobeClothes::getId, Function.identity(), (left, right) -> left));
+
+        List<WardrobeClothes> ownedItems = request.wardrobeClothesIds().stream()
+                .map(wardrobeById::get)
+                .filter(Objects::nonNull)
+                .toList();
+        if (ownedItems.isEmpty()) {
+            throw new IllegalArgumentException("저장할 코디에는 보유 옷이 최소 1개 포함되어야 합니다.");
+        }
+
+        OutfitBook outfitBook = outfitBookRepository.findByUser_Id(userId)
+                .orElseGet(() -> outfitBookRepository.save(OutfitBook.create(user)));
+        List<NaverShoppingProductResponse> externalProducts = request.externalProducts() == null
+                ? List.of()
+                : request.externalProducts().stream()
+                        .filter(Objects::nonNull)
+                        .toList();
+        return saveOutfitRecommendation(
+                persona,
+                outfitBook,
+                request.title(),
+                request.description(),
+                request.situation(),
+                request.season(),
+                request.reason(),
+                request.stylingTip(),
+                ownedItems,
+                externalProducts
+        );
     }
 
     public AiMdProductRecommendationResponse recommendProducts(Long userId, String mdId) {
@@ -154,6 +194,61 @@ public class AiMdRecommendationService {
     private SavedOutfitRecommendation saveOutfitRecommendation(
             AiMdPersona persona,
             OutfitBook outfitBook,
+            String title,
+            String description,
+            String situation,
+            String season,
+            String reason,
+            String stylingTip,
+            List<WardrobeClothes> ownedItems,
+            List<NaverShoppingProductResponse> externalProducts
+    ) {
+        /*
+         * 이 메서드는 사용자가 저장 버튼을 누른 뒤에만 호출된다.
+         * 추천 조회 단계에서는 Outfit/OutfitItem/외부 Clothes를 만들지 않아 사용자가 원하지 않는 코디가 저장되지 않는다.
+         */
+        if (ownedItems.isEmpty()) {
+            throw new IllegalStateException("AI MD가 보유 옷을 포함하지 않은 코디를 반환했습니다.");
+        }
+        List<Clothes> externalClothes = externalProducts.stream()
+                .map(product -> getOrCreateExternalClothes(persona, product))
+                .toList();
+
+        Outfit outfit = outfitRepository.save(Outfit.builder()
+                .outfitBook(outfitBook)
+                .title(defaultIfBlank(title, persona.displayName() + " MD 추천 코디"))
+                .description(defaultIfBlank(description, defaultIfBlank(reason, persona.description())))
+                .thumbnailUrl(resolveThumbnailUrl(ownedItems, externalProducts))
+                .situation(defaultIfBlank(situation, "DAILY"))
+                .season(defaultIfBlank(season, resolveSeason(ownedItems)))
+                .favorite(false)
+                .build());
+
+        List<OutfitItem> outfitItems = new ArrayList<>();
+        int layerOrder = 0;
+        for (WardrobeClothes ownedItem : ownedItems) {
+            outfitItems.add(toOutfitItem(outfit, ownedItem.getClothes(), layerOrder++));
+        }
+        for (Clothes externalItem : externalClothes) {
+            outfitItems.add(toOutfitItem(outfit, externalItem, layerOrder++));
+        }
+        outfitItemRepository.saveAll(outfitItems);
+
+        return new SavedOutfitRecommendation(
+                OutfitResponse.from(outfit),
+                defaultIfBlank(reason, persona.description()),
+                defaultIfBlank(stylingTip, persona.speechStyle()),
+                ownedItems.stream()
+                        .map(item -> ClothesResponse.from(item.getClothes(), item))
+                        .toList(),
+                externalClothes.stream()
+                        .map(ClothesResponse::from)
+                        .toList()
+        );
+    }
+
+    private OutfitRecommendation toOutfitRecommendation(
+            AiMdPersona persona,
             AiMdGeminiOutfitResult.OutfitCandidate candidate,
             Map<Long, WardrobeClothes> wardrobeById,
             Map<String, NaverShoppingProductResponse> productById
@@ -170,39 +265,17 @@ public class AiMdRecommendationService {
                 .filter(Objects::nonNull)
                 .toList();
 
-        Outfit outfit = outfitRepository.save(Outfit.builder()
-                .outfitBook(outfitBook)
-                .title(defaultIfBlank(candidate.title(), persona.displayName() + " MD 추천 코디"))
-                .description(defaultIfBlank(candidate.description(), candidate.reason()))
-                .thumbnailUrl(resolveThumbnailUrl(ownedItems, externalProducts))
-                .situation(defaultIfBlank(candidate.situation(), "DAILY"))
-                .season(defaultIfBlank(candidate.season(), resolveSeason(ownedItems)))
-                .favorite(false)
-                .build());
-
-        List<Clothes> externalClothes = externalProducts.stream()
-                .map(product -> getOrCreateExternalClothes(persona, product))
-                .toList();
-        List<OutfitItem> outfitItems = new ArrayList<>();
-        int layerOrder = 0;
-        for (WardrobeClothes ownedItem : ownedItems) {
-            outfitItems.add(toOutfitItem(outfit, ownedItem.getClothes(), layerOrder++));
-        }
-        for (Clothes externalItem : externalClothes) {
-            outfitItems.add(toOutfitItem(outfit, externalItem, layerOrder++));
-        }
-        outfitItemRepository.saveAll(outfitItems);
-
-        return new SavedOutfitRecommendation(
-                OutfitResponse.from(outfit),
+        return new OutfitRecommendation(
+                defaultIfBlank(candidate.title(), persona.displayName() + " MD 추천 코디"),
+                defaultIfBlank(candidate.description(), candidate.reason()),
+                defaultIfBlank(candidate.situation(), "DAILY"),
+                defaultIfBlank(candidate.season(), resolveSeason(ownedItems)),
                 defaultIfBlank(candidate.reason(), persona.description()),
                 defaultIfBlank(candidate.stylingTip(), persona.speechStyle()),
                 ownedItems.stream()
                         .map(item -> ClothesResponse.from(item.getClothes(), item))
                         .toList(),
-                externalClothes.stream()
-                        .map(ClothesResponse::from)
-                        .toList()
+                externalProducts
         );
     }
 
@@ -295,12 +368,20 @@ public class AiMdRecommendationService {
         return wardrobeItems;
     }
 
-    private List<AiMdGeminiOutfitResult.OutfitCandidate> validOutfits(AiMdGeminiOutfitResult aiResult) {
+    private List<AiMdGeminiOutfitResult.OutfitCandidate> savableOutfits(
+            AiMdGeminiOutfitResult aiResult,
+            Map<Long, WardrobeClothes> wardrobeById
+    ) {
         if (aiResult == null || aiResult.outfits() == null) {
             return List.of();
         }
+        /*
+         * Gemini가 반환한 wardrobeClothesId는 외부 입력이므로 raw id 존재 여부만 믿지 않는다.
+         * 실제 현재 사용자 옷장에 매핑되는 보유 옷이 1개 이상 남는 후보만 저장 가능 후보로 확정한다.
+         */
         return aiResult.outfits().stream()
-                .filter(outfit -> outfit.wardrobeClothesIds() != null && !outfit.wardrobeClothesIds().isEmpty())
+                .filter(outfit -> outfit.wardrobeClothesIds().stream().anyMatch(wardrobeById::containsKey))
+                .limit(OUTFIT_COUNT)
                 .toList();
     }
 
