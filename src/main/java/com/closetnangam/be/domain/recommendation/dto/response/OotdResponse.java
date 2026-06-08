@@ -20,7 +20,8 @@ public record OotdResponse(
 
     @Builder
     public record OotdItemResponse(
-            Long id,
+            Long clothesId,
+            Long wardrobeClothesId,
             String name,
             String brand,
             String color,

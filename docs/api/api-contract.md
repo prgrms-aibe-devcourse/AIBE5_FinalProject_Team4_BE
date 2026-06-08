@@ -164,7 +164,8 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
     "combinations": [
       {
         "top": {
-          "id": 1,
+          "clothesId": 101,
+          "wardrobeClothesId": 1,
           "name": "상의 이름",
           "brand": "브랜드",
           "color": "BLACK",
@@ -175,7 +176,8 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
           "favorite": true
         },
         "bottom": {
-          "id": 2,
+          "clothesId": 102,
+          "wardrobeClothesId": 2,
           "name": "하의 이름",
           "brand": "브랜드",
           "color": "BLUE",

@@ -1,6 +1,4 @@
 package com.closetnangam.be.domain.recommendation.service;
-
-import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
@@ -125,92 +123,6 @@ public class OotdRecommendationService {
                     List<String> itemStyleCodes = wc.getClothes().getSortedStyleTags().stream()
                             .map(st -> st.getStyle().getCode())
                             .toList();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                     for (String code : itemStyleCodes) {
                         Integer weight = styleWeights.get(code);
                         if (weight != null) {
@@ -234,7 +146,8 @@ public class OotdRecommendationService {
                 .orElse(null);
 
         return OotdResponse.OotdItemResponse.builder()
-                .id(wc.getId())
+                .clothesId(c.getId())
+                .wardrobeClothesId(wc.getId())
                 .name(c.getName())
                 .brand(c.getBrandName())
                 .color(primaryColor)
