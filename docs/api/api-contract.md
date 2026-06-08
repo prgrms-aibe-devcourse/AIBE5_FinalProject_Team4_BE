@@ -270,6 +270,20 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
           "situation": "DAILY",
           "season": "ALL_SEASON",
           "favorite": false,
+          "items": [
+            {
+              "outfitItemId": 1,
+              "itemRole": "TOP",
+              "layerOrder": 0,
+              "clothes": {
+                "clothesId": 1,
+                "wardrobeClothesId": 1,
+                "name": "보유 옷 또는 외부 상품명",
+                "brandName": "브랜드명",
+                "clothesInfoSource": "PHOTO"
+              }
+            }
+          ],
           "createdAt": "2026-06-08T12:00:00",
           "updatedAt": "2026-06-08T12:00:00"
         },
@@ -284,7 +298,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 }
 ```
 
-> **Note**: 코디 추천은 Gemini가 4개 코디를 구성하고 즉시 `OUTFITS`, `OUTFIT_ITEMS`에 저장합니다. 각 코디는 보유 옷을 최소 1개 포함해야 하며, 외부 상품은 필요할 때만 `EXTERNAL_SHOPPING` 옷 정보로 저장해 코디에 연결합니다.
+> **Note**: 코디 추천은 Gemini가 4개 코디를 구성하고 즉시 `OUTFITS`, `OUTFIT_ITEMS`에 저장합니다. 각 코디는 보유 옷을 최소 1개 포함해야 하며, 외부 상품은 필요할 때만 `EXTERNAL_SHOPPING` 옷 정보로 저장해 코디에 연결합니다. 저장된 구성 옷은 코디북 조회 응답의 `outfits[].items`에서도 다시 조회할 수 있습니다.
 
 ### 날씨
 
@@ -300,6 +314,52 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | GET | `/api/v1/outfit-books` | 코디북 목록 조회 |
 | GET | `/api/v1/outfit-books/{bookId}` | 코디북 상세 조회 |
 | POST | `/api/v1/outfit-books/{bookId}/outfits` | 코디 저장 |
+
+#### 코디북 조회 응답 (OutfitBookResponse)
+
+```json
+{
+  "success": true,
+  "data": {
+    "outfitBookId": 1,
+    "userId": 1,
+    "outfitCount": 1,
+    "outfits": [
+      {
+        "outfitId": 1,
+        "outfitBookId": 1,
+        "title": "코디 제목",
+        "description": "코디 설명",
+        "thumbnailUrl": "https://...",
+        "situation": "DAILY",
+        "season": "ALL_SEASON",
+        "favorite": false,
+        "items": [
+          {
+            "outfitItemId": 1,
+            "itemRole": "TOP",
+            "layerOrder": 0,
+            "clothes": {
+              "clothesId": 1,
+              "wardrobeClothesId": 1,
+              "name": "보유 옷 또는 외부 상품명",
+              "brandName": "브랜드명",
+              "clothesInfoSource": "PHOTO"
+            }
+          }
+        ],
+        "createdAt": "2026-06-08T12:00:00",
+        "updatedAt": "2026-06-08T12:00:00"
+      }
+    ],
+    "createdAt": null,
+    "updatedAt": null
+  },
+  "message": null
+}
+```
+
+> **Note**: `items[].clothes`가 사용자 옷장에 연결된 보유 옷이면 `wardrobeClothesId`, `wardrobeId`, `userId`, `size`, `season` 등이 함께 채워집니다. AI MD가 섞은 외부 상품처럼 옷장 연결이 없는 옷은 해당 필드가 `null`입니다.
 
 ### 이미지
 

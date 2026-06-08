@@ -88,6 +88,25 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
     );
 
     /**
+     * 저장된 코디 구성 옷을 응답으로 복원할 때, 사용자 옷장에 실제로 연결된 보유 옷 정보를 함께 채우기 위한 조회.
+     *
+     * 외부 쇼핑 상품처럼 사용자 옷장에 연결되지 않은 Clothes는 이 결과에 포함되지 않는다.
+     */
+    @Query("""
+            select distinct wc from WardrobeClothes wc
+            join fetch wc.clothes c
+            join fetch wc.wardrobe w
+            join fetch w.user
+            where c.id in :clothesIds
+              and w.user.id = :userId
+              and wc.deletedAt is null
+            """)
+    List<WardrobeClothes> findAllByClothesIdsAndUserId(
+            @Param("clothesIds") List<Long> clothesIds,
+            @Param("userId") Long userId
+    );
+
+    /**
      * 추천 후보 조회: 특정 사용자의 보유 옷 중 기준 옷과 다른 카테고리인 항목만 반환합니다.
      *
      * <p><b>fetch 전략</b><br>

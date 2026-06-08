@@ -2,6 +2,7 @@ package com.closetnangam.be.global.external.gemini;
 
 import com.closetnangam.be.global.external.gemini.dto.GeminiClothingClassificationResult;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureExtractionResult;
+import com.closetnangam.be.global.common.exception.ExternalApiException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -154,7 +155,7 @@ public class GeminiService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             return parseJsonResult(response.getBody(), resultType);
         } catch (RestClientException exception) {
-            throw new IllegalStateException(resolveApiFailureMessage(exception), exception);
+            throw new ExternalApiException(resolveApiFailureMessage(exception), exception);
         }
     }
 
