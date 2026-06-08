@@ -61,7 +61,7 @@ public class OutfitService {
         Outfit outfit = outfitRepository.save(request.toEntity(outfitBook));
 
         if (request.getItems() != null && !request.getItems().isEmpty()) {
-            saveOutfitItems(outfit, request.getItems());
+            saveOutfitItems(outfit, userId, request.getItems());
         }
 
         return OutfitResponse.from(outfit);
@@ -72,7 +72,7 @@ public class OutfitService {
         outfitBookRepository.findByIdAndUserId(bookId, userId)
                 .orElseThrow(() -> new EntityNotFoundException("코디북을 찾을 수 없습니다."));
 
-        Outfit outfit = outfitRepository.findByOutfitIdAndOutfitBook_Id(outfitId, bookId)
+        Outfit outfit = outfitRepository.findActiveByOutfitIdAndOutfitBook_Id(outfitId, bookId)
                 .orElseThrow(() -> new EntityNotFoundException("코디를 찾을 수 없습니다."));
 
         outfit.update(
@@ -86,7 +86,7 @@ public class OutfitService {
 
         outfitItemRepository.deleteAllByOutfit_OutfitId(outfitId);
         if (request.getItems() != null && !request.getItems().isEmpty()) {
-            saveOutfitItems(outfit, request.getItems());
+            saveOutfitItems(outfit, userId, request.getItems());
         }
 
         return OutfitResponse.from(outfit);
@@ -97,25 +97,26 @@ public class OutfitService {
         outfitBookRepository.findByIdAndUserId(bookId, userId)
                 .orElseThrow(() -> new EntityNotFoundException("코디북을 찾을 수 없습니다."));
 
-        Outfit outfit = outfitRepository.findByOutfitIdAndOutfitBook_Id(outfitId, bookId)
+        Outfit outfit = outfitRepository.findActiveByOutfitIdAndOutfitBook_Id(outfitId, bookId)
                 .orElseThrow(() -> new EntityNotFoundException("코디를 찾을 수 없습니다."));
 
         outfit.softDelete();
     }
 
-    private void saveOutfitItems(Outfit outfit, List<OutfitItemRequest> itemRequests) {
+    private void saveOutfitItems(Outfit outfit, Long userId, List<OutfitItemRequest> itemRequests) {
         List<Long> clothesIds = itemRequests.stream()
                 .map(OutfitItemRequest::getClothesId)
                 .toList();
 
-        Map<Long, Clothes> clothesMap = clothesRepository.findAllById(clothesIds).stream()
-                .collect(Collectors.toMap(Clothes::getId, c -> c));
+        Map<Long, Clothes> clothesMap = wardrobeClothesRepository.findAllByClothesIdsAndUserId(clothesIds, userId).stream()
+                .map(WardrobeClothes::getClothes)
+                .collect(Collectors.toMap(Clothes::getId, c -> c, (first, second) -> first));
 
         List<OutfitItem> items = itemRequests.stream()
                 .map(itemRequest -> {
                     Clothes clothes = clothesMap.get(itemRequest.getClothesId());
                     if (clothes == null) {
-                        throw new EntityNotFoundException("옷을 찾을 수 없습니다. ID: " + itemRequest.getClothesId());
+                        throw new EntityNotFoundException("사용자 옷장에서 옷을 찾을 수 없습니다. ID: " + itemRequest.getClothesId());
                     }
                     return OutfitItem.builder()
                             .outfit(outfit)

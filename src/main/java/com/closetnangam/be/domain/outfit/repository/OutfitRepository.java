@@ -21,5 +21,12 @@ public interface OutfitRepository extends JpaRepository<Outfit, Long> {
             """)
     List<Outfit> findAllByOutfitBookId(@Param("bookId") Long bookId);
 
-    Optional<Outfit> findByOutfitIdAndOutfitBook_Id(Long outfitId, Long bookId);
+    @Query("""
+            select o
+            from Outfit o
+            where o.outfitId = :outfitId
+              and o.outfitBook.id = :bookId
+              and o.deletedAt is null
+            """)
+    Optional<Outfit> findActiveByOutfitIdAndOutfitBook_Id(@Param("outfitId") Long outfitId, @Param("bookId") Long bookId);
 }
