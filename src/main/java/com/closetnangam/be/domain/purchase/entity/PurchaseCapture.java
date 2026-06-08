@@ -1,8 +1,12 @@
 package com.closetnangam.be.domain.purchase.entity;
 
 import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
+import com.closetnangam.be.domain.purchase.enums.PurchaseCaptureItemStatus;
+import com.closetnangam.be.domain.purchase.support.PurchaseCaptureDraftSupport;
+import com.closetnangam.be.domain.purchase.support.PurchaseCaptureDraftSupport.ItemProgressEntry;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.global.common.entity.BaseEntity;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,6 +22,9 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Entity
 @Getter
@@ -83,6 +90,9 @@ public class PurchaseCapture extends BaseEntity {
     @Column(name = "draft_items_json", columnDefinition = "TEXT")
     private String draftItemsJson;
 
+    @Column(name = "item_progress_json", columnDefinition = "TEXT")
+    private String itemProgressJson;
+
     @Column(name = "raw_ai_response", columnDefinition = "TEXT")
     private String rawAiResponse;
 
@@ -139,6 +149,7 @@ public class PurchaseCapture extends BaseEntity {
         this.draftOptionText = draftOptionText;
         this.draftExternalSource = draftExternalSource;
         this.draftItemsJson = draftItemsJson;
+        this.itemProgressJson = null;
         this.rawAiResponse = rawAiResponse;
     }
 
@@ -148,13 +159,55 @@ public class PurchaseCapture extends BaseEntity {
         this.rawAiResponse = rawAiResponse;
     }
 
-    public void markSaved(Long clothesId, Long wardrobeClothesId) {
-        this.analysisStatus = AiAnalysisStatus.SAVED;
-        this.savedClothesId = clothesId;
-        this.savedWardrobeClothesId = wardrobeClothesId;
+    public void markItemSaved(int itemIndex, Long clothesId, Long wardrobeClothesId, ObjectMapper objectMapper) {
+        Map<String, ItemProgressEntry> progress = new LinkedHashMap<>(
+                PurchaseCaptureDraftSupport.parseProgress(itemProgressJson, objectMapper)
+        );
+        progress.put(String.valueOf(itemIndex), new ItemProgressEntry(
+                PurchaseCaptureItemStatus.SAVED,
+                clothesId,
+                wardrobeClothesId
+        ));
+        this.itemProgressJson = PurchaseCaptureDraftSupport.toProgressJson(progress, objectMapper);
+        if (this.savedClothesId == null) {
+            this.savedClothesId = clothesId;
+            this.savedWardrobeClothesId = wardrobeClothesId;
+        }
+        refreshCaptureStatus(objectMapper);
     }
 
-    public boolean isAlreadySaved() {
+    public void markItemSkipped(int itemIndex, ObjectMapper objectMapper) {
+        Map<String, ItemProgressEntry> progress = new LinkedHashMap<>(
+                PurchaseCaptureDraftSupport.parseProgress(itemProgressJson, objectMapper)
+        );
+        progress.put(String.valueOf(itemIndex), new ItemProgressEntry(
+                PurchaseCaptureItemStatus.SKIPPED,
+                null,
+                null
+        ));
+        this.itemProgressJson = PurchaseCaptureDraftSupport.toProgressJson(progress, objectMapper);
+        refreshCaptureStatus(objectMapper);
+    }
+
+    public boolean isFullyProcessed() {
         return analysisStatus == AiAnalysisStatus.SAVED;
+    }
+
+    public boolean hasAnyProcessedItem(ObjectMapper objectMapper) {
+        return PurchaseCaptureDraftSupport.hasAnyProcessedItem(
+                PurchaseCaptureDraftSupport.parseProgress(itemProgressJson, objectMapper)
+        );
+    }
+
+    private void refreshCaptureStatus(ObjectMapper objectMapper) {
+        int itemCount = PurchaseCaptureDraftSupport.parseRegistrableItems(draftItemsJson, objectMapper).size();
+        if (itemCount <= 0) {
+            return;
+        }
+        Map<String, ItemProgressEntry> progress =
+                PurchaseCaptureDraftSupport.parseProgress(itemProgressJson, objectMapper);
+        if (PurchaseCaptureDraftSupport.isAllItemsProcessed(progress, itemCount)) {
+            this.analysisStatus = AiAnalysisStatus.SAVED;
+        }
     }
 }

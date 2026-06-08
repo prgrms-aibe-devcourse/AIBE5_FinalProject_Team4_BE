@@ -1,7 +1,9 @@
 package com.closetnangam.be.domain.purchase.dto.request;
 
 import com.closetnangam.be.domain.catalog.constants.CatalogLimits;
+import com.closetnangam.be.global.common.validation.ValidationPatterns;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -23,6 +25,7 @@ public record PurchaseCaptureSaveRequest(
         @Size(max = 50) String season,
         @NotNull Boolean favorite,
         @NotNull Boolean isVerified,
-        @Min(0) Integer itemIndex
+        @NotNull @Min(0) Integer itemIndex,
+        @Size(max = 500) @Pattern(regexp = ValidationPatterns.STORED_IMAGE_URL) String imageUrl
 ) {
 }

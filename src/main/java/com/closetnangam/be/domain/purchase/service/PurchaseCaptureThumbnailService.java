@@ -25,6 +25,9 @@ public class PurchaseCaptureThumbnailService {
 
     private static final Logger log = LoggerFactory.getLogger(PurchaseCaptureThumbnailService.class);
     private static final int MIN_CROP_SIZE = 8;
+    /** 이보다 작으면 확대 시 깨져 보이므로 크롭 대신 캡처 URL fallback을 사용합니다. */
+    private static final int MIN_USEFUL_CROP_PX = 96;
+    private static final double REGION_PADDING_RATIO = 0.12;
 
     private final LocalImageStorageService localImageStorageService;
     private final StorageProperties storageProperties;
@@ -39,15 +42,22 @@ public class PurchaseCaptureThumbnailService {
 
     /**
      * 복수 상품 캡처에서 주문 행별 썸네일을 잘라 items[].imageUrl로 제공합니다.
+     *
+     * @param layoutItems AI가 추출한 전체 주문 행(반품 포함). 등록 가능 상품이 1개만 남아도 화면 행 위치 추정에 사용합니다.
      */
     public List<GeminiPurchaseCaptureItem> enrichWithItemThumbnails(
             Long userId,
             Long captureId,
             String captureImageUrl,
             String storedPath,
-            List<GeminiPurchaseCaptureItem> items
+            List<GeminiPurchaseCaptureItem> items,
+            List<GeminiPurchaseCaptureItem> layoutItems
     ) {
-        if (items.size() <= 1) {
+        if (items.isEmpty()) {
+            return items;
+        }
+        // 등록 가능 상품이 1개뿐이면 작은 썸네일 크롭 대신 캡처 원본 미리보기를 사용합니다.
+        if (items.size() == 1) {
             return items;
         }
 
@@ -58,16 +68,19 @@ public class PurchaseCaptureThumbnailService {
             return items;
         }
 
+        int layoutRowCount = layoutItems == null || layoutItems.isEmpty() ? items.size() : layoutItems.size();
         List<GeminiPurchaseCaptureItem> enriched = new ArrayList<>(items.size());
         for (int index = 0; index < items.size(); index++) {
             GeminiPurchaseCaptureItem item = items.get(index);
+            int layoutRowIndex = resolveLayoutRowIndex(item, layoutItems, index);
             String imageUrl = resolveItemSpecificImageUrl(
                     item,
                     captureImageUrl,
                     userId,
                     captureId,
                     index,
-                    items.size(),
+                    layoutRowIndex,
+                    layoutRowCount,
                     sourceImage
             );
             enriched.add(copyItem(item, imageUrl));
@@ -81,7 +94,8 @@ public class PurchaseCaptureThumbnailService {
             Long userId,
             Long captureId,
             int itemIndex,
-            int itemCount,
+            int layoutRowIndex,
+            int layoutRowCount,
             BufferedImage sourceImage
     ) {
         if (isDistinctItemImage(item.imageUrl(), captureImageUrl)) {
@@ -91,7 +105,7 @@ public class PurchaseCaptureThumbnailService {
         GeminiThumbnailRegion region = item.thumbnailRegion();
         boolean estimated = false;
         if (region == null || !region.isValid()) {
-            region = GeminiThumbnailRegion.estimateForOrderRow(itemIndex, itemCount);
+            region = GeminiThumbnailRegion.estimateForOrderRow(layoutRowIndex, layoutRowCount);
             estimated = region != null;
         }
         if (region == null || !region.isValid()) {
@@ -116,6 +130,38 @@ public class PurchaseCaptureThumbnailService {
         return croppedUrl;
     }
 
+    private static int resolveLayoutRowIndex(
+            GeminiPurchaseCaptureItem item,
+            List<GeminiPurchaseCaptureItem> layoutItems,
+            int fallbackIndex
+    ) {
+        if (layoutItems == null || layoutItems.isEmpty()) {
+            return fallbackIndex;
+        }
+        for (int index = 0; index < layoutItems.size(); index++) {
+            if (matchesLayoutRow(layoutItems.get(index), item)) {
+                return index;
+            }
+        }
+        return fallbackIndex;
+    }
+
+    private static boolean matchesLayoutRow(GeminiPurchaseCaptureItem layoutItem, GeminiPurchaseCaptureItem item) {
+        if (layoutItem == item) {
+            return true;
+        }
+        return StringUtils.hasText(layoutItem.name())
+                && layoutItem.name().equals(item.name())
+                && java.util.Objects.equals(
+                normalize(layoutItem.optionText()),
+                normalize(item.optionText())
+        );
+    }
+
+    private static String normalize(String value) {
+        return value == null ? "" : value.trim();
+    }
+
     private String cropAndStore(
             Long userId,
             Long captureId,
@@ -124,8 +170,22 @@ public class PurchaseCaptureThumbnailService {
             GeminiThumbnailRegion region
     ) {
         try {
-            CropRectangle crop = toPixelRectangle(region, sourceImage.getWidth(), sourceImage.getHeight());
+            CropRectangle crop = padCropRectangle(
+                    toPixelRectangle(region, sourceImage.getWidth(), sourceImage.getHeight()),
+                    sourceImage.getWidth(),
+                    sourceImage.getHeight()
+            );
             if (crop.width() < MIN_CROP_SIZE || crop.height() < MIN_CROP_SIZE) {
+                return null;
+            }
+            if (crop.width() < MIN_USEFUL_CROP_PX || crop.height() < MIN_USEFUL_CROP_PX) {
+                log.info(
+                        "[구매내역AI] 썸네일 영역이 너무 작아 크롭을 생략합니다. captureId={}, itemIndex={}, size={}x{}",
+                        captureId,
+                        itemIndex,
+                        crop.width(),
+                        crop.height()
+                );
                 return null;
             }
             BufferedImage cropped = sourceImage.getSubimage(crop.x(), crop.y(), crop.width(), crop.height());
@@ -153,6 +213,16 @@ public class PurchaseCaptureThumbnailService {
             );
             return null;
         }
+    }
+
+    static CropRectangle padCropRectangle(CropRectangle crop, int imageWidth, int imageHeight) {
+        int padX = (int) Math.round(crop.width() * REGION_PADDING_RATIO);
+        int padY = (int) Math.round(crop.height() * REGION_PADDING_RATIO);
+        int x = clamp(crop.x() - padX, 0, Math.max(imageWidth - 1, 0));
+        int y = clamp(crop.y() - padY, 0, Math.max(imageHeight - 1, 0));
+        int right = clamp(crop.x() + crop.width() + padX, x + 1, imageWidth);
+        int bottom = clamp(crop.y() + crop.height() + padY, y + 1, imageHeight);
+        return new CropRectangle(x, y, right - x, bottom - y);
     }
 
     static CropRectangle toPixelRectangle(GeminiThumbnailRegion region, int imageWidth, int imageHeight) {

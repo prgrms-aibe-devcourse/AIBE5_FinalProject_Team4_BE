@@ -19,6 +19,8 @@ public record PurchaseCaptureAnalyzeResponse(
         List<String> styles,
         String optionText,
         String suggestedExternalSource,
-        List<PurchaseCaptureItemDraft> items
+        List<PurchaseCaptureItemDraft> items,
+        int pendingItemCount,
+        boolean captureCompleted
 ) {
 }

@@ -34,7 +34,7 @@ public record GeminiThumbnailRegion(
         double rowHeight = usableHeight / itemCount;
         double rowTop = topMargin + rowHeight * itemIndex;
         double rowBottom = rowTop + rowHeight;
-        double thumbSize = Math.min(0.14, rowHeight * 0.75);
+        double thumbSize = Math.min(0.11, rowHeight * 0.55);
         double xMin = 0.035;
         double yCenter = (rowTop + rowBottom) / 2.0;
         double yMin = yCenter - thumbSize / 2.0;

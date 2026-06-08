@@ -149,4 +149,44 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
               and wc.deletedAt is null
             """)
     List<WardrobeClothes> findAllByWardrobeId(@Param("wardrobeId") Long wardrobeId);
+
+    @Query("""
+            select case when count(wc) > 0 then true else false end
+            from WardrobeClothes wc
+            join wc.clothes c
+            join wc.wardrobe w
+            where w.user.id = :userId
+              and wc.deletedAt is null
+              and c.productCode = :productCode
+            """)
+    boolean existsActiveByUserIdAndProductCode(
+            @Param("userId") Long userId,
+            @Param("productCode") String productCode
+    );
+
+    @Query("""
+            select case when count(wc) > 0 then true else false end
+            from WardrobeClothes wc
+            join wc.clothes c
+            join wc.wardrobe w
+            join c.colorTags cc
+            where w.user.id = :userId
+              and wc.deletedAt is null
+              and wc.ownershipStatus = :ownershipStatus
+              and lower(c.brandName) = lower(:brandName)
+              and lower(c.name) = lower(:name)
+              and c.category = :category
+              and c.itemType = :itemType
+              and cc.colorRole = com.closetnangam.be.domain.clothes.enums.ColorRole.PRIMARY
+              and cc.colorCode = :primaryColor
+            """)
+    boolean existsActiveByUserIdAndIdentity(
+            @Param("userId") Long userId,
+            @Param("brandName") String brandName,
+            @Param("name") String name,
+            @Param("category") String category,
+            @Param("itemType") String itemType,
+            @Param("primaryColor") String primaryColor,
+            @Param("ownershipStatus") OwnershipStatus ownershipStatus
+    );
 }

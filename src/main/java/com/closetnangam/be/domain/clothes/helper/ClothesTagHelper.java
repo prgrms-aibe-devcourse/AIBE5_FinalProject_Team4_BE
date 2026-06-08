@@ -8,10 +8,13 @@ import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.StyleRole;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -23,6 +26,9 @@ public class ClothesTagHelper {
 
     private final StyleRepository styleRepository;
     private final CategoryCatalogService categoryCatalogService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public void validateClassification(
             String category,
@@ -45,7 +51,13 @@ public class ClothesTagHelper {
     }
 
     public void replaceColorTags(Clothes clothes, String primaryColor, List<String> secondaryColors) {
-        clothes.replaceColorTags(buildColorTags(clothes, primaryColor, secondaryColors));
+        List<String> normalizedSecondary = secondaryColors != null ? secondaryColors : List.of();
+        if (hasSameColorTags(clothes, primaryColor, normalizedSecondary)) {
+            return;
+        }
+        clothes.replaceColorTags(Collections.emptyList());
+        entityManager.flush();
+        applyColorTags(clothes, primaryColor, normalizedSecondary);
     }
 
     public void applyStyleTags(Clothes clothes, List<String> styleCodes) {
@@ -53,7 +65,45 @@ public class ClothesTagHelper {
     }
 
     public void replaceStyleTags(Clothes clothes, List<String> styleCodes) {
-        clothes.replaceStyleTags(buildStyleTags(clothes, styleCodes));
+        if (hasSameStyleCodes(clothes, styleCodes)) {
+            return;
+        }
+        clothes.replaceStyleTags(Collections.emptyList());
+        entityManager.flush();
+        applyStyleTags(clothes, styleCodes);
+    }
+
+    private boolean hasSameStyleCodes(Clothes clothes, List<String> styleCodes) {
+        List<String> current = clothes.getSortedStyleTags().stream()
+                .map(tag -> tag.getStyle().getCode())
+                .toList();
+        return current.equals(styleCodes);
+    }
+
+    private boolean hasSameColorTags(
+            Clothes clothes,
+            String primaryColor,
+            List<String> secondaryColors
+    ) {
+        List<ClothingColor> sorted = clothes.getSortedColorTags();
+        if (sorted.isEmpty()) {
+            return false;
+        }
+
+        String currentPrimary = sorted.stream()
+                .filter(color -> ColorRole.PRIMARY.equals(color.getColorRole()))
+                .map(ClothingColor::getColorCode)
+                .findFirst()
+                .orElse(null);
+        if (!primaryColor.equals(currentPrimary)) {
+            return false;
+        }
+
+        List<String> currentSecondary = sorted.stream()
+                .filter(color -> ColorRole.SECONDARY.equals(color.getColorRole()))
+                .map(ClothingColor::getColorCode)
+                .toList();
+        return currentSecondary.equals(secondaryColors);
     }
 
     private List<ClothingColor> buildColorTags(

@@ -1,9 +1,12 @@
 package com.closetnangam.be.domain.purchase.dto.response;
 
+import com.closetnangam.be.domain.purchase.enums.PurchaseCaptureItemStatus;
+
 import java.util.List;
 
 public record PurchaseCaptureItemDraft(
         int itemIndex,
+        PurchaseCaptureItemStatus status,
         String name,
         String brandName,
         String category,

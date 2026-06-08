@@ -1,10 +1,13 @@
 package com.closetnangam.be.domain.purchase.support;
 
+import com.closetnangam.be.domain.purchase.enums.PurchaseCaptureItemStatus;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureExtractionResult;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureItem;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -57,21 +60,54 @@ class PurchaseCaptureDraftSupportTest {
     }
 
     @Test
-    void resolveItemImageUrl_returnsOnlyItemSpecificThumbnail() {
-        assertThat(PurchaseCaptureDraftSupport.resolveItemImageUrl(
+    void resolveDistinctItemImageUrl_returnsOnlyItemSpecificThumbnail() {
+        assertThat(PurchaseCaptureDraftSupport.resolveDistinctItemImageUrl(
                 "https://cdn.example.com/tee.jpg",
                 "http://localhost:8080/capture.jpg"
         )).isEqualTo("https://cdn.example.com/tee.jpg");
 
-        assertThat(PurchaseCaptureDraftSupport.resolveItemImageUrl(
+        assertThat(PurchaseCaptureDraftSupport.resolveDistinctItemImageUrl(
                 null,
                 "http://localhost:8080/capture.jpg"
         )).isNull();
 
-        assertThat(PurchaseCaptureDraftSupport.resolveItemImageUrl(
+        assertThat(PurchaseCaptureDraftSupport.resolveDistinctItemImageUrl(
                 "http://localhost:8080/capture.jpg",
                 "http://localhost:8080/capture.jpg"
         )).isNull();
+    }
+
+    @Test
+    void resolveItemPreviewImageUrl_fallsBackToCaptureForSingleItem() {
+        assertThat(PurchaseCaptureDraftSupport.resolveItemPreviewImageUrl(
+                null,
+                "http://localhost:8080/capture.jpg",
+                1
+        )).isEqualTo("http://localhost:8080/capture.jpg");
+    }
+
+    @Test
+    void resolveItemPreviewImageUrl_doesNotRepeatCaptureForMultiItem() {
+        assertThat(PurchaseCaptureDraftSupport.resolveItemPreviewImageUrl(
+                null,
+                "http://localhost:8080/capture.jpg",
+                2
+        )).isNull();
+    }
+
+    @Test
+    void resolveItemPreviewImageUrl_fallsBackWhenOnlyOneRegistrableItemRemainsOnMultiRowCapture() {
+        List<GeminiPurchaseCaptureItem> mixed = List.of(
+                new GeminiPurchaseCaptureItem("반품 티", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "M", "MUSINSA", null, null, "반품 완료"),
+                new GeminiPurchaseCaptureItem("티셔츠", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "M", "MUSINSA", null, null, "구매 확정")
+        );
+
+        assertThat(PurchaseCaptureDraftSupport.countRegistrableItems(mixed)).isEqualTo(1);
+        assertThat(PurchaseCaptureDraftSupport.resolveItemPreviewImageUrl(
+                null,
+                "http://localhost:8080/capture.jpg",
+                PurchaseCaptureDraftSupport.countRegistrableItems(mixed)
+        )).isEqualTo("http://localhost:8080/capture.jpg");
     }
 
     @Test
@@ -104,6 +140,20 @@ class PurchaseCaptureDraftSupportTest {
 
         assertThat(filtered).hasSize(1);
         assertThat(filtered.get(0).name()).isEqualTo("슬랙스");
+    }
+
+    @Test
+    void isAllItemsProcessed_returnsFalseForZeroItemCount() {
+        assertThat(PurchaseCaptureDraftSupport.isAllItemsProcessed(Map.of(), 0)).isFalse();
+    }
+
+    @Test
+    void isAllItemsProcessed_returnsTrueWhenAllItemsHandled() {
+        Map<String, PurchaseCaptureDraftSupport.ItemProgressEntry> progress = new LinkedHashMap<>();
+        progress.put("0", new PurchaseCaptureDraftSupport.ItemProgressEntry(PurchaseCaptureItemStatus.SAVED, 1L, 2L));
+        progress.put("1", new PurchaseCaptureDraftSupport.ItemProgressEntry(PurchaseCaptureItemStatus.SKIPPED, null, null));
+
+        assertThat(PurchaseCaptureDraftSupport.isAllItemsProcessed(progress, 2)).isTrue();
     }
 
     @Test
