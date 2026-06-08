@@ -2,6 +2,7 @@ package com.closetnangam.be.global.external.gemini;
 
 import com.closetnangam.be.global.external.gemini.dto.GeminiClothingClassificationResult;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureExtractionResult;
+import com.closetnangam.be.global.common.exception.ExternalApiException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +44,12 @@ public class GeminiService {
         this.objectMapper = objectMapper;
         this.restTemplate = restTemplateBuilder
                 .connectTimeout(Duration.ofSeconds(5))
-                .readTimeout(Duration.ofSeconds(30))
+                /*
+                 * Gemini 3.5 계열은 짧은 JSON 응답에도 내부 thinking 시간이 포함될 수 있다.
+                 * AI MD 추천처럼 후보 상품/옷장 컨텍스트를 함께 보내는 요청은 30초를 넘길 수 있어,
+                 * 네트워크 연결 실패는 빠르게 감지하되 응답 대기 시간은 추천 기능 기준으로 여유를 둔다.
+                 */
+                .readTimeout(Duration.ofSeconds(90))
                 .build();
         this.apiKey = apiKey;
         this.baseUrl = baseUrl;
@@ -108,20 +114,31 @@ public class GeminiService {
         return generateJsonFromImage(imageBytes, mimeType, prompt, GeminiPurchaseCaptureExtractionResult.class);
     }
 
+    public <T> T generateJsonFromText(String prompt, Class<T> resultType) {
+        return generateJsonFromParts(List.of(Map.of("text", prompt)), resultType);
+    }
+
     private <T> T generateJsonFromImage(byte[] imageBytes, String mimeType, String prompt, Class<T> resultType) {
+        return generateJsonFromParts(
+                List.of(
+                        Map.of("text", prompt),
+                        Map.of("inline_data", Map.of(
+                                "mime_type", mimeType,
+                                "data", Base64.getEncoder().encodeToString(imageBytes)
+                        ))
+                ),
+                resultType
+        );
+    }
+
+    private <T> T generateJsonFromParts(List<Map<String, Object>> parts, Class<T> resultType) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalStateException("Gemini API 키가 설정되어 있지 않습니다.");
         }
 
         Map<String, Object> requestBody = Map.of(
                 "contents", List.of(
-                        Map.of("parts", List.of(
-                                Map.of("text", prompt),
-                                Map.of("inline_data", Map.of(
-                                        "mime_type", mimeType,
-                                        "data", Base64.getEncoder().encodeToString(imageBytes)
-                                ))
-                        ))
+                        Map.of("parts", parts)
                 ),
                 "generationConfig", Map.of(
                         "responseMimeType", "application/json"
@@ -138,7 +155,7 @@ public class GeminiService {
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             return parseJsonResult(response.getBody(), resultType);
         } catch (RestClientException exception) {
-            throw new IllegalStateException(resolveApiFailureMessage(exception), exception);
+            throw new ExternalApiException(resolveApiFailureMessage(exception), exception);
         }
     }
 
@@ -167,18 +184,18 @@ public class GeminiService {
         try {
             root = objectMapper.readTree(responseBody);
         } catch (Exception exception) {
-            throw new IllegalStateException("AI 응답을 해석하지 못했습니다.");
+            throw new ExternalApiException("AI 응답을 해석하지 못했습니다.", exception);
         }
 
         JsonNode textNode = root.path("candidates").path(0).path("content").path("parts").path(0).path("text");
         if (textNode.isMissingNode() || textNode.asText().isBlank()) {
-            throw new IllegalStateException("AI 응답을 해석할 수 없습니다.");
+            throw new ExternalApiException("AI 응답을 해석할 수 없습니다.");
         }
 
         try {
             return objectMapper.readValue(textNode.asText(), resultType);
         } catch (Exception exception) {
-            throw new IllegalStateException("AI 응답을 해석하지 못했습니다.");
+            throw new ExternalApiException("AI 응답을 해석하지 못했습니다.", exception);
         }
     }
 }
