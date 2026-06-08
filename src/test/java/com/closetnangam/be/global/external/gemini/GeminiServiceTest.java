@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class GeminiServiceTest {
@@ -23,7 +25,8 @@ class GeminiServiceTest {
                 new RestTemplateBuilder(),
                 "test-api-key",
                 "https://example.com",
-                "gemini-test"
+                "gemini-test",
+                List.of()
         );
         String responseBody = """
                 {
