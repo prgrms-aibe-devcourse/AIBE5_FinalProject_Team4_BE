@@ -42,6 +42,7 @@ last_updated: 2026-06-08
 | RECO-008 | 추천 | 내 옷장 기반 OOTD 추천 | 현재 기온에 맞는 상+하+외투 조합 추천 | `GET /api/v1/ootd/{wardrobeId}`, `WeatherCompatibilityTable`              | 추천 메인 |
 | OUTFIT-001 | 코디북 | 사용자별 단일 코디북 | 회원마다 1개의 코디북 생성 및 관리 | `OUTFIT_BOOKS`, `/api/v1/outfit-books`                                    | 코디북 |
 | OUTFIT-002 | 코디 | 코디 저장/조회 | 추천받거나 직접 구성한 코디를 저장하고 조회 | `OUTFITS`, `OUTFIT_ITEMS`                                                 | 코디북, 코디 상세 |
+| OUTFIT-004 | 코디 | 코디 수정/삭제 | 저장된 코디의 정보와 구성 아이템을 수정하거나 코디를 삭제 | `PUT/DELETE /api/v1/outfit-books/{bookId}/outfits/{outfitId}`             | 코디 상세/수정 |
 | OUTFIT-003 | 코디 | 코디 스타일 | 코디 구성 옷을 기반으로 대표/보조 스타일 관리 | `OUTFIT_STYLES`                                                           | 코디 상세 |
 | FEED-001 | 룩피드 | 피드 게시글 | 코디 기반 게시글 등록, 목록, 상세 조회 | `FEED_POSTS`, `FEED_POST_IMAGES`                                          | 룩피드 |
 | FEED-002 | 룩피드 | 피드 반응 | 좋아요, 댓글/대댓글, 저장, 팔로우 처리 | `FEED_LIKES`, `FEED_COMMENTS`, `FEED_POST_SAVES`, `USER_FOLLOWS`          | 룩피드 |

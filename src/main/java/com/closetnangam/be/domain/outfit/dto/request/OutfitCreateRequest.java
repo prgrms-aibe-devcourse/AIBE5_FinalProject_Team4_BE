@@ -7,6 +7,9 @@ import jakarta.validation.constraints.Size; // 이걸 추가해줘
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @NoArgsConstructor
 public class OutfitCreateRequest {
@@ -33,6 +36,8 @@ public class OutfitCreateRequest {
     private String season;
 
     private Boolean favorite = Boolean.FALSE;
+
+    private List<OutfitItemRequest> items = new ArrayList<>();
 
     public Outfit toEntity(OutfitBook outfitBook) {
         return Outfit.builder()

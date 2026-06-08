@@ -23,7 +23,10 @@ public interface OutfitItemRepository extends JpaRepository<OutfitItem, Long> {
             left join fetch c.styleTags st
             left join fetch st.style
             where o.outfitBook.id = :bookId
+              and o.deletedAt is null
             order by o.createdAt desc, oi.layerOrder asc, oi.id asc
             """)
     List<OutfitItem> findAllByOutfitBookId(@Param("bookId") Long bookId);
+
+    void deleteAllByOutfit_OutfitId(Long outfitId);
 }

@@ -1,8 +1,12 @@
 package com.closetnangam.be.domain.outfit.service;
 
+import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.outfit.dto.request.OutfitCreateRequest;
+import com.closetnangam.be.domain.outfit.dto.request.OutfitItemRequest;
+import com.closetnangam.be.domain.outfit.dto.request.OutfitUpdateRequest;
 import com.closetnangam.be.domain.outfit.dto.response.OutfitBookResponse;
 import com.closetnangam.be.domain.outfit.dto.response.OutfitItemResponse;
 import com.closetnangam.be.domain.outfit.dto.response.OutfitResponse;
@@ -33,6 +37,7 @@ public class OutfitService {
     private final OutfitRepository outfitRepository;
     private final OutfitItemRepository outfitItemRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
+    private final ClothesRepository clothesRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -54,7 +59,73 @@ public class OutfitService {
                 .orElseThrow(() -> new EntityNotFoundException("코디북을 찾을 수 없습니다."));
 
         Outfit outfit = outfitRepository.save(request.toEntity(outfitBook));
+
+        if (request.getItems() != null && !request.getItems().isEmpty()) {
+            saveOutfitItems(outfit, request.getItems());
+        }
+
         return OutfitResponse.from(outfit);
+    }
+
+    @Transactional
+    public OutfitResponse updateOutfit(Long bookId, Long outfitId, Long userId, OutfitUpdateRequest request) {
+        outfitBookRepository.findByIdAndUserId(bookId, userId)
+                .orElseThrow(() -> new EntityNotFoundException("코디북을 찾을 수 없습니다."));
+
+        Outfit outfit = outfitRepository.findByOutfitIdAndOutfitBook_Id(outfitId, bookId)
+                .orElseThrow(() -> new EntityNotFoundException("코디를 찾을 수 없습니다."));
+
+        outfit.update(
+                request.getTitle(),
+                request.getDescription(),
+                request.getThumbnailUrl(),
+                request.getSituation(),
+                request.getSeason(),
+                Boolean.TRUE.equals(request.getFavorite())
+        );
+
+        outfitItemRepository.deleteAllByOutfit_OutfitId(outfitId);
+        if (request.getItems() != null && !request.getItems().isEmpty()) {
+            saveOutfitItems(outfit, request.getItems());
+        }
+
+        return OutfitResponse.from(outfit);
+    }
+
+    @Transactional
+    public void deleteOutfit(Long bookId, Long outfitId, Long userId) {
+        outfitBookRepository.findByIdAndUserId(bookId, userId)
+                .orElseThrow(() -> new EntityNotFoundException("코디북을 찾을 수 없습니다."));
+
+        Outfit outfit = outfitRepository.findByOutfitIdAndOutfitBook_Id(outfitId, bookId)
+                .orElseThrow(() -> new EntityNotFoundException("코디를 찾을 수 없습니다."));
+
+        outfit.softDelete();
+    }
+
+    private void saveOutfitItems(Outfit outfit, List<OutfitItemRequest> itemRequests) {
+        List<Long> clothesIds = itemRequests.stream()
+                .map(OutfitItemRequest::getClothesId)
+                .toList();
+
+        Map<Long, Clothes> clothesMap = clothesRepository.findAllById(clothesIds).stream()
+                .collect(Collectors.toMap(Clothes::getId, c -> c));
+
+        List<OutfitItem> items = itemRequests.stream()
+                .map(itemRequest -> {
+                    Clothes clothes = clothesMap.get(itemRequest.getClothesId());
+                    if (clothes == null) {
+                        throw new EntityNotFoundException("옷을 찾을 수 없습니다. ID: " + itemRequest.getClothesId());
+                    }
+                    return OutfitItem.builder()
+                            .outfit(outfit)
+                            .clothes(clothes)
+                            .itemRole(itemRequest.getItemRole())
+                            .layerOrder(itemRequest.getLayerOrder())
+                            .build();
+                })
+                .toList();
+        outfitItemRepository.saveAll(items);
     }
 
     public OutfitBookResponse getBookByUserId(Long userId) {

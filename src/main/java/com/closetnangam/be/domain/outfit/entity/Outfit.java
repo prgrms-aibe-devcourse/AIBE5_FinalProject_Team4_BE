@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -48,6 +49,9 @@ public class Outfit extends BaseEntity {
     @Column(nullable = false)
     private boolean favorite;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
     private Outfit(
             OutfitBook outfitBook,
@@ -67,7 +71,27 @@ public class Outfit extends BaseEntity {
         this.favorite = favorite;
     }
 
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
     public void markFavorite(boolean favorite) {
+        this.favorite = favorite;
+    }
+
+    public void update(
+            String title,
+            String description,
+            String thumbnailUrl,
+            String situation,
+            String season,
+            boolean favorite
+    ) {
+        this.title = title;
+        this.description = description;
+        this.thumbnailUrl = thumbnailUrl;
+        this.situation = situation;
+        this.season = season;
         this.favorite = favorite;
     }
 }
