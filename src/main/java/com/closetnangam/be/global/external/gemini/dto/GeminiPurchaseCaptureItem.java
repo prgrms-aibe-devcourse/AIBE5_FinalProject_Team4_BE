@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record GeminiPurchaseCaptureExtractionResult(
+public record GeminiPurchaseCaptureItem(
         String name,
         @JsonAlias("brand_name") String brandName,
         String category,
@@ -18,7 +18,6 @@ public record GeminiPurchaseCaptureExtractionResult(
         @JsonAlias("suggested_external_source") String suggestedExternalSource,
         @JsonAlias("image_url") String imageUrl,
         @JsonAlias("thumbnail_region") GeminiThumbnailRegion thumbnailRegion,
-        @JsonAlias("order_status") String orderStatus,
-        List<GeminiPurchaseCaptureItem> items
+        @JsonAlias("order_status") String orderStatus
 ) {
 }

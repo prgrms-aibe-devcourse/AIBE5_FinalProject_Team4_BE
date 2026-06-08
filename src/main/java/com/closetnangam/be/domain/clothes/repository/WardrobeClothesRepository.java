@@ -88,6 +88,25 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
     );
 
     /**
+     * 저장된 코디 구성 옷을 응답으로 복원할 때, 사용자 옷장에 실제로 연결된 보유 옷 정보를 함께 채우기 위한 조회.
+     *
+     * 외부 쇼핑 상품처럼 사용자 옷장에 연결되지 않은 Clothes는 이 결과에 포함되지 않는다.
+     */
+    @Query("""
+            select distinct wc from WardrobeClothes wc
+            join fetch wc.clothes c
+            join fetch wc.wardrobe w
+            join fetch w.user
+            where c.id in :clothesIds
+              and w.user.id = :userId
+              and wc.deletedAt is null
+            """)
+    List<WardrobeClothes> findAllByClothesIdsAndUserId(
+            @Param("clothesIds") List<Long> clothesIds,
+            @Param("userId") Long userId
+    );
+
+    /**
      * 추천 후보 조회: 특정 사용자의 보유 옷 중 기준 옷과 다른 카테고리인 항목만 반환합니다.
      *
      * <p><b>fetch 전략</b><br>
@@ -149,4 +168,44 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
               and wc.deletedAt is null
             """)
     List<WardrobeClothes> findAllByWardrobeId(@Param("wardrobeId") Long wardrobeId);
+
+    @Query("""
+            select case when count(wc) > 0 then true else false end
+            from WardrobeClothes wc
+            join wc.clothes c
+            join wc.wardrobe w
+            where w.user.id = :userId
+              and wc.deletedAt is null
+              and c.productCode = :productCode
+            """)
+    boolean existsActiveByUserIdAndProductCode(
+            @Param("userId") Long userId,
+            @Param("productCode") String productCode
+    );
+
+    @Query("""
+            select case when count(wc) > 0 then true else false end
+            from WardrobeClothes wc
+            join wc.clothes c
+            join wc.wardrobe w
+            join c.colorTags cc
+            where w.user.id = :userId
+              and wc.deletedAt is null
+              and wc.ownershipStatus = :ownershipStatus
+              and lower(c.brandName) = lower(:brandName)
+              and lower(c.name) = lower(:name)
+              and c.category = :category
+              and c.itemType = :itemType
+              and cc.colorRole = com.closetnangam.be.domain.clothes.enums.ColorRole.PRIMARY
+              and cc.colorCode = :primaryColor
+            """)
+    boolean existsActiveByUserIdAndIdentity(
+            @Param("userId") Long userId,
+            @Param("brandName") String brandName,
+            @Param("name") String name,
+            @Param("category") String category,
+            @Param("itemType") String itemType,
+            @Param("primaryColor") String primaryColor,
+            @Param("ownershipStatus") OwnershipStatus ownershipStatus
+    );
 }

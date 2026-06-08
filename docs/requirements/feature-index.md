@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-03
+last_updated: 2026-06-08
 ---
 
 # 기능 인덱스
@@ -29,7 +29,7 @@ last_updated: 2026-06-03
 | CLOTH-006 | 옷 | 미보유 옷 조회 | 미보유 옷 목록 및 즐겨찾기 조회 | `GET /api/users/{userId}/wishlist-clothes`                                | 옷장 미보유 탭 |
 | CLOTH-007 | 옷 | 미보유에서 보유 전환 | 구매한 관심 상품을 보유 옷으로 전환 | `PATCH /api/clothes/{clothesId}/convert-to-owned`                         | 옷 상세 |
 | REG-001 | 옷 등록 | 사진 기반 등록 | 사용자가 옷 사진을 올리고 AI 분석 결과를 바탕으로 옷 등록 | `/api/v1/users/{userId}/clothes/photos/**`, `PHOTO`                       | 옷 등록 |
-| REG-002 | 옷 등록 | 구매내역 기반 등록 | 구매내역 캡처 이미지를 분석해 옷 후보를 만들고 저장 | `/api/v1/users/{userId}/clothes/purchase-captures/**`, `PURCHASE_HISTORY` | 옷 등록 |
+| REG-002 | 옷 등록 | 구매내역 기반 등록 | 구매내역 캡처를 분석해 복수 상품 후보(`items[]`)를 만들고 `itemIndex`별 저장·건너뛰기로 순차 등록 | `POST .../purchase-captures`, `.../analyze`, `.../draft`, `.../save`, `.../items/{itemIndex}/skip`, `PURCHASE_HISTORY` | 옷 등록 |
 | REG-003 | 옷 등록 | 외부 쇼핑몰 상품 저장 | 외부 쇼핑몰 상품 정보를 공통 옷 정보로 저장 | `POST /api/v1/external/clothes/naver`, `EXTERNAL_SHOPPING`                | 추천 상세, 외부 검색 |
 | CATALOG-001 | 카탈로그 | 카테고리/타입/색상/스타일 조회 | 옷 등록과 필터에 필요한 기준값 제공 | `GET /api/v1/categories`                                                  | 옷 등록, 필터 |
 | RECO-001 | 추천 | 추천 메인 | 메인 페이지를 추천 중심 화면으로 사용 | 추천 도메인                                                                    | 추천 메인 |
@@ -37,8 +37,7 @@ last_updated: 2026-06-03
 | RECO-003 | 추천 | 유사 상품 추천 | 선택한 옷과 유사한 상품 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/similar-products`         | 옷 상세, 추천 상세 |
 | RECO-004 | 추천 | 보유 옷 기준 상품 추천 | 보유 옷과 어울리는 상의/하의/아우터/신발 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations`          | 추천 상세 |
 | RECO-005 | 추천 | 날씨/계절/지역 기반 추천 | 사용자 지역과 날씨 정보를 추천에 반영 | `GET /api/weather`                                                        | 추천 메인 |
-| RECO-008 | 추천 | 내 옷장 기반 OOTD 추천 | 현재 기온에 맞는 상+하+외투 조합 추천 | `GET /api/v1/ootd/{wardrobeId}`, `WeatherCompatibilityTable`              | 추천 메인 |
-| RECO-006 | 추천 | AI MD 추천 | 추천 이유와 스타일링 설명을 AI가 생성 | Gemini 연동                                                                 | 추천 상세 |
+| RECO-006 | 추천 | AI MD 추천 | 사용자 성별에 맞는 AI MD가 보유 옷과 외부 상품 후보를 바탕으로 상품 또는 코디 후보를 추천하고, 사용자가 선택한 코디만 저장 | `GET /api/v1/users/{userId}/recommendations/ai-md/personas`, `GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products`, `POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits`, `POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save`, `OUTFITS`, `OUTFIT_ITEMS`, Gemini, 네이버쇼핑 | 추천 상세, 코디북 |
 | RECO-007 | 추천 | 추천 싫어요/제외 | 비선호 상품에 피드백을 남기고 추천에서 제외 | `RECOMMENDATION_FEEDBACKS`                                                | 추천 상세 |
 | OUTFIT-001 | 코디북 | 사용자별 단일 코디북 | 회원마다 1개의 코디북 생성 및 관리 | `OUTFIT_BOOKS`, `/api/v1/outfit-books`                                    | 코디북 |
 | OUTFIT-002 | 코디 | 코디 저장/조회 | 추천받거나 직접 구성한 코디를 저장하고 조회 | `OUTFITS`, `OUTFIT_ITEMS`                                                 | 코디북, 코디 상세 |

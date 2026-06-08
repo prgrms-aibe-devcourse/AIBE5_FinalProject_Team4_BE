@@ -79,4 +79,17 @@ public class PurchaseCaptureRegistrationController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(purchaseCaptureRegistrationService.savePurchaseCaptureClothes(userId, captureId, request)));
     }
+
+    @Operation(summary = "구매내역 상품 건너뛰기", description = "복수 상품 캡처에서 특정 itemIndex를 저장하지 않고 건너뜁니다.")
+    @PostMapping("/{captureId}/items/{itemIndex}/skip")
+    public ResponseEntity<ApiResponse<PurchaseCaptureDraftResponse>> skipPurchaseCaptureItem(
+            @PathVariable Long userId,
+            @PathVariable Long captureId,
+            @PathVariable int itemIndex
+    ) {
+        SecurityUtils.verifyOwnership(userId);
+        return ResponseEntity.ok(ApiResponse.ok(
+                purchaseCaptureRegistrationService.skipPurchaseCaptureItem(userId, captureId, itemIndex)
+        ));
+    }
 }
