@@ -177,7 +177,7 @@ public class ClothesService {
                 request.brandName(),
                 request.productCode(),
                 request.imageUrl(),
-                ClothesCategory.fromCode(request.category()),
+                request.category(),
                 request.itemType(),
                 request.isVerified()
         );
@@ -237,7 +237,7 @@ public class ClothesService {
                 .brandName(brandName)
                 .productCode(productCode)
                 .imageUrl(imageUrl)
-                .category(ClothesCategory.fromCode(category))
+                .category(category)
                 .itemType(itemType)
                 .clothesInfoSource(clothesInfoSource)
                 .externalSource(externalSource)

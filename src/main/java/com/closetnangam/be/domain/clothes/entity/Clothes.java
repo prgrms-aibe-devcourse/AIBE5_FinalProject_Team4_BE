@@ -53,9 +53,8 @@ public class Clothes extends BaseEntity {
     @Column(name = "image_url", nullable = false, length = 500)
     private String imageUrl;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private ClothesCategory category;
+    private String category;
 
     @Column(name = "item_type", nullable = false, length = 50)
     private String itemType;
@@ -105,7 +104,7 @@ public class Clothes extends BaseEntity {
             String brandName,
             String productCode,
             String imageUrl,
-            ClothesCategory category,
+            String category,
             String itemType,
             ClothesInfoSource clothesInfoSource,
             String externalSource,
@@ -134,7 +133,7 @@ public class Clothes extends BaseEntity {
             String brandName,
             String productCode,
             String imageUrl,
-            ClothesCategory category,
+            String category,
             String itemType,
             Boolean isVerified
     ) {

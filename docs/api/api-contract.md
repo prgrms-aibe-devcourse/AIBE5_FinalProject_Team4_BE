@@ -153,6 +153,34 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/similar-products` | 유사 상품 추천 조회 |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 보유 옷 기준 추천 조회 |
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
+| GET | `/api/v1/ootd/{wardrobeId}?currentTemp={temp}` | 내 옷장 기반 OOTD 추천 |
+
+#### OOTD 추천 응답 (OotdResponse)
+
+```json
+{
+  "combinations": [
+    {
+      "top": {
+        "id": 1,
+        "name": "상의 이름",
+        "brand": "브랜드",
+        "color": "BLACK",
+        "imageUrl": "https://...",
+        "externalProductUrl": "https://...",
+        "category": "TOP",
+        "itemType": "SHORT_SLEEVE",
+        "favorite": true
+      },
+      "bottom": { ... },
+      "outer": { ... },
+      "totalScore": 2.5
+    }
+  ],
+  "weatherLabel": "오늘 20°C — 얇은 셔츠·면바지 추천",
+  "currentTemp": 20.0
+}
+```
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 

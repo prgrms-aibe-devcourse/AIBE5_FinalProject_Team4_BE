@@ -36,8 +36,7 @@ public class SecurityConfig {
             "/api/v1/clothes/registration-methods",
             "/api/naver/**",
             "/api/weather/**",
-            "/api/v1/auth/**",
-            "/api/v1/ootd/**"
+            "/api/v1/auth/**"
     };
 
     private final OAuth2UserService oAuth2UserService;

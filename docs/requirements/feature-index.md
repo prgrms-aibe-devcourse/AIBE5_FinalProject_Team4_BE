@@ -37,6 +37,7 @@ last_updated: 2026-06-03
 | RECO-003 | 추천 | 유사 상품 추천 | 선택한 옷과 유사한 상품 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/similar-products`         | 옷 상세, 추천 상세 |
 | RECO-004 | 추천 | 보유 옷 기준 상품 추천 | 보유 옷과 어울리는 상의/하의/아우터/신발 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations`          | 추천 상세 |
 | RECO-005 | 추천 | 날씨/계절/지역 기반 추천 | 사용자 지역과 날씨 정보를 추천에 반영 | `GET /api/weather`                                                        | 추천 메인 |
+| RECO-008 | 추천 | 내 옷장 기반 OOTD 추천 | 현재 기온에 맞는 상+하+외투 조합 추천 | `GET /api/v1/ootd/{wardrobeId}`, `WeatherCompatibilityTable`              | 추천 메인 |
 | RECO-006 | 추천 | AI MD 추천 | 추천 이유와 스타일링 설명을 AI가 생성 | Gemini 연동                                                                 | 추천 상세 |
 | RECO-007 | 추천 | 추천 싫어요/제외 | 비선호 상품에 피드백을 남기고 추천에서 제외 | `RECOMMENDATION_FEEDBACKS`                                                | 추천 상세 |
 | OUTFIT-001 | 코디북 | 사용자별 단일 코디북 | 회원마다 1개의 코디북 생성 및 관리 | `OUTFIT_BOOKS`, `/api/v1/outfit-books`                                    | 코디북 |

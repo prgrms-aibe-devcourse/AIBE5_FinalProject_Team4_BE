@@ -100,7 +100,7 @@ public class PhotoClothesRegistrationService {
                 .brandName(request.brandName())
                 .productCode(request.productCode())
                 .imageUrl(photo.getImageUrl())
-                .category(ClothesCategory.fromCode(request.category()))
+                .category(request.category())
                 .itemType(request.itemType())
                 .clothesInfoSource(ClothesInfoSource.PHOTO)
                 .externalSource(Clothes.EXTERNAL_NONE)

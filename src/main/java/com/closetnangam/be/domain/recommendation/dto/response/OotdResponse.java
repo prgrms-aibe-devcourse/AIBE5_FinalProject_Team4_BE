@@ -26,7 +26,7 @@ public record OotdResponse(
             String color,
             String imageUrl,
             String externalProductUrl,
-            ClothesCategory category,
+            String category,
             String itemType,
             Boolean favorite
     ) {}

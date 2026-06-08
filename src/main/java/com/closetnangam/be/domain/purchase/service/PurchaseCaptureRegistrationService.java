@@ -101,7 +101,7 @@ public class PurchaseCaptureRegistrationService {
                 .brandName(request.brandName())
                 .productCode(request.productCode())
                 .imageUrl(capture.getImageUrl())
-                .category(ClothesCategory.fromCode(request.category()))
+                .category(request.category())
                 .itemType(request.itemType())
                 .clothesInfoSource(ClothesInfoSource.PURCHASE_HISTORY)
                 .externalSource(request.externalSource())

@@ -106,7 +106,7 @@ public class ExternalClothesService {
                     .clothesInfoSource(ClothesInfoSource.EXTERNAL_SHOPPING)
                     .productCode(extractedProductCode)
                     .imageUrl(request.image())
-                    .category(category)
+                    .category(category.name())
                     .itemType(refineItemType(category.name(), request.category3(), cleanTitle))
                     .externalSource("NAVER")
                     .externalProductId(productId)

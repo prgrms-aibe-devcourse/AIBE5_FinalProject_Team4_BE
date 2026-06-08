@@ -53,9 +53,9 @@ public class OotdRecommendationService {
         Map<String, Integer> styleWeights = userStyles.stream()
                 .collect(Collectors.toMap(us -> us.getStyle().getCode(), UserStyle::getCombinedWeight));
 
-        List<ScoredItem> tops = filterAndScore(ownedClothes, ClothesCategory.TOP, currentTemp, styleWeights);
-        List<ScoredItem> bottoms = filterAndScore(ownedClothes, ClothesCategory.BOTTOM, currentTemp, styleWeights);
-        List<ScoredItem> outers = filterAndScore(ownedClothes, ClothesCategory.OUTER, currentTemp, styleWeights);
+        List<ScoredItem> tops = filterAndScore(ownedClothes, "TOP", currentTemp, styleWeights);
+        List<ScoredItem> bottoms = filterAndScore(ownedClothes, "BOTTOM", currentTemp, styleWeights);
+        List<ScoredItem> outers = filterAndScore(ownedClothes, "OUTER", currentTemp, styleWeights);
 
         if (tops.isEmpty() || bottoms.isEmpty() || (tempRange.requiresOuter() && outers.isEmpty())) {
             return OotdResponse.builder()
@@ -114,9 +114,9 @@ public class OotdRecommendationService {
         };
     }
 
-    private List<ScoredItem> filterAndScore(List<WardrobeClothes> items, ClothesCategory targetCategory, double temp, Map<String, Integer> styleWeights) {
+    private List<ScoredItem> filterAndScore(List<WardrobeClothes> items, String targetCategory, double temp, Map<String, Integer> styleWeights) {
         return items.stream()
-                .filter(wc -> wc.getClothes().getCategory() == targetCategory)
+                .filter(wc -> wc.getClothes().getCategory().equals(targetCategory))
                 .map(wc -> {
                     double weatherScore = WeatherCompatibilityTable.getWeatherScore(temp, wc.getClothes().getItemType());
                     double favoriteWeight = wc.getFavorite() ? 1.5 : 1.0;
