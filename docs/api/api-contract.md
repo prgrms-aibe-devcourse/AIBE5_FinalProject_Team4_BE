@@ -169,6 +169,7 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/similar-products` | 유사 상품 추천 조회 |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 보유 옷 기준 추천 조회 |
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
+| GET | `/api/v1/ootd/{wardrobeId}?currentTemp={temp}` | 내 옷장 기반 OOTD 추천 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 사용자 성별에 맞는 AI MD 목록 조회 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/products` | 선택한 AI MD 기준 외부 상품 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
@@ -194,6 +195,51 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 ```
 
 > **Note**: 현재 `price`는 placeholder("0")이며, `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
+
+#### OOTD 추천 응답 (OotdResponse)
+
+```json
+{
+  "success": true,
+  "data": {
+    "combinations": [
+      {
+        "top": {
+          "clothesId": 101,
+          "wardrobeClothesId": 1,
+          "name": "상의 이름",
+          "brand": "브랜드",
+          "color": "BLACK",
+          "imageUrl": "https://...",
+          "externalProductUrl": "https://...",
+          "category": "TOP",
+          "itemType": "SHORT_SLEEVE",
+          "favorite": true
+        },
+        "bottom": {
+          "clothesId": 102,
+          "wardrobeClothesId": 2,
+          "name": "하의 이름",
+          "brand": "브랜드",
+          "color": "BLUE",
+          "imageUrl": "https://...",
+          "externalProductUrl": "https://...",
+          "category": "BOTTOM",
+          "itemType": "DENIM",
+          "favorite": false
+        },
+        "outer": null,
+        "totalScore": 2.5
+      }
+    ],
+    "weatherLabel": "오늘 20°C — 얇은 셔츠·면바지 추천",
+    "currentTemp": 20.0
+  },
+  "message": null
+}
+```
+
+> **Note**: `outer` 필드는 기온에 따라 외투가 필요 없는 경우(HOT, WARM) `null`로 반환됩니다.
 
 #### AI MD 목록 응답 (AiMdPersonaResponse)
 
