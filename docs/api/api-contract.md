@@ -149,7 +149,7 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 | `name`, `brandName`, `productCode`, `category`, `itemType`, `primaryColor`, `styles`, `externalSource`, `size`, `favorite`, `isVerified` | Y | 옷 공통·옷장 정보 |
 | `secondaryColors`, `season` | N | 보조 색상, 계절 |
 | `itemIndex` | N | 생략 시 0. 복수 상품일 때 저장 대상 인덱스 |
-| `imageUrl` | N | 다중 상품일 때 상품별 이미지 URL |
+| `imageUrl` | N | 상품별 이미지 URL. 생략 시 draft `items[].imageUrl` 또는 캡처 `previewUrl`로 fallback |
 
 #### 구매내역 상품 상태 (`PurchaseCaptureItemStatus`)
 

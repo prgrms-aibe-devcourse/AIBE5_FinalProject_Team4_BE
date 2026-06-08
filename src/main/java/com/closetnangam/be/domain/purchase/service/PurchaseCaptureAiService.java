@@ -160,6 +160,7 @@ public class PurchaseCaptureAiService {
                 .map(this::normalizeExternalSource)
                 .toList();
         PurchaseCaptureDraftSupport.validateExtractionItems(items);
+        PurchaseCaptureDraftSupport.validateExtractionItemCatalogCodes(items, categoryCatalogService);
         return items;
     }
 
@@ -188,7 +189,9 @@ public class PurchaseCaptureAiService {
         if (message.contains("API 키")
                 || message.contains("API 호출")
                 || message.contains("응답을 해석")
-                || message.contains("사용 한도")) {
+                || message.contains("사용 한도")
+                || message.contains("분류 코드")
+                || message.contains("필수 분류 정보")) {
             return message;
         }
         return message;

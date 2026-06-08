@@ -1,9 +1,13 @@
 package com.closetnangam.be.domain.purchase.support;
 
+import com.closetnangam.be.domain.catalog.repository.StyleRepository;
+import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.domain.purchase.enums.PurchaseCaptureItemStatus;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureExtractionResult;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureItem;
 import org.junit.jupiter.api.Test;
+
+import static org.mockito.Mockito.mock;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -166,5 +170,46 @@ class PurchaseCaptureDraftSupportTest {
         assertThatThrownBy(() -> PurchaseCaptureDraftSupport.resolveItemIndex(2, 2))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("itemIndex");
+    }
+
+    @Test
+    void validateExtractionItemCatalogCodes_acceptsValidCodes() {
+        CategoryCatalogService catalogService = new CategoryCatalogService(mock(StyleRepository.class));
+        GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(
+                "슬랙스", "BRAND", "BOTTOM", "SLACKS", "BLACK", List.of(), List.of("CASUAL"), "36", "MUSINSA",
+                null, null, "구매 확정"
+        );
+
+        PurchaseCaptureDraftSupport.validateExtractionItemCatalogCodes(List.of(item), catalogService);
+    }
+
+    @Test
+    void validateExtractionItemCatalogCodes_rejectsInvalidCategory() {
+        CategoryCatalogService catalogService = new CategoryCatalogService(mock(StyleRepository.class));
+        GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(
+                "슬랙스", "BRAND", "INVALID", "SLACKS", "BLACK", List.of(), List.of("CASUAL"), "36", "MUSINSA",
+                null, null, "구매 확정"
+        );
+
+        assertThatThrownBy(() ->
+                PurchaseCaptureDraftSupport.validateExtractionItemCatalogCodes(List.of(item), catalogService)
+        )
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("분류 코드");
+    }
+
+    @Test
+    void resolveClothesImageUrl_fallsBackToCaptureForMultiItemWithoutItemUrl() {
+        List<GeminiPurchaseCaptureItem> items = List.of(
+                new GeminiPurchaseCaptureItem("티셔츠", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "M", "MUSINSA", null, null, "구매 확정"),
+                new GeminiPurchaseCaptureItem("팬츠", "B", "BOTTOM", "JEANS", "BLUE", List.of(), List.of("CASUAL"), "32", "MUSINSA", null, null, "구매 확정")
+        );
+
+        assertThat(PurchaseCaptureDraftSupport.resolveClothesImageUrl(
+                "http://localhost:8080/capture.jpg",
+                items,
+                1,
+                null
+        )).isEqualTo("http://localhost:8080/capture.jpg");
     }
 }

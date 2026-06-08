@@ -1,6 +1,7 @@
 package com.closetnangam.be.domain.purchase.support;
 
 import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
+import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureAnalyzeResponse;
 import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureDraftResponse;
 import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureItemDraft;
@@ -78,6 +79,42 @@ public final class PurchaseCaptureDraftSupport {
             GeminiPurchaseCaptureItem item = items.get(index);
             if (!StringUtils.hasText(item.name())) {
                 throw new IllegalStateException("AI 추출 결과 " + (index + 1) + "번째 상품에 상품명이 없습니다.");
+            }
+        }
+    }
+
+    /**
+     * AI 추출 상품별 카탈로그 code를 검증합니다. 유효하지 않으면 분석 실패로 처리합니다.
+     */
+    public static void validateExtractionItemCatalogCodes(
+            List<GeminiPurchaseCaptureItem> items,
+            CategoryCatalogService categoryCatalogService
+    ) {
+        for (int index = 0; index < items.size(); index++) {
+            GeminiPurchaseCaptureItem item = items.get(index);
+            int itemNumber = index + 1;
+            if (!StringUtils.hasText(item.category())
+                    || !StringUtils.hasText(item.itemType())
+                    || !StringUtils.hasText(item.primaryColor())
+                    || item.styles() == null
+                    || item.styles().isEmpty()) {
+                throw new IllegalStateException(
+                        "AI 추출 결과 " + itemNumber + "번째 상품에 필수 분류 정보가 없습니다."
+                );
+            }
+            try {
+                categoryCatalogService.validateCategoryAndItemType(item.category(), item.itemType());
+                categoryCatalogService.validateClothesColors(
+                        item.primaryColor(),
+                        normalizeSecondaryColors(item.secondaryColors())
+                );
+                categoryCatalogService.validateStyleCodes(item.styles());
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalStateException(
+                        "AI 추출 결과 " + itemNumber + "번째 상품의 분류 코드가 유효하지 않습니다: "
+                                + exception.getMessage(),
+                        exception
+                );
             }
         }
     }
@@ -242,11 +279,11 @@ public final class PurchaseCaptureDraftSupport {
                 return itemImageUrl;
             }
         }
-        if (items.size() <= 1) {
-            return captureImageUrl;
+        if (StringUtils.hasText(captureImageUrl)) {
+            return captureImageUrl.trim();
         }
         throw new IllegalArgumentException(
-                "다중 상품 구매내역 캡처는 상품별 imageUrl이 필요합니다. itemIndex=" + itemIndex
+                "구매내역 캡처 이미지 URL이 없습니다. itemIndex=" + itemIndex
         );
     }
 
