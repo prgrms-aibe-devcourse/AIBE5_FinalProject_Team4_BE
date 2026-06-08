@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.clothes.service;
 
+import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.domain.ai.entity.ClothingAiPhoto;
 import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
 import com.closetnangam.be.domain.ai.repository.ClothingAiPhotoRepository;
@@ -99,7 +100,7 @@ public class PhotoClothesRegistrationService {
                 .brandName(request.brandName())
                 .productCode(request.productCode())
                 .imageUrl(photo.getImageUrl())
-                .category(request.category())
+                .category(ClothesCategory.fromCode(request.category()))
                 .itemType(request.itemType())
                 .clothesInfoSource(ClothesInfoSource.PHOTO)
                 .externalSource(Clothes.EXTERNAL_NONE)

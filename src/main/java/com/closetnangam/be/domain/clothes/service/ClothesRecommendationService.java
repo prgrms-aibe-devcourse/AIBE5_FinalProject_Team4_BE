@@ -104,7 +104,7 @@ public class ClothesRecommendationService {
             throw new IllegalStateException("기준 옷의 Clothes 관계를 로딩할 수 없습니다. wardrobeClothesId=" + anchor.getId());
         }
 
-        String excludeCategory = anchorClothes.getCategory();
+        String excludeCategory = anchorClothes.getCategory().name();
 
         List<WardrobeClothes> candidates = wardrobeClothesRepository.findCandidatesForRecommendation(
                 userId, OwnershipStatus.OWNED, clothesId, excludeCategory
@@ -134,7 +134,7 @@ public class ClothesRecommendationService {
                 log.debug("WardrobeClothes(id={})의 Clothes 가 null — 후보에서 제외합니다.", candidate.getId());
                 continue;
             }
-            String category = clothes.getCategory();
+            String category = clothes.getCategory().name();
             if (!CATEGORY_SET.contains(category)) {
                 continue;
             }
@@ -191,7 +191,7 @@ public class ClothesRecommendationService {
                 candidateClothes.getName(),
                 candidateClothes.getImageUrl(),
                 candidate.getUserImageUrl(),
-                candidateClothes.getCategory(),
+                candidateClothes.getCategory().name(),
                 candidateClothes.getItemType(),
                 candidateTags.primaryColor(),
                 toColorInfo(candidateTags.primaryColor()),
@@ -297,7 +297,7 @@ public class ClothesRecommendationService {
                 clothes.getName(),
                 clothes.getImageUrl(),
                 wc.getUserImageUrl(),
-                clothes.getCategory(),
+                clothes.getCategory().name(),
                 clothes.getItemType(),
                 tagSnapshot.primaryColor(),
                 toColorInfo(tagSnapshot.primaryColor())

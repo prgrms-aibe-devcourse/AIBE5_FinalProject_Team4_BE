@@ -16,31 +16,61 @@ public class WeatherCompatibilityTable {
             case HOT -> scoreForHot(type);
             case WARM -> scoreForWarm(type);
             case MILD -> scoreForMild(type);
+            case CHILLY -> scoreForChilly(type);
             case COLD -> scoreForCold(type);
         };
     }
 
     private static double scoreForHot(String type) {
-        if (type.contains("SHORT") || type.contains("HALF") || type.contains("SLEEVELESS") || type.contains("SHORTS")) return 1.0;
-        if (type.contains("OUTER") || type.contains("KNIT") || type.contains("LONG")) return 0.2;
-        return 0.5;
+        return switch (type) {
+            case "SHORT_SLEEVE", "SLEEVELESS", "SHORTS", "SANDALS_SLIPPERS" -> 1.0;
+            case "COLLAR_TEE", "SKIRT" -> 0.9;
+            case "SHIRT", "COTTON", "DENIM" -> 0.6;
+            case "LONG_SLEEVE", "KNIT", "SWEAT", "HOODIE", "SLACKS" -> 0.3;
+            case "PADDING", "COAT", "HEAVY", "LEATHER_JACKET" -> 0.0;
+            default -> 0.5;
+        };
     }
 
     private static double scoreForWarm(String type) {
-        if (type.contains("SHORT") || type.contains("SHIRT") || type.contains("PANTS")) return 1.0;
-        if (type.contains("HEAVY") || type.contains("PADDING")) return 0.1;
-        return 0.7;
+        return switch (type) {
+            case "SHORT_SLEEVE", "SHIRT", "COLLAR_TEE", "COTTON", "DENIM", "SLACKS", "SKIRT" -> 1.0;
+            case "LONG_SLEEVE", "SWEAT", "HOODIE", "CARGO" -> 0.8;
+            case "WINDBREAKER", "HOOD_ZIPUP", "BLAZER" -> 0.6;
+            case "KNIT", "DENIM_JACKET", "VARSITY_JACKET" -> 0.4;
+            case "PADDING", "COAT" -> 0.0;
+            default -> 0.7;
+        };
     }
 
     private static double scoreForMild(String type) {
-        if (type.contains("LONG") || type.contains("KNIT") || type.contains("JACKET") || type.contains("CARDIGAN")) return 1.0;
-        if (type.contains("SLEEVELESS") || type.contains("SHORTS")) return 0.3;
-        return 0.8;
+        return switch (type) {
+            case "LONG_SLEEVE", "KNIT", "SHIRT", "SWEAT", "HOODIE" -> 1.0;
+            case "DENIM_JACKET", "BLOUSON", "BLAZER", "VEST", "MA1", "WINDBREAKER", "HOOD_ZIPUP", "VARSITY_JACKET", "WORK_JACKET" -> 0.9;
+            case "DENIM", "SLACKS", "COTTON", "CARGO", "SKIRT" -> 0.8;
+            case "SLEEVELESS", "SHORTS" -> 0.2;
+            case "PADDING", "HEAVY" -> 0.1;
+            default -> 0.5;
+        };
+    }
+
+    private static double scoreForChilly(String type) {
+        return switch (type) {
+            case "KNIT", "SWEAT", "HOODIE", "SINGLE_COAT", "BALMACAAN_COAT", "DENIM_JACKET", "BLOUSON", "MA1", "VARSITY_JACKET", "LIGHT_PADDING" -> 1.0;
+            case "LONG_SLEEVE", "SHIRT", "VEST", "LEATHER_JACKET", "WORK_JACKET" -> 0.8;
+            case "DENIM", "SLACKS", "COTTON", "CARGO" -> 0.8;
+            case "SHORT_SLEEVE", "SHORTS", "SLEEVELESS" -> 0.0;
+            default -> 0.6;
+        };
     }
 
     private static double scoreForCold(String type) {
-        if (type.contains("HEAVY") || type.contains("PADDING") || type.contains("COAT") || type.contains("KNIT")) return 1.0;
-        if (type.contains("SHORT") || type.contains("SHORTS") || type.contains("SLEEVELESS")) return 0.0;
-        return 0.6;
+        return switch (type) {
+            case "PADDING", "HEAVY", "SHEARLING", "DOUBLE_COAT", "TTEOKBOKKI_COAT", "KNIT", "FLEECE_JACKET" -> 1.0;
+            case "SINGLE_COAT", "BALMACAAN_COAT", "MA1", "SWEAT", "HOODIE" -> 0.7;
+            case "DENIM", "SLACKS", "COTTON" -> 0.6;
+            case "SHORT_SLEEVE", "SHORTS", "SLEEVELESS", "SANDALS_SLIPPERS" -> 0.0;
+            default -> 0.5;
+        };
     }
 }

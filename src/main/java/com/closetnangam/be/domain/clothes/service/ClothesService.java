@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.clothes.service;
 
+import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesConvertToOwnedRequest;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesCreateRequest;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesFavoriteRequest;
@@ -176,7 +177,7 @@ public class ClothesService {
                 request.brandName(),
                 request.productCode(),
                 request.imageUrl(),
-                request.category(),
+                ClothesCategory.fromCode(request.category()),
                 request.itemType(),
                 request.isVerified()
         );
@@ -236,7 +237,7 @@ public class ClothesService {
                 .brandName(brandName)
                 .productCode(productCode)
                 .imageUrl(imageUrl)
-                .category(category)
+                .category(ClothesCategory.fromCode(category))
                 .itemType(itemType)
                 .clothesInfoSource(clothesInfoSource)
                 .externalSource(externalSource)

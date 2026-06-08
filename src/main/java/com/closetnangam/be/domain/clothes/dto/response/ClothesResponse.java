@@ -83,7 +83,7 @@ public record ClothesResponse(
                 clothes.getBrandName(),
                 clothes.getProductCode(),
                 clothes.getImageUrl(),
-                clothes.getCategory(),
+                clothes.getCategory().name(),
                 clothes.getItemType(),
                 primaryColorCode,
                 primaryColorDisplay,

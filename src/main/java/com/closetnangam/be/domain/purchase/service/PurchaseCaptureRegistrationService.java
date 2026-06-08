@@ -2,6 +2,7 @@ package com.closetnangam.be.domain.purchase.service;
 
 import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
 import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
+import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
@@ -100,7 +101,7 @@ public class PurchaseCaptureRegistrationService {
                 .brandName(request.brandName())
                 .productCode(request.productCode())
                 .imageUrl(capture.getImageUrl())
-                .category(request.category())
+                .category(ClothesCategory.fromCode(request.category()))
                 .itemType(request.itemType())
                 .clothesInfoSource(ClothesInfoSource.PURCHASE_HISTORY)
                 .externalSource(request.externalSource())

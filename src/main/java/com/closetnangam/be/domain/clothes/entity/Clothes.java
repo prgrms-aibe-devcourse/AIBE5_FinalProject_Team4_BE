@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.clothes.entity;
 
+import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
 import com.closetnangam.be.global.common.entity.BaseEntity;
@@ -52,8 +53,9 @@ public class Clothes extends BaseEntity {
     @Column(name = "image_url", nullable = false, length = 500)
     private String imageUrl;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private String category;
+    private ClothesCategory category;
 
     @Column(name = "item_type", nullable = false, length = 50)
     private String itemType;
@@ -103,7 +105,7 @@ public class Clothes extends BaseEntity {
             String brandName,
             String productCode,
             String imageUrl,
-            String category,
+            ClothesCategory category,
             String itemType,
             ClothesInfoSource clothesInfoSource,
             String externalSource,
@@ -132,7 +134,7 @@ public class Clothes extends BaseEntity {
             String brandName,
             String productCode,
             String imageUrl,
-            String category,
+            ClothesCategory category,
             String itemType,
             Boolean isVerified
     ) {
