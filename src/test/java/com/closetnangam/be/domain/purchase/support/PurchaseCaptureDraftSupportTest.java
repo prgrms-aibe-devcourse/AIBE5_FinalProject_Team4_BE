@@ -157,6 +157,11 @@ class PurchaseCaptureDraftSupportTest {
     }
 
     @Test
+    void resolveItemIndex_defaultsToZeroWhenNull() {
+        assertThat(PurchaseCaptureDraftSupport.resolveItemIndex(null, 3)).isZero();
+    }
+
+    @Test
     void resolveItemIndex_rejectsOutOfRange() {
         assertThatThrownBy(() -> PurchaseCaptureDraftSupport.resolveItemIndex(2, 2))
                 .isInstanceOf(IllegalArgumentException.class)

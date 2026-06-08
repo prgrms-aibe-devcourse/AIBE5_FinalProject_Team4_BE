@@ -25,7 +25,7 @@ public record PurchaseCaptureSaveRequest(
         @Size(max = 50) String season,
         @NotNull Boolean favorite,
         @NotNull Boolean isVerified,
-        @NotNull @Min(0) Integer itemIndex,
+        @Min(0) Integer itemIndex,
         @Size(max = 500) @Pattern(regexp = ValidationPatterns.STORED_IMAGE_URL) String imageUrl
 ) {
 }

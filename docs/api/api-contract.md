@@ -137,7 +137,23 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures` | 구매내역 캡처 업로드 |
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/analyze` | 구매내역 캡처 AI 분석 |
 | GET | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/draft` | 구매내역 기반 등록 초안 조회 |
-| POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/save` | 구매내역 기반 옷 저장 |
+| POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/save` | 구매내역 기반 옷 저장 (`itemIndex` 선택, 생략 시 0) |
+| POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/items/{itemIndex}/skip` | 구매내역 캡처 상품 건너뛰기 |
+
+draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 포함합니다.
+
+#### 구매내역 저장 요청 (`PurchaseCaptureSaveRequest`)
+
+| 필드 | 필수 | 설명 |
+| --- | --- | --- |
+| `name`, `brandName`, `productCode`, `category`, `itemType`, `primaryColor`, `styles`, `externalSource`, `size`, `favorite`, `isVerified` | Y | 옷 공통·옷장 정보 |
+| `secondaryColors`, `season` | N | 보조 색상, 계절 |
+| `itemIndex` | N | 생략 시 0. 복수 상품일 때 저장 대상 인덱스 |
+| `imageUrl` | N | 다중 상품일 때 상품별 이미지 URL |
+
+#### 구매내역 상품 상태 (`PurchaseCaptureItemStatus`)
+
+`PENDING`, `SAVED`, `SKIPPED`
 
 ### 외부 상품
 
