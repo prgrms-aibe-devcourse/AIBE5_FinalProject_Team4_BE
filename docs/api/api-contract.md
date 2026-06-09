@@ -366,6 +366,31 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 
 > **Note**: `outer` 필드는 기온에 따라 외투가 필요 없는 경우(HOT, WARM) `null`로 반환됩니다.
 
+#### 추천 피드백 제출
+
+**POST** `/api/v1/users/{userId}/recommendations/feedback`
+
+- **요청 Body**
+```json
+{
+  "clothesId": 123,
+  "feedbackType": "SAVED"
+}
+```
+
+- **피드백 타입 (`feedbackType`)**
+    - `SAVED`: 저장하기 (긍정 - 가중치 미반영)
+    - `DISLIKE`: 싫어요 (부정 - 가중치 마이너스 반영)
+    - `EXCLUDE`: 추천 제외 (부정 + 후보 제외 - 가중치 마이너스 반영)
+
+- **응답 (성공)**
+```json
+{
+  "success": true,
+  "data": null,
+  "message": null
+}
+```
 #### AI MD 목록 응답 (AiMdPersonaResponse)
 
 ```json
