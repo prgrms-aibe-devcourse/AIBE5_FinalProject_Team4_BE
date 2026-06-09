@@ -2,10 +2,14 @@ package com.closetnangam.be.domain.outfit.dto.request;
 
 import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitBook;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size; // 이걸 추가해줘
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -33,6 +37,9 @@ public class OutfitCreateRequest {
     private String season;
 
     private Boolean favorite = Boolean.FALSE;
+
+    @Valid
+    private List<OutfitItemRequest> items;
 
     public Outfit toEntity(OutfitBook outfitBook) {
         return Outfit.builder()

@@ -372,6 +372,33 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 | GET | `/api/v1/outfit-books` | 코디북 목록 조회 |
 | GET | `/api/v1/outfit-books/{bookId}` | 코디북 상세 조회 |
 | POST | `/api/v1/outfit-books/{bookId}/outfits` | 코디 저장 |
+| PUT | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 수정 |
+| DELETE | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 삭제 |
+
+#### 코디 저장/수정 요청 (`OutfitCreateRequest`, `OutfitUpdateRequest`)
+
+```json
+{
+  "title": "코디 제목",
+  "description": "코디 설명",
+  "thumbnailUrl": "https://...",
+  "situation": "DAILY",
+  "season": "ALL_SEASON",
+  "favorite": false,
+  "items": [
+    {
+      "clothesId": 1,
+      "itemRole": "TOP",
+      "layerOrder": 0
+    }
+  ]
+}
+```
+
+> **Note**: 수정(`PUT`) 요청에서 `items`를 생략하면 기존 구성 아이템이 유지됩니다.
+> - `items` 생략(null): 기존 구성 아이템 유지, 메타데이터만 수정
+> - `items: []` (빈 배열): 기존 구성 아이템 전체 삭제
+> - `items: [...]` (목록): 기존 구성 전체 교체
 
 #### 코디북 조회 응답 (OutfitBookResponse)
 
