@@ -2,14 +2,21 @@ package com.closetnangam.be.global.external.clothes.service;
 
 import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.domain.catalog.entity.Style;
+import com.closetnangam.be.domain.catalog.enums.StyleCode;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.ColorRole;
+import com.closetnangam.be.domain.clothes.enums.StyleRole;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.recommendation.support.ComplementaryRecommendationClassificationService;
+import com.closetnangam.be.domain.recommendation.support.ComplementaryRecommendationClassificationService.ResolvedClassification;
+import com.closetnangam.be.domain.recommendation.support.ComplementaryRecommendationProductFilter;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.global.external.clothes.dto.record.NaverProductCreateRequest;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothesStyleDto;
@@ -17,9 +24,11 @@ import com.closetnangam.be.global.external.clothes.dto.request.ClothingColorDto;
 import com.closetnangam.be.global.external.clothes.dto.response.ProductDto;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
 import com.closetnangam.be.global.external.naver.service.NaverApiService;
-import lombok.RequiredArgsConstructor;
+import com.closetnangam.be.global.external.naver.support.NaverShoppingTitleSanitizer;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
@@ -27,8 +36,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ExternalClothesService {
 
     private static final String DEFAULT_TOP_ITEM_TYPE = "SHORT_SLEEVE";
@@ -43,7 +50,26 @@ public class ExternalClothesService {
     private final StyleRepository styleRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final NaverApiService naverApiService;
+    private final ComplementaryRecommendationClassificationService complementaryRecommendationClassificationService;
+    private final TransactionTemplate transactionTemplate;
 
+    public ExternalClothesService(
+            ClothesRepository clothesRepository,
+            StyleRepository styleRepository,
+            WardrobeClothesRepository wardrobeClothesRepository,
+            NaverApiService naverApiService,
+            ComplementaryRecommendationClassificationService complementaryRecommendationClassificationService,
+            PlatformTransactionManager transactionManager
+    ) {
+        this.clothesRepository = clothesRepository;
+        this.styleRepository = styleRepository;
+        this.wardrobeClothesRepository = wardrobeClothesRepository;
+        this.naverApiService = naverApiService;
+        this.complementaryRecommendationClassificationService = complementaryRecommendationClassificationService;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
+
+    @Transactional(readOnly = true)
     public List<ProductDto> searchProducts(String keyword) {
         List<NaverShoppingProductResponse> naverProducts = naverApiService.searchShoppingProducts(keyword);
         if (naverProducts == null || naverProducts.isEmpty()) {
@@ -60,11 +86,168 @@ public class ExternalClothesService {
                 .toList();
     }
 
+    /**
+     * RECO-004 어울리는 옷 추천 후보 풀 전용 import.
+     * Gemini로 카탈로그 code를 분류하고, 실패 시 규칙 기반 fallback으로 CLOTHES 마스터에 적재한다.
+     */
+    public Optional<Long> importComplementaryRecommendationCandidate(NaverShoppingProductResponse product) {
+        if (product == null || !StringUtils.hasText(product.productId())) {
+            throw new IllegalArgumentException("네이버 상품 ID가 없습니다.");
+        }
+        if (!StringUtils.hasText(product.title()) || !StringUtils.hasText(product.image()) || !StringUtils.hasText(product.link())) {
+            throw new IllegalArgumentException("네이버 상품 메타데이터가 부족합니다.");
+        }
+
+        NaverShoppingTitleSanitizer.Result sanitized = NaverShoppingTitleSanitizer.sanitize(
+                product.title(),
+                product.productId()
+        );
+        String cleanTitle = sanitized.displayName();
+        if (!ComplementaryRecommendationProductFilter.isWearableCandidate(product, cleanTitle)) {
+            return Optional.empty();
+        }
+        NaverProductCreateRequest request = new NaverProductCreateRequest(
+                product.productId().trim(),
+                product.brand(),
+                product.category3(),
+                cleanTitle,
+                product.image(),
+                product.link(),
+                null,
+                "ALL_SEASON",
+                null,
+                null
+        );
+
+        Optional<ResolvedClassification> aiClassification =
+                complementaryRecommendationClassificationService.classifyWithGemini(product, cleanTitle);
+        if (aiClassification.isPresent()) {
+            ResolvedClassification resolved = aiClassification.get();
+            if (!ComplementaryRecommendationProductFilter.isAllowedCategory(resolved.category())) {
+                return Optional.empty();
+            }
+            return Optional.of(persistExternalClothes(
+                    request,
+                    resolved.colors(),
+                    resolved.styles(),
+                    resolved.category(),
+                    resolved.itemType(),
+                    resolved.gender()
+            ));
+        }
+
+        ClothesCategory fallbackCategory = refineCategory(product.category3());
+        if (!ComplementaryRecommendationProductFilter.isAllowedCategory(fallbackCategory.name())) {
+            return Optional.empty();
+        }
+        String colorCode = refineColor(cleanTitle);
+        Style casualStyle = styleRepository.findByCode(StyleCode.CASUAL.name())
+                .orElseThrow(() -> new IllegalStateException("CASUAL 스타일 카탈로그가 없습니다."));
+        return Optional.of(persistExternalClothes(
+                request,
+                List.of(new ClothingColorDto(colorCode, ColorRole.PRIMARY, (byte) 1)),
+                List.of(new ClothesStyleDto(casualStyle.getId(), StyleRole.PRIMARY, (byte) 1)),
+                fallbackCategory.name(),
+                refineItemType(fallbackCategory.name(), product.category3(), cleanTitle),
+                ClothesGender.UNISEX.name()
+        ));
+    }
+
+    /**
+     * RECO-004 Batch API 분류 결과를 DB에 적재한다. (Gemini 동기 호출 없음)
+     */
+    public Optional<Long> importClassifiedComplementaryCandidate(
+            NaverShoppingProductResponse product,
+            ResolvedClassification resolved
+    ) {
+        if (product == null || resolved == null || !StringUtils.hasText(product.productId())) {
+            throw new IllegalArgumentException("상품 또는 분류 결과가 없습니다.");
+        }
+        if (!StringUtils.hasText(product.title()) || !StringUtils.hasText(product.image()) || !StringUtils.hasText(product.link())) {
+            throw new IllegalArgumentException("네이버 상품 메타데이터가 부족합니다.");
+        }
+
+        NaverShoppingTitleSanitizer.Result sanitized = NaverShoppingTitleSanitizer.sanitize(
+                product.title(),
+                product.productId()
+        );
+        String cleanTitle = sanitized.displayName();
+        if (!ComplementaryRecommendationProductFilter.isWearableCandidate(product, cleanTitle)) {
+            return Optional.empty();
+        }
+        if (!ComplementaryRecommendationProductFilter.isAllowedCategory(resolved.category())) {
+            return Optional.empty();
+        }
+
+        NaverProductCreateRequest request = new NaverProductCreateRequest(
+                product.productId().trim(),
+                product.brand(),
+                product.category3(),
+                cleanTitle,
+                product.image(),
+                product.link(),
+                null,
+                "ALL_SEASON",
+                null,
+                null
+        );
+        return Optional.of(persistExternalClothes(
+                request,
+                resolved.colors(),
+                resolved.styles(),
+                resolved.category(),
+                resolved.itemType(),
+                resolved.gender()
+        ));
+    }
+
+    /**
+     * Gemini 호출 이후 DB 적재만 짧은 쓰기 트랜잭션으로 처리한다.
+     */
+    private Long persistExternalClothes(
+            NaverProductCreateRequest request,
+            List<ClothingColorDto> colorDtos,
+            List<ClothesStyleDto> styleDtos,
+            String categoryOverride,
+            String itemTypeOverride,
+            String genderOverride
+    ) {
+        return Objects.requireNonNull(transactionTemplate.execute(status ->
+                getOrCreateExternalClothes(
+                        request,
+                        colorDtos,
+                        styleDtos,
+                        categoryOverride,
+                        itemTypeOverride,
+                        genderOverride
+                )
+        ));
+    }
+
 
     @Transactional
     public Long getOrCreateExternalClothes(NaverProductCreateRequest request,
                                            List<ClothingColorDto> colorDtos,
                                            List<ClothesStyleDto> styleDtos) {
+        return getOrCreateExternalClothes(request, colorDtos, styleDtos, null, null, null);
+    }
+
+    @Transactional
+    public Long getOrCreateExternalClothes(NaverProductCreateRequest request,
+                                           List<ClothingColorDto> colorDtos,
+                                           List<ClothesStyleDto> styleDtos,
+                                           String categoryOverride,
+                                           String itemTypeOverride) {
+        return getOrCreateExternalClothes(request, colorDtos, styleDtos, categoryOverride, itemTypeOverride, null);
+    }
+
+    @Transactional
+    public Long getOrCreateExternalClothes(NaverProductCreateRequest request,
+                                           List<ClothingColorDto> colorDtos,
+                                           List<ClothesStyleDto> styleDtos,
+                                           String categoryOverride,
+                                           String itemTypeOverride,
+                                           String genderOverride) {
 
         // 0. 안전한 리스트 처리
         List<ClothingColorDto> safeColors = (colorDtos != null) ? colorDtos : new ArrayList<>();
@@ -77,17 +260,13 @@ public class ExternalClothesService {
         // 1. 외부 상품 ID 검증 및 공백 제거
         String productId = StringUtils.hasText(request.productId()) ? request.productId().trim() : UNKNOWN;
 
-        // 2. [HTML 태그 및 품번 정제 파이프라인] - <b> 태그 박멸 및 순수 품번 추출
-        String rawTitle = request.cleanTitle();
-        String cleanTitle = StringUtils.hasText(rawTitle) ? rawTitle.replaceAll("<(/)?b>", "") : UNKNOWN;
-
-        String extractedProductCode = "NAVER_" + productId; // 기본값 세팅
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\d{7,}");
-        java.util.regex.Matcher matcher = pattern.matcher(cleanTitle);
-        if (matcher.find()) {
-            extractedProductCode = matcher.group(); // "1370396" 추출
-            cleanTitle = cleanTitle.replace(extractedProductCode, "").trim(); // 이름에서 품번 제거
-        }
+        // 2. 상품명·품번 정제 (네이버 원본 제목 기준)
+        NaverShoppingTitleSanitizer.Result sanitized = NaverShoppingTitleSanitizer.sanitize(
+                request.cleanTitle(),
+                productId
+        );
+        String cleanTitle = sanitized.displayName();
+        String extractedProductCode = sanitized.productCode();
 
         // 3. [중복 체크] 이미 등록된 외부 상품인 경우 새로 만들지 않고 기존 옷 객체 재사용
         Optional<Clothes> existingClothes = clothesRepository.findByExternalProductId(productId);
@@ -98,7 +277,12 @@ public class ExternalClothesService {
         } else {
             // DB에 없는 새로운 상품일 때만 생성 (마스터 도감 적재)
             String brandName = StringUtils.hasText(request.brand()) ? request.brand().trim() : UNKNOWN;
-            ClothesCategory category = refineCategory(request.category3());
+            ClothesCategory category = StringUtils.hasText(categoryOverride)
+                    ? ClothesCategory.valueOf(categoryOverride.trim())
+                    : refineCategory(request.category3());
+            String itemType = StringUtils.hasText(itemTypeOverride)
+                    ? itemTypeOverride.trim()
+                    : refineItemType(category.name(), request.category3(), cleanTitle);
 
             clothes = Clothes.builder()
                     .name(cleanTitle) // 태그와 품번이 세탁된 깔끔한 이름
@@ -107,7 +291,8 @@ public class ExternalClothesService {
                     .productCode(extractedProductCode)
                     .imageUrl(request.image())
                     .category(category.name())
-                    .itemType(refineItemType(category.name(), request.category3(), cleanTitle))
+                    .itemType(itemType)
+                    .gender(ClothesGender.fromCodeOrDefault(genderOverride))
                     .externalSource("NAVER")
                     .externalProductId(productId)
                     .externalProductUrl(request.link())

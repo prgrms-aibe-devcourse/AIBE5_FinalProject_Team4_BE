@@ -123,7 +123,7 @@ public class ClothesController {
     @Operation(
             summary = "어울리는 옷 추천",
             description = """
-                    보유 옷 1벌을 기준으로 같은 카테고리를 제외한 나머지 보유 옷들을 점수화해 카테고리별로 추천합니다.
+                    보유 옷 1벌을 기준으로 같은 카테고리를 제외한 외부 쇼핑 후보를 점수화해 카테고리별로 추천합니다.
                     - 색상(35%): 색상 조합 차트 + 양방향, secondary 0.6 가중
                     - 스타일(30%): 기준 PRIMARY 스타일이 후보 PRIMARY·SECONDARY에 포함되면 1.0, 아니면 0.2
                     - itemType(20%): 소분류 cohesion group + 대표 조합 페어

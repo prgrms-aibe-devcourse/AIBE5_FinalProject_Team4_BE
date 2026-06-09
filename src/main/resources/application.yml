@@ -44,6 +44,11 @@ jwt:
 
 gemini:
   api-key: ${GEMINI_API_KEY:}
+  # 할당량 초과(429) 또는 키 오류 시 순서대로 시도한다. 비어 있는 값은 자동 제외된다.
+  api-keys:
+    - ${GEMINI_API_KEY:}
+    - ${GEMINI_API_KEY_2:}
+    - ${GEMINI_API_KEY_3:}
   base-url: https://generativelanguage.googleapis.com/v1beta
   model: gemini-3.5-flash
   fallback-models:

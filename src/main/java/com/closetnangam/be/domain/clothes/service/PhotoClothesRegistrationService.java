@@ -12,6 +12,7 @@ import com.closetnangam.be.domain.clothes.dto.response.PhotoClothesRegistrationR
 import com.closetnangam.be.domain.clothes.dto.response.PhotoUploadResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
@@ -74,6 +75,11 @@ public class PhotoClothesRegistrationService {
         return toDraftResponse(photo);
     }
 
+    private String resolveRegistrationDraftGender(ClothingAiPhoto photo) {
+        String defaultGender = ClothesGender.fromUserGender(photo.getUser().getGender()).name();
+        return StringUtils.hasText(photo.getDraftGender()) ? photo.getDraftGender() : defaultGender;
+    }
+
     @Transactional
     public PhotoClothesRegistrationResponse savePhotoClothes(
             Long userId,
@@ -83,6 +89,7 @@ public class PhotoClothesRegistrationService {
         validateClassification(
                 request.category(),
                 request.itemType(),
+                request.gender(),
                 request.primaryColor(),
                 request.secondaryColors(),
                 request.styles()
@@ -114,6 +121,7 @@ public class PhotoClothesRegistrationService {
                 .imageUrl(photo.getImageUrl())
                 .category(request.category())
                 .itemType(request.itemType())
+                .gender(ClothesGender.fromCode(request.gender()))
                 .clothesInfoSource(ClothesInfoSource.PHOTO)
                 .externalSource(Clothes.EXTERNAL_NONE)
                 .externalProductId(Clothes.EXTERNAL_NONE)
@@ -177,7 +185,8 @@ public class PhotoClothesRegistrationService {
                 photo.getDraftItemType(),
                 photo.getDraftPrimaryColor(),
                 parseColors(photo.getDraftSecondaryColorsJson()),
-                styles
+                styles,
+                resolveRegistrationDraftGender(photo)
         );
     }
 
@@ -198,11 +207,12 @@ public class PhotoClothesRegistrationService {
     private void validateClassification(
             String category,
             String itemType,
+            String gender,
             String primaryColor,
             List<String> secondaryColors,
             List<String> styles
     ) {
-        clothesTagHelper.validateClassification(category, itemType, primaryColor, secondaryColors, styles);
+        clothesTagHelper.validateClassification(category, itemType, primaryColor, secondaryColors, styles, gender);
     }
 
     private List<String> parseStyles(String draftStylesJson) {

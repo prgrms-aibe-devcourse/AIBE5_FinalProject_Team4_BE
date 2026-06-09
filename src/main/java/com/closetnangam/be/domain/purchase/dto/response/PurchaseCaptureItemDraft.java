@@ -14,6 +14,7 @@ public record PurchaseCaptureItemDraft(
         String primaryColor,
         List<String> secondaryColors,
         List<String> styles,
+        String gender,
         String optionText,
         String suggestedExternalSource,
         String imageUrl

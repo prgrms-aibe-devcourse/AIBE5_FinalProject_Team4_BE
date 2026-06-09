@@ -13,6 +13,7 @@ public record GeminiClothingClassificationResult(
         @JsonAlias("item_type") String itemType,
         @JsonAlias("color") String primaryColor,
         @JsonAlias("secondary_colors") List<String> secondaryColors,
-        List<String> styles
+        List<String> styles,
+        String gender
 ) {
 }

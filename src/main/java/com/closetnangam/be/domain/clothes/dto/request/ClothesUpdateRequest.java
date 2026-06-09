@@ -17,6 +17,7 @@ public record ClothesUpdateRequest(
         @NotBlank @Size(max = 500) @Pattern(regexp = ValidationPatterns.STORED_IMAGE_URL) String imageUrl,
         @NotBlank @Size(max = 50) String category,
         @NotBlank @Size(max = 50) String itemType,
+        @NotBlank @Size(max = 20) String gender,
         @NotBlank @Size(max = 50) String primaryColor,
         @Size(max = CatalogLimits.MAX_SECONDARY_COLORS) List<@NotBlank String> secondaryColors,
         @NotEmpty @Size(max = CatalogLimits.MAX_STYLES) List<@NotBlank String> styles,

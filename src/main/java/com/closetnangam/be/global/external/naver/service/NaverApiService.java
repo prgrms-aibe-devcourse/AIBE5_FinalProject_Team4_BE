@@ -3,6 +3,7 @@ package com.closetnangam.be.global.external.naver.service;
 import com.closetnangam.be.global.common.exception.ExternalApiException;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingSearchResponse;
+import com.closetnangam.be.global.external.naver.support.NaverShoppingTitleSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -27,6 +28,8 @@ import java.util.List;
 public class NaverApiService {
 
     private static final int DEFAULT_DISPLAY_COUNT = 10;
+    private static final int DEFAULT_START_INDEX = 1;
+    private static final String DEFAULT_SORT = "sim";
     private static final String NAVER_SHOPPING_PATH = "/v1/search/shop.json";
 
     private final RestTemplate restTemplate;
@@ -65,9 +68,35 @@ public class NaverApiService {
      * 네이버 원본 응답을 바로 반환하지 않고, 프론트 추천 카드에 필요한 필드만 정제해서 반환한다.
      */
     public List<NaverShoppingProductResponse> searchShoppingProducts(String keyword) {
+        return searchShoppingProducts(keyword, DEFAULT_DISPLAY_COUNT, DEFAULT_START_INDEX, DEFAULT_SORT);
+    }
+
+    /**
+     * RECO-004 시드 등에서 키워드·페이지·정렬을 바꿔 다양한 후보를 수집할 때 사용한다.
+     * start는 1-based이며 display와 함께 페이지를 결정한다. (예: display=10, start=11 → 2페이지)
+     */
+    public List<NaverShoppingProductResponse> searchShoppingProducts(
+            String keyword,
+            int display,
+            int start,
+            String sort
+    ) {
+        return searchShoppingProducts(keyword, display, start, sort, null);
+    }
+
+    /**
+     * {@code exclude} 예: {@code used:rental:cbshop} (중고·렌탈·해외직구 제외).
+     */
+    public List<NaverShoppingProductResponse> searchShoppingProducts(
+            String keyword,
+            int display,
+            int start,
+            String sort,
+            String exclude
+    ) {
         try {
             ResponseEntity<NaverShoppingSearchResponse> response = restTemplate.exchange(
-                    buildShoppingSearchUri(keyword, DEFAULT_DISPLAY_COUNT),
+                    buildShoppingSearchUri(keyword, display, start, sort, exclude),
                     HttpMethod.GET,
                     new HttpEntity<>(buildHeaders()),
                     NaverShoppingSearchResponse.class
@@ -96,11 +125,25 @@ public class NaverApiService {
      * UriComponentsBuilder의 encode를 사용해 한글 검색어를 안전하게 인코딩한다.
      */
     private URI buildShoppingSearchUri(String keyword, int displayCount) {
-        return UriComponentsBuilder
+        return buildShoppingSearchUri(keyword, displayCount, DEFAULT_START_INDEX, DEFAULT_SORT, null);
+    }
+
+    private URI buildShoppingSearchUri(String keyword, int displayCount, int start, String sort) {
+        return buildShoppingSearchUri(keyword, displayCount, start, sort, null);
+    }
+
+    private URI buildShoppingSearchUri(String keyword, int displayCount, int start, String sort, String exclude) {
+        UriComponentsBuilder builder = UriComponentsBuilder
                 .fromUriString("https://openapi.naver.com")
                 .path(NAVER_SHOPPING_PATH)
                 .queryParam("query", keyword)
                 .queryParam("display", displayCount)
+                .queryParam("start", start)
+                .queryParam("sort", sort);
+        if (exclude != null && !exclude.isBlank()) {
+            builder.queryParam("exclude", exclude);
+        }
+        return builder
                 .encode(StandardCharsets.UTF_8)
                 .build()
                 .toUri();
@@ -125,8 +168,12 @@ public class NaverApiService {
      * 직접 알 필요가 없도록 한다.
      */
     private NaverShoppingProductResponse toProductResponse(NaverShoppingSearchResponse.NaverShoppingItem item) {
+        NaverShoppingTitleSanitizer.Result sanitized = NaverShoppingTitleSanitizer.sanitize(
+                item.title(),
+                item.productId()
+        );
         return new NaverShoppingProductResponse(
-                removeHtmlTags(item.title()),
+                sanitized.displayName(),
                 item.link(),
                 item.image(),
                 parsePrice(item.lprice()),

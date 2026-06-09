@@ -32,7 +32,7 @@ last_updated: 2026-06-08
 | --- | --- | --- | --- |
 | 옷장 통계 범위 | `/statistics` API가 `OWNED` 상태의 보유 옷만 계산하고 `totalOwnedCount`를 반환 | 옷장 전체 요약은 `OWNED`와 `WISHLIST`를 함께 고려 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | `USER_STYLES.wardrobe_weight` 산정 범위 | `/statistics` API의 `userStylePayloads`는 보유 옷 기준 스타일 가중치 후보값으로 계산 | `wardrobe_weight`는 사용자의 옷장에 등록된 옷 스타일 기반 점수라는 기준을 따름 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
-| 추천 동점 처리 | 보유 옷 기준 추천 API가 점수 내림차순으로만 정렬하고 동점 그룹 랜덤 처리는 하지 않음 | 같은 점수 그룹 안에서는 랜덤 노출 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
+| 추천 동점 처리 | 옷장 기반 어울리는 옷 추천 API가 점수 내림차순으로만 정렬하고 동점 그룹 랜덤 처리는 하지 않음 | 같은 점수 그룹 안에서는 랜덤 노출 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | 이미지 저장 방식 | 현재 이미지 업로드/조회 구현은 로컬 파일 저장소와 `/api/v1/images/**` 조회 endpoint를 사용 | 운영 기준은 AWS S3 저장과 이미지 URL 관리 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md) |
 | 추천 응답 형식 | `RECO-002` 추천 응답의 `price`는 "0" 고정, `score`는 0~1 문자열, `reason`은 기술적 매칭 결과 반환 | 실제 가격, 백분율 점수, 사용자 친화적 자연어 추천 이유 제공 | [api-contract.md](../api/api-contract.md), [home-recommendation.md](../features/home-recommendation.md) |
 | AI MD 추천 검증 범위 | `RECO-006` API는 구현되어 있으나 Gemini 응답 변형과 저장 롤백 경로에 대한 직접 테스트가 부족 | AI 응답 null/누락 필드, 보유 옷만 포함한 코디, 외부 상품 혼합 코디를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
@@ -97,7 +97,7 @@ src/main/java/com/closetnangam/be/domain/wardrobe/dto/response/WardrobeStatistic
 
 공식 기준 문서에서 추천 점수가 같은 후보는 같은 점수 그룹 안에서 랜덤 노출합니다.
 
-현재 BE의 보유 옷 기준 추천 API는 후보를 점수 내림차순으로 정렬한 뒤 `limit`을 적용합니다.
+현재 BE의 옷장 기반 어울리는 옷 추천 API는 후보를 점수 내림차순으로 정렬한 뒤 `limit`을 적용합니다.
 
 ```text
 src/main/java/com/closetnangam/be/domain/clothes/service/ClothesRecommendationService.java

@@ -5,6 +5,7 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
@@ -86,7 +87,8 @@ public class PurchaseCaptureRegistrationService {
                 request.itemType(),
                 request.primaryColor(),
                 request.secondaryColors(),
-                request.styles()
+                request.styles(),
+                request.gender()
         );
         clothesTagHelper.validateExternalSource(request.externalSource());
 
@@ -121,6 +123,7 @@ public class PurchaseCaptureRegistrationService {
                 .imageUrl(itemImageUrl)
                 .category(request.category())
                 .itemType(request.itemType())
+                .gender(ClothesGender.fromCode(request.gender()))
                 .clothesInfoSource(ClothesInfoSource.PURCHASE_HISTORY)
                 .externalSource(request.externalSource())
                 .externalProductId(Clothes.EXTERNAL_NONE)
