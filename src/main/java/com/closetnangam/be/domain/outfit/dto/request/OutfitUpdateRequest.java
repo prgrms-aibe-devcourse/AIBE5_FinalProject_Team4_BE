@@ -35,5 +35,5 @@ public class OutfitUpdateRequest {
     private Boolean favorite = Boolean.FALSE;
 
     @Valid
-    private List<OutfitItemRequest> items = new ArrayList<>();
+    private List<OutfitItemRequest> items;
 }

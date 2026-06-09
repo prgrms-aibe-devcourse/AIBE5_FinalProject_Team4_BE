@@ -61,11 +61,12 @@ public class OutfitService {
 
         Outfit outfit = outfitRepository.save(request.toEntity(outfitBook));
 
+        List<OutfitItem> savedItems = Collections.emptyList();
         if (request.getItems() != null && !request.getItems().isEmpty()) {
-            saveOutfitItems(outfit, userId, request.getItems());
+            savedItems = saveOutfitItems(outfit, userId, request.getItems());
         }
 
-        return OutfitResponse.from(outfit);
+        return toOutfitResponse(outfit, userId, savedItems);
     }
 
     @Transactional
@@ -85,12 +86,33 @@ public class OutfitService {
                 Boolean.TRUE.equals(request.getFavorite())
         );
 
-        outfitItemRepository.deleteAllByOutfit_OutfitId(outfitId);
-        if (request.getItems() != null && !request.getItems().isEmpty()) {
-            saveOutfitItems(outfit, userId, request.getItems());
+        List<OutfitItem> currentItems;
+        if (request.getItems() != null) {
+            outfitItemRepository.deleteAllByOutfit_OutfitId(outfitId);
+            if (request.getItems().isEmpty()) {
+                currentItems = Collections.emptyList();
+            } else {
+                currentItems = saveOutfitItems(outfit, userId, request.getItems());
+            }
+        } else {
+            // items가 null인 경우 기존 구성 유지
+            currentItems = outfitItemRepository.findAllByOutfit_OutfitId(outfitId);
         }
 
-        return OutfitResponse.from(outfit);
+        return toOutfitResponse(outfit, userId, currentItems);
+    }
+
+    private OutfitResponse toOutfitResponse(Outfit outfit, Long userId, List<OutfitItem> items) {
+        if (items.isEmpty()) {
+            return OutfitResponse.from(outfit);
+        }
+
+        Map<Long, WardrobeClothes> wardrobeClothesByClothesId = findWardrobeClothesByClothesId(userId, items);
+        List<OutfitItemResponse> itemResponses = items.stream()
+                .map(item -> OutfitItemResponse.from(item, wardrobeClothesByClothesId.get(item.getClothes().getId())))
+                .toList();
+
+        return OutfitResponse.from(outfit, itemResponses);
     }
 
     @Transactional
@@ -104,7 +126,7 @@ public class OutfitService {
         outfit.softDelete();
     }
 
-    private void saveOutfitItems(Outfit outfit, Long userId, List<OutfitItemRequest> itemRequests) {
+    private List<OutfitItem> saveOutfitItems(Outfit outfit, Long userId, List<OutfitItemRequest> itemRequests) {
         List<Long> clothesIds = itemRequests.stream()
                 .map(OutfitItemRequest::getClothesId)
                 .toList();
@@ -140,7 +162,7 @@ public class OutfitService {
                             .build();
                 })
                 .toList();
-        outfitItemRepository.saveAll(items);
+        return outfitItemRepository.saveAll(items);
     }
 
     public OutfitBookResponse getBookByUserId(Long userId) {

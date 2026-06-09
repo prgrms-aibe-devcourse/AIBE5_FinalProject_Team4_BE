@@ -39,7 +39,7 @@ public class OutfitCreateRequest {
     private Boolean favorite = Boolean.FALSE;
 
     @Valid
-    private List<OutfitItemRequest> items = new ArrayList<>();
+    private List<OutfitItemRequest> items;
 
     public Outfit toEntity(OutfitBook outfitBook) {
         return Outfit.builder()

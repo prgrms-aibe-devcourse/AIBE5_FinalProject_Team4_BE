@@ -28,5 +28,7 @@ public interface OutfitItemRepository extends JpaRepository<OutfitItem, Long> {
             """)
     List<OutfitItem> findAllByOutfitBookId(@Param("bookId") Long bookId);
 
+    List<OutfitItem> findAllByOutfit_OutfitId(Long outfitId);
+
     void deleteAllByOutfit_OutfitId(Long outfitId);
 }
