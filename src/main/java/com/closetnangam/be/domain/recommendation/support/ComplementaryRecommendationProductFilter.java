@@ -44,7 +44,8 @@ public final class ComplementaryRecommendationProductFilter {
             "수납/정리", "생활/주방", "생활용품",
             "화장품", "뷰티", "향수",
             "침구", "커튼", "이불", "베개",
-            "세탁", "빨래"
+            "세탁", "빨래",
+            "부자재", "봉제", "소잉", "리폼부자재"
     };
 
     private static final String[] EXCLUDED_TITLE_KEYWORDS = {
@@ -75,7 +76,9 @@ public final class ComplementaryRecommendationProductFilter {
             "마스크팩", "화장품", "cosmetic", "perfume", "향수",
             "1+1", "2+1", "3+1", "1+2", "4+1", "1+1세트", "2+1세트", "3+1세트",
             "원플러스원", "1플러스1", "2플러스1", "3플러스1", "1plus1", "2plus1",
-            "제작건", "단체티", "단체복", "인쇄비포함", "기본인쇄", "주문제작", "프린트스타", "맞춤인쇄", "소량프린팅"
+            "제작건", "단체티", "단체복", "인쇄비포함", "기본인쇄", "주문제작", "프린트스타", "맞춤인쇄", "소량프린팅",
+            "부속품", "부자재", "장식소품", "금장단추", "코팅단추", "단추세트", "봉제단추", "스냅단추", "누름단추",
+            "프레스단추", "단추부자재", "지퍼부자재", "의류부자재"
     };
 
     /**
@@ -93,6 +96,15 @@ public final class ComplementaryRecommendationProductFilter {
     /** 속옷 맥락의 나시·런닝만 제외한다. */
     private static final Pattern UNDERWEAR_TANK_OR_RUNNING_PATTERN = Pattern.compile(
             "나시|(?:이너|심리스).{0,15}런닝|런닝.{0,15}(?:이너|나시)|면런닝|순면런닝"
+    );
+
+    /** 단추 N개 등 부자재 판매. 뒤에 셔츠·코트 등 의류명이 있으면 허용한다. */
+    private static final Pattern BUTTON_SUPPLY_COUNT_PATTERN = Pattern.compile(
+            "단추\\s*\\d+\\s*개|\\d+\\s*개\\s*(?:컬러\\s*)?(?:체크\\s*)?단추"
+    );
+
+    private static final Pattern CLOTHING_GARMENT_PATTERN = Pattern.compile(
+            "셔츠|블라우스|코트|자켓|가디건|팬츠|바지|니트|맨투맨|티셔츠|후드|원피스|치마|스커트|신발|스니커|부츠|조끼|베스트|트렌치|점퍼|슬랙스|데님|청바지|반팔|긴팔|와이셔츠"
     );
 
     private ComplementaryRecommendationProductFilter() {
@@ -115,7 +127,26 @@ public final class ComplementaryRecommendationProductFilter {
         if (hasUnderwearTankOrRunning(cleanTitle, product.title())) {
             return false;
         }
+        if (isSewingSupply(cleanTitle, product.title())) {
+            return false;
+        }
         return !containsExcludedKeyword(buildTitleSearchableText(product, cleanTitle), EXCLUDED_TITLE_KEYWORDS);
+    }
+
+    private static boolean isSewingSupply(String... texts) {
+        for (String text : texts) {
+            if (!StringUtils.hasText(text)) {
+                continue;
+            }
+            String stripped = text.replaceAll("<[^>]*>", "");
+            if (!BUTTON_SUPPLY_COUNT_PATTERN.matcher(stripped).find()) {
+                continue;
+            }
+            if (!CLOTHING_GARMENT_PATTERN.matcher(normalize(stripped)).find()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean hasUnderwearTankOrRunning(String... texts) {

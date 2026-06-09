@@ -138,6 +138,35 @@ class ComplementaryRecommendationProductFilterTest {
     }
 
     @Test
+    @DisplayName("단추·부자재 등 봉제 부속품은 제외하고 더블버튼 의류는 허용한다")
+    void excludesSewingSupplies() {
+        assertThat(ComplementaryRecommendationProductFilter.isWearableCandidate(
+                product("에이치플러스몰 가디건 금장단추 원형", "패션잡화", "의류부자재"),
+                "에이치플러스몰 가디건 금장단추 원형"
+        )).isFalse();
+
+        assertThat(ComplementaryRecommendationProductFilter.isWearableCandidate(
+                product("모루인형 단추가디건 니트 상의 장식소품 M-58 단추 1개", "패션의류", "여성의류"),
+                "모루인형 단추가디건 니트 상의 장식소품 M-58 단추 1개"
+        )).isFalse();
+
+        assertThat(ComplementaryRecommendationProductFilter.isWearableCandidate(
+                product("여자 셔츠 블라우스 단추 연장 소매 목 길이 부속품", "패션의류", "여성의류"),
+                "여자 셔츠 블라우스 단추 연장 소매 목 길이 부속품"
+        )).isFalse();
+
+        assertThat(ComplementaryRecommendationProductFilter.isWearableCandidate(
+                product("10개 컬러 체크 단추 셔츠 블라우스", "패션의류", "여성의류"),
+                "10개 컬러 체크 단추 셔츠 블라우스"
+        )).isTrue();
+
+        assertThat(ComplementaryRecommendationProductFilter.isWearableCandidate(
+                product("레노마레이디 본사직영 더블단추 하프 트렌치코트", "패션의류", "여성의류"),
+                "레노마레이디 본사직영 더블단추 하프 트렌치코트"
+        )).isTrue();
+    }
+
+    @Test
     @DisplayName("패션잡화 신발 카테고리는 허용한다")
     void allowsShoesUnderFashionMiscCategory() {
         assertThat(ComplementaryRecommendationProductFilter.isWearableCandidate(
