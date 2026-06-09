@@ -288,6 +288,7 @@ public class PurchaseCaptureThumbnailService {
                 item.primaryColor(),
                 item.secondaryColors(),
                 item.styles(),
+                item.gender(),
                 item.optionText(),
                 item.suggestedExternalSource(),
                 imageUrl,

@@ -45,6 +45,7 @@ public final class PurchaseCaptureDraftSupport {
                 result.primaryColor(),
                 result.secondaryColors(),
                 result.styles(),
+                result.gender(),
                 result.optionText(),
                 result.suggestedExternalSource(),
                 result.imageUrl(),
@@ -109,6 +110,9 @@ public final class PurchaseCaptureDraftSupport {
                         normalizeSecondaryColors(item.secondaryColors())
                 );
                 categoryCatalogService.validateStyleCodes(item.styles());
+                categoryCatalogService.validateGenderCode(
+                        categoryCatalogService.resolveGenderOrDefault(item.gender()).name()
+                );
             } catch (IllegalArgumentException exception) {
                 throw new IllegalStateException(
                         "AI 추출 결과 " + itemNumber + "번째 상품의 분류 코드가 유효하지 않습니다: "
@@ -134,6 +138,7 @@ public final class PurchaseCaptureDraftSupport {
                     item.primaryColor(),
                     normalizeSecondaryColors(item.secondaryColors()),
                     styles,
+                    StringUtils.hasText(item.gender()) ? item.gender() : "UNISEX",
                     item.optionText(),
                     item.suggestedExternalSource(),
                     item.imageUrl(),
@@ -414,6 +419,7 @@ public final class PurchaseCaptureDraftSupport {
                 item.primaryColor(),
                 normalizeSecondaryColors(item.secondaryColors()),
                 item.styles() != null ? item.styles() : List.of(),
+                StringUtils.hasText(item.gender()) ? item.gender() : "UNISEX",
                 item.optionText(),
                 normalizeSuggestedExternalSource(item.suggestedExternalSource()),
                 resolveItemPreviewImageUrl(item.imageUrl(), captureImageUrl, registrableItemCount)

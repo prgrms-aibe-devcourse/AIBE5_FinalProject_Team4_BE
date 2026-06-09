@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResp
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
+import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot.WeightedColor;
@@ -15,6 +16,7 @@ import com.closetnangam.be.domain.clothes.scoring.ColorCompatibilityTable;
 import com.closetnangam.be.domain.clothes.scoring.ItemTypeCompatibilityTable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -39,6 +41,8 @@ import java.util.stream.Collectors;
 public class ClothesRecommendationService {
 
     private static final String CLOTHES_NOT_FOUND_MESSAGE = "해당 옷을 찾을 수 없습니다.";
+    private static final int EXTERNAL_CANDIDATE_LIMIT = 500;
+    private static final String EXTERNAL_DEFAULT_SEASON = "ALL_SEASON";
 
     /**
      * 응답에서 카테고리를 보여줄 순서.
@@ -80,9 +84,10 @@ public class ClothesRecommendationService {
     private static final double SCORE_STYLE_MISMATCH = 0.2;
 
     private final WardrobeClothesRepository wardrobeClothesRepository;
+    private final ClothesRepository clothesRepository;
 
     /**
-     * 기준 옷({clothesId})와 어울리는 보유 옷을 카테고리별로 추천합니다.
+     * 기준 옷({clothesId})와 어울리는 외부 쇼핑 상품을 카테고리별로 추천합니다.
      *
      * <p><b>Precondition:</b> 호출 전에 컨트롤러에서 {@code SecurityUtils.verifyUserIdMatch(userId)}로
      * JWT 사용자 일치를 검증해야 합니다.
@@ -105,10 +110,25 @@ public class ClothesRecommendationService {
         }
 
         String excludeCategory = anchorClothes.getCategory();
+        Set<Long> ownedClothesIds = wardrobeClothesRepository.findOwnedClothesIdsByUserId(userId, OwnershipStatus.OWNED)
+                .stream()
+                .collect(Collectors.toSet());
 
-        List<WardrobeClothes> candidates = wardrobeClothesRepository.findCandidatesForRecommendation(
-                userId, OwnershipStatus.OWNED, clothesId, excludeCategory
-        );
+        List<ScoringCandidate> candidates = clothesRepository
+                .findExternalCandidatesForComplementaryRecommendation(
+                        excludeCategory,
+                        PageRequest.of(0, EXTERNAL_CANDIDATE_LIMIT)
+                )
+                .stream()
+                .filter(clothes -> clothes.getId() != null && !ownedClothesIds.contains(clothes.getId()))
+                .map(clothes -> new ScoringCandidate(
+                        clothes,
+                        clothes.getRecommendationTagSnapshot(),
+                        EXTERNAL_DEFAULT_SEASON,
+                        null,
+                        null
+                ))
+                .toList();
 
         AnchorScoringContext anchorContext = AnchorScoringContext.from(anchor);
         Map<String, List<RecommendedItem>> recommendations = scoredAndGrouped(anchorContext, candidates, limitPerCategory);
@@ -120,42 +140,35 @@ public class ClothesRecommendationService {
 
     private Map<String, List<RecommendedItem>> scoredAndGrouped(
             AnchorScoringContext anchorContext,
-            List<WardrobeClothes> candidates,
+            List<ScoringCandidate> candidates,
             int limit
     ) {
-        // 단일 for-loop 으로 다음을 동시에 처리합니다:
-        // 1) getClothes() 호출 횟수를 후보당 1회로 제한
-        // 2) null Clothes 방어 및 CATEGORY_ORDER 외 카테고리 조기 제외
-        // 3) getRecommendationTagSnapshot() 을 한 번만 호출해 스냅샷을 채점 루프에 전달
-        Map<String, List<CandidateEntry>> candidatesByCategory = new HashMap<>();
-        for (WardrobeClothes candidate : candidates) {
-            Clothes clothes = candidate.getClothes();
+        Map<String, List<ScoringCandidate>> candidatesByCategory = new HashMap<>();
+        for (ScoringCandidate candidate : candidates) {
+            Clothes clothes = candidate.clothes();
             if (clothes == null) {
-                log.debug("WardrobeClothes(id={})의 Clothes 가 null — 후보에서 제외합니다.", candidate.getId());
                 continue;
             }
             String category = clothes.getCategory();
             if (!CATEGORY_SET.contains(category)) {
                 continue;
             }
-            ClothesTagSnapshot tagSnapshot = clothes.getRecommendationTagSnapshot();
-            if (tagSnapshot == null) {
-                log.debug("WardrobeClothes(id={})의 태그 스냅샷을 생성할 수 없습니다 — 후보에서 제외합니다.", candidate.getId());
+            if (candidate.tagSnapshot() == null) {
+                log.debug("Clothes(id={})의 태그 스냅샷을 생성할 수 없습니다 — 후보에서 제외합니다.", clothes.getId());
                 continue;
             }
             candidatesByCategory
                     .computeIfAbsent(category, k -> new ArrayList<>())
-                    .add(new CandidateEntry(candidate, clothes, tagSnapshot));
+                    .add(candidate);
         }
 
         Map<String, List<RecommendedItem>> ordered = new LinkedHashMap<>();
         for (String category : CATEGORY_ORDER) {
-            List<CandidateEntry> categoryCandidates = candidatesByCategory.getOrDefault(category, List.of());
+            List<ScoringCandidate> categoryCandidates = candidatesByCategory.getOrDefault(category, List.of());
             if (categoryCandidates.isEmpty()) {
                 continue;
             }
 
-            // 카테고리당 후보 수가 적으면(일반적) O(n log n) 정렬 비용은 미미합니다.
             List<RecommendedItem> sorted = categoryCandidates.stream()
                     .map(entry -> toRecommendedItem(anchorContext, entry))
                     .sorted(Comparator.comparingInt(RecommendedItem::compatibilityScore).reversed())
@@ -166,15 +179,14 @@ public class ClothesRecommendationService {
         return ordered;
     }
 
-    private RecommendedItem toRecommendedItem(AnchorScoringContext anchorContext, CandidateEntry entry) {
-        WardrobeClothes candidate = entry.wardrobeClothes();
+    private RecommendedItem toRecommendedItem(AnchorScoringContext anchorContext, ScoringCandidate entry) {
         Clothes candidateClothes = entry.clothes();
         ClothesTagSnapshot candidateTags = entry.tagSnapshot();
 
-        double colorScore     = computeColorScore(anchorContext.tagSnapshot().weightedColors(), candidateTags.weightedColors());
-        double styleScore     = computeStyleScore(anchorContext.tagSnapshot().primaryStyleCode(), candidateTags.styleCodes());
-        double seasonScore    = computeSeasonScore(anchorContext.season(), candidate.getSeason());
-        double itemTypeScore  = computeItemTypeScore(anchorContext.itemType(), candidateClothes.getItemType());
+        double colorScore = computeColorScore(anchorContext.tagSnapshot().weightedColors(), candidateTags.weightedColors());
+        double styleScore = computeStyleScore(anchorContext.tagSnapshot().primaryStyleCode(), candidateTags.styleCodes());
+        double seasonScore = computeSeasonScore(anchorContext.season(), entry.season());
+        double itemTypeScore = computeItemTypeScore(anchorContext.itemType(), candidateClothes.getItemType());
 
         int total = (int) Math.round(
                 100.0 * (
@@ -187,18 +199,19 @@ public class ClothesRecommendationService {
 
         return new RecommendedItem(
                 candidateClothes.getId(),
-                candidate.getId(),
+                entry.wardrobeClothesId(),
                 candidateClothes.getName(),
                 candidateClothes.getImageUrl(),
-                candidate.getUserImageUrl(),
+                entry.userImageUrl(),
                 candidateClothes.getCategory(),
                 candidateClothes.getItemType(),
                 candidateTags.primaryColor(),
                 toColorInfo(candidateTags.primaryColor()),
                 candidateTags.secondaryColorCodes(),
                 candidateTags.styleCodes(),
-                candidate.getSeason(),
-                total
+                entry.season(),
+                total,
+                candidateClothes.getTargetGender().name()
         );
     }
 
@@ -318,11 +331,12 @@ public class ClothesRecommendationService {
         return cached;
     }
 
-    /** scoredAndGrouped() 에서 Clothes·스냅샷을 한 번만 조회해 채점 루프에 전달합니다. */
-    private record CandidateEntry(
-            WardrobeClothes wardrobeClothes,
+    private record ScoringCandidate(
             Clothes clothes,
-            ClothesTagSnapshot tagSnapshot
+            ClothesTagSnapshot tagSnapshot,
+            String season,
+            Long wardrobeClothesId,
+            String userImageUrl
     ) {
     }
 

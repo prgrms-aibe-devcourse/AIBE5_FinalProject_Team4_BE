@@ -65,3 +65,21 @@ weather:
   api:
     key: ${WEATHER_API_KEY}
     url: ${WEATHER_API_URL:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
+
+app:
+  recommendation:
+    complementary:
+      # 동기 Gemini 분류(importComplementaryRecommendationCandidate) 사용 여부. false면 규칙 기반 fallback만 사용.
+      ai-classification-enabled: true
+      batch:
+        # Gemini Batch API 대량 분류·적재. local에서 enabled=true 시 기동 후 자동 실행.
+        enabled: true
+        # submit | import | submit-and-wait
+        mode: import
+        model: gemini-3.5-flash
+        max-products: 1000
+        # import 모드에서 state.json 대신 직접 지정할 때 사용 (예: batches/123456789)
+        job-name:
+        poll-interval-seconds: 30
+        max-poll-attempts: 2880
+        state-dir: build/reco-004-batch

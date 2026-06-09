@@ -6,6 +6,7 @@ import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import java.time.LocalDateTime;
@@ -22,6 +23,7 @@ public record ClothesResponse(
         String imageUrl,
         String category,
         String itemType,
+        ClothesGender gender,
         String primaryColor,
         ColorDisplayResponse primaryColorDisplay,
         List<SecondaryColorResponse> secondaryColors,
@@ -85,6 +87,7 @@ public record ClothesResponse(
                 clothes.getImageUrl(),
                 clothes.getCategory(),
                 clothes.getItemType(),
+                clothes.getTargetGender(),
                 primaryColorCode,
                 primaryColorDisplay,
                 secondaryColors,

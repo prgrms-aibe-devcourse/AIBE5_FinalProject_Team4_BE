@@ -6,6 +6,7 @@ import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
 import com.closetnangam.be.domain.ai.repository.ClothingAiPhotoRepository;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.global.external.gemini.GeminiService;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.global.external.gemini.dto.GeminiClothingClassificationResult;
 import com.closetnangam.be.global.storage.LocalImageStorageService;
 import com.closetnangam.be.global.storage.StoredImageAnalysisContext;
@@ -114,6 +115,7 @@ public class AiService {
                         finalResult.brandName(),
                         finalResult.category(),
                         finalResult.itemType(),
+                        categoryCatalogService.resolveGenderOrDefault(finalResult.gender()).name(),
                         finalResult.primaryColor(),
                         toColorsJson(finalResult.secondaryColors()),
                         toStylesJson(finalResult.styles()),
@@ -153,6 +155,9 @@ public class AiService {
             categoryCatalogService.validateCategoryAndItemType(result.category(), result.itemType());
             categoryCatalogService.validateClothesColors(result.primaryColor(), normalizeSecondaryColors(result.secondaryColors()));
             categoryCatalogService.validateStyleCodes(result.styles());
+            categoryCatalogService.validateGenderCode(
+                    categoryCatalogService.resolveGenderOrDefault(result.gender()).name()
+            );
         } catch (IllegalArgumentException e) {
             // AI가 유효하지 않은 category/color/style 코드를 반환한 경우
             throw new IllegalStateException("AI가 유효하지 않은 분류 결과를 반환했습니다: " + e.getMessage(), e);
@@ -219,7 +224,8 @@ public class AiService {
                 photo.getDraftItemType(),
                 photo.getDraftPrimaryColor(),
                 secondaryColors,
-                styles
+                styles,
+                photo.getDraftGender()
         );
     }
 

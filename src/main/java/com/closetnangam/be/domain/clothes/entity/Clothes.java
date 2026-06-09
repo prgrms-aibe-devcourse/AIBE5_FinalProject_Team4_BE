@@ -1,6 +1,7 @@
 package com.closetnangam.be.domain.clothes.entity;
 
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
 import com.closetnangam.be.global.common.entity.BaseEntity;
 import jakarta.persistence.CascadeType;
@@ -59,6 +60,10 @@ public class Clothes extends BaseEntity {
     private String itemType;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "target_gender", nullable = false, length = 20)
+    private ClothesGender targetGender;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "clothes_info_source", nullable = false, length = 50)
     private ClothesInfoSource clothesInfoSource;
 
@@ -105,6 +110,7 @@ public class Clothes extends BaseEntity {
             String imageUrl,
             String category,
             String itemType,
+            ClothesGender targetGender,
             ClothesInfoSource clothesInfoSource,
             String externalSource,
             String externalProductId,
@@ -117,6 +123,7 @@ public class Clothes extends BaseEntity {
         this.imageUrl = imageUrl;
         this.category = category;
         this.itemType = itemType;
+        this.targetGender = targetGender != null ? targetGender : ClothesGender.UNISEX;
         if (clothesInfoSource == null) {
             throw new IllegalArgumentException("옷 정보 출처는 필수입니다.");
         }
@@ -134,6 +141,7 @@ public class Clothes extends BaseEntity {
             String imageUrl,
             String category,
             String itemType,
+            ClothesGender targetGender,
             Boolean isVerified
     ) {
         this.name = name;
@@ -142,6 +150,7 @@ public class Clothes extends BaseEntity {
         this.imageUrl = imageUrl;
         this.category = category;
         this.itemType = itemType;
+        this.targetGender = targetGender != null ? targetGender : ClothesGender.UNISEX;
         this.isVerified = isVerified;
     }
 

@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.clothes.dto.request.WishlistClothesCreateReque
 import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
@@ -70,7 +71,8 @@ public class ClothesService {
                 request.itemType(),
                 request.primaryColor(),
                 request.secondaryColors(),
-                request.styles()
+                request.styles(),
+                request.gender()
         );
 
         Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
@@ -81,6 +83,7 @@ public class ClothesService {
                 request.imageUrl(),
                 request.category(),
                 request.itemType(),
+                request.gender(),
                 ClothesInfoSource.PURCHASE_HISTORY,
                 Clothes.EXTERNAL_NONE,
                 Clothes.EXTERNAL_NONE,
@@ -112,7 +115,8 @@ public class ClothesService {
                 request.itemType(),
                 request.primaryColor(),
                 request.secondaryColors(),
-                request.styles()
+                request.styles(),
+                request.gender()
         );
         clothesTagHelper.validateExternalSource(request.externalSource());
 
@@ -124,6 +128,7 @@ public class ClothesService {
                 request.imageUrl(),
                 request.category(),
                 request.itemType(),
+                request.gender(),
                 ClothesInfoSource.EXTERNAL_SHOPPING,
                 request.externalSource(),
                 request.externalProductId(),
@@ -165,7 +170,8 @@ public class ClothesService {
                 request.itemType(),
                 request.primaryColor(),
                 request.secondaryColors(),
-                request.styles()
+                request.styles(),
+                request.gender()
         );
 
         WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
@@ -178,6 +184,7 @@ public class ClothesService {
                 request.imageUrl(),
                 request.category(),
                 request.itemType(),
+                ClothesGender.fromCode(request.gender()),
                 request.isVerified()
         );
         clothesTagHelper.replaceColorTags(clothes, request.primaryColor(), request.secondaryColors());
@@ -222,6 +229,7 @@ public class ClothesService {
             String imageUrl,
             String category,
             String itemType,
+            String gender,
             ClothesInfoSource clothesInfoSource,
             String externalSource,
             String externalProductId,
@@ -238,6 +246,7 @@ public class ClothesService {
                 .imageUrl(imageUrl)
                 .category(category)
                 .itemType(itemType)
+                .targetGender(ClothesGender.fromCode(gender))
                 .clothesInfoSource(clothesInfoSource)
                 .externalSource(externalSource)
                 .externalProductId(externalProductId)

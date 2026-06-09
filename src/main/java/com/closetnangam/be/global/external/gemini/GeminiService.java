@@ -1,5 +1,6 @@
 package com.closetnangam.be.global.external.gemini;
 
+import com.closetnangam.be.domain.recommendation.support.ComplementaryRecommendationGeminiPrompts;
 import com.closetnangam.be.global.external.gemini.dto.GeminiClothingClassificationResult;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureExtractionResult;
 import com.closetnangam.be.global.common.exception.ExternalApiException;
@@ -35,7 +36,7 @@ public class GeminiService {
 
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
-    private final String apiKey;
+    private final List<String> apiKeysToTry;
     private final String baseUrl;
     private final String model;
     private final List<String> modelsToTry;
@@ -44,6 +45,9 @@ public class GeminiService {
             ObjectMapper objectMapper,
             RestTemplateBuilder restTemplateBuilder,
             @Value("${gemini.api-key:}") String apiKey,
+            @Value("${gemini.api-keys:}") List<String> configuredApiKeys,
+            @Value("${GEMINI_API_KEY_2:}") String backupApiKey2,
+            @Value("${GEMINI_API_KEY_3:}") String backupApiKey3,
             @Value("${gemini.base-url:https://generativelanguage.googleapis.com/v1beta}") String baseUrl,
             @Value("${gemini.model:gemini-3.5-flash}") String model,
             @Value("${gemini.fallback-models:}") List<String> fallbackModels
@@ -58,11 +62,44 @@ public class GeminiService {
                  */
                 .readTimeout(Duration.ofSeconds(90))
                 .build();
-        this.apiKey = apiKey;
+        this.apiKeysToTry = buildApiKeysToTry(apiKey, configuredApiKeys, backupApiKey2, backupApiKey3);
         this.baseUrl = baseUrl;
         this.model = model;
         this.modelsToTry = buildModelsToTry(model, fallbackModels);
+        log.info("Gemini API keys configured: {}", apiKeysToTry.size());
         log.info("Gemini API models: {}", modelsToTry);
+    }
+
+    /**
+     * 키 우선순위: application.yml gemini.api-keys → gemini.api-key → GEMINI_API_KEY_2/3 환경 변수.
+     * IntelliJ EnvFile은 OS env로 주입되므로 YAML 리스트 바인딩과 별도로 예비 키 env를 직접 읽는다.
+     */
+    private static List<String> buildApiKeysToTry(
+            String primaryApiKey,
+            List<String> configuredApiKeys,
+            String backupApiKey2,
+            String backupApiKey3
+    ) {
+        List<String> keys = new ArrayList<>();
+        appendUniqueKey(keys, primaryApiKey);
+        if (configuredApiKeys != null) {
+            for (String configuredApiKey : configuredApiKeys) {
+                appendUniqueKey(keys, configuredApiKey);
+            }
+        }
+        appendUniqueKey(keys, backupApiKey2);
+        appendUniqueKey(keys, backupApiKey3);
+        return List.copyOf(keys);
+    }
+
+    private static void appendUniqueKey(List<String> keys, String candidate) {
+        if (!StringUtils.hasText(candidate)) {
+            return;
+        }
+        String normalized = candidate.trim();
+        if (!keys.contains(normalized)) {
+            keys.add(normalized);
+        }
     }
 
     private static List<String> buildModelsToTry(String primaryModel, List<String> fallbackModels) {
@@ -92,6 +129,8 @@ public class GeminiService {
         String prompt = """
                 당신은 의류 분류 AI입니다. 아래 가이드의 코드만 사용해 JSON으로 응답하세요.
                 name은 옷 이름(한국어), brandName은 브랜드명(모르면 "UNKNOWN")을 추정합니다.
+                분류 순서: 1) category·itemType·색상·스타일 2) gender — 이미지 속 착용 모델의 성별을 우선 확인하고,
+                모델이 없으면 옷 종류·상품명으로 추정하세요. 남녀 공용이면 UNISEX.
 
                 %s
 
@@ -103,9 +142,32 @@ public class GeminiService {
                   "itemType": "SHORT_SLEEVE",
                   "primaryColor": "WHITE",
                   "secondaryColors": ["NAVY"],
-                  "styles": ["CASUAL"]
+                  "styles": ["CASUAL"],
+                  "gender": "UNISEX"
                 }
                 """.formatted(classificationGuide);
+
+        return generateJsonFromImage(imageBytes, mimeType, prompt, GeminiClothingClassificationResult.class);
+    }
+
+    /**
+     * 쇼핑몰 상품 이미지 + 텍스트 메타정보로 의류 분류.
+     * RECO-004 외부 후보 시드 적재 시 사용한다.
+     */
+    public GeminiClothingClassificationResult classifyShoppingProduct(
+            byte[] imageBytes,
+            String mimeType,
+            String classificationGuide,
+            String productTitle,
+            String brandName,
+            String shoppingCategory
+    ) {
+        String prompt = ComplementaryRecommendationGeminiPrompts.buildShoppingProductPrompt(
+                classificationGuide,
+                productTitle,
+                brandName,
+                shoppingCategory
+        );
 
         return generateJsonFromImage(imageBytes, mimeType, prompt, GeminiClothingClassificationResult.class);
     }
@@ -121,6 +183,7 @@ public class GeminiService {
                 추출할 수 없는 필드는 null 또는 빈 배열 []을 사용하세요.
                 brandName을 모르면 "UNKNOWN"을 사용하세요.
                 optionText에는 사이즈·색상·옵션 등 주문 옵션 텍스트를 그대로 넣으세요.
+                gender는 상품명·옵션·썸네일 모델로 추정하고, 불확실하면 UNISEX를 사용하세요.
                 suggestedExternalSource는 화면/로고/URL로 추정 가능한 쇼핑몰 코드입니다. 불확실하면 null.
                 imageUrl에는 캡처 화면에 실제로 보이는 http(s) 상품 썸네일 URL만 넣으세요. URL을 읽을 수 없으면 null.
 
@@ -148,6 +211,7 @@ public class GeminiService {
                   "primaryColor": "WHITE",
                   "secondaryColors": [],
                   "styles": ["CASUAL"],
+                  "gender": "UNISEX",
                   "optionText": "M / 네이비",
                   "suggestedExternalSource": "MUSINSA",
                   "imageUrl": "https://cdn.example.com/product.jpg",
@@ -167,6 +231,7 @@ public class GeminiService {
                       "primaryColor": "WHITE",
                       "secondaryColors": [],
                       "styles": ["CASUAL"],
+                      "gender": "UNISEX",
                       "optionText": "L / 1개",
                       "suggestedExternalSource": "MUSINSA",
                       "imageUrl": null,
@@ -181,6 +246,7 @@ public class GeminiService {
                       "primaryColor": "BLACK",
                       "secondaryColors": [],
                       "styles": ["CASUAL"],
+                      "gender": "UNISEX",
                       "optionText": "36 / 1개",
                       "suggestedExternalSource": "MUSINSA",
                       "imageUrl": null,
@@ -212,7 +278,7 @@ public class GeminiService {
     }
 
     private <T> T generateJsonFromParts(List<Map<String, Object>> parts, Class<T> resultType) {
-        if (apiKey == null || apiKey.isBlank()) {
+        if (apiKeysToTry.isEmpty()) {
             throw new IllegalStateException("Gemini API 키가 설정되어 있지 않습니다.");
         }
 
@@ -225,38 +291,70 @@ public class GeminiService {
                 )
         );
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("x-goog-api-key", apiKey);
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-
         RestClientException lastException = null;
-        for (String modelName : modelsToTry) {
-            for (int attempt = 1; attempt <= MAX_ATTEMPTS_PER_MODEL; attempt++) {
-                try {
-                    ResponseEntity<String> response = postGenerateContent(modelName, entity);
-                    if (!modelName.equals(model)) {
-                        log.info("Gemini API succeeded with fallback model: {}", modelName);
-                    }
-                    return parseJsonResult(response.getBody(), resultType);
-                } catch (RestClientException exception) {
-                    lastException = exception;
-                    if (shouldRetry(exception, attempt)) {
-                        log.warn(
-                                "Gemini API transient failure: model={}, attempt={}/{}",
+        for (int keyIndex = 0; keyIndex < apiKeysToTry.size(); keyIndex++) {
+            String apiKey = apiKeysToTry.get(keyIndex);
+            HttpEntity<Map<String, Object>> entity = buildRequestEntity(requestBody, apiKey);
+            boolean switchToNextApiKey = false;
+
+            for (String modelName : modelsToTry) {
+                for (int attempt = 1; attempt <= MAX_ATTEMPTS_PER_MODEL; attempt++) {
+                    try {
+                        log.info(
+                                "Gemini API 요청 중: keyIndex={}, model={}, attempt={}/{}",
+                                keyIndex + 1,
                                 modelName,
                                 attempt,
                                 MAX_ATTEMPTS_PER_MODEL
                         );
-                        sleepQuietly(RETRY_DELAY_MS);
-                        continue;
+                        ResponseEntity<String> response = postGenerateContent(modelName, entity);
+                        if (keyIndex > 0) {
+                            log.info("Gemini API succeeded with fallback key index {}", keyIndex + 1);
+                        }
+                        if (!modelName.equals(model)) {
+                            log.info("Gemini API succeeded with fallback model: {}", modelName);
+                        }
+                        return parseJsonResult(response.getBody(), resultType);
+                    } catch (RestClientException exception) {
+                        lastException = exception;
+                        if (shouldSwitchApiKey(exception, keyIndex)) {
+                            log.warn(
+                                    "Gemini API key unavailable, trying next key. keyIndex={}/{}, reason={}",
+                                    keyIndex + 1,
+                                    apiKeysToTry.size(),
+                                    summarizeException(exception)
+                            );
+                            switchToNextApiKey = true;
+                            break;
+                        }
+                        if (shouldRetryTransient(exception, attempt)) {
+                            log.warn(
+                                    "Gemini API transient failure: keyIndex={}, model={}, attempt={}/{}",
+                                    keyIndex + 1,
+                                    modelName,
+                                    attempt,
+                                    MAX_ATTEMPTS_PER_MODEL
+                            );
+                            sleepQuietly(RETRY_DELAY_MS);
+                            continue;
+                        }
+                        break;
                     }
+                }
+                if (switchToNextApiKey) {
                     break;
                 }
             }
         }
 
-        throw new IllegalStateException(resolveApiFailureMessage(lastException), lastException);
+        throw new IllegalStateException(resolveApiFailureMessage(lastException, apiKeysToTry.size()), lastException);
+    }
+
+    private HttpEntity<Map<String, Object>> buildRequestEntity(Map<String, Object> requestBody, String apiKey) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-goog-api-key", apiKey);
+        return new HttpEntity<>(requestBody, headers);
     }
 
     private ResponseEntity<String> postGenerateContent(String modelName, HttpEntity<Map<String, Object>> entity) {
@@ -264,21 +362,54 @@ public class GeminiService {
         return restTemplate.postForEntity(url, entity, String.class);
     }
 
-    private boolean shouldRetry(RestClientException exception, int attempt) {
-        if (attempt >= MAX_ATTEMPTS_PER_MODEL) {
+    private boolean shouldSwitchApiKey(RestClientException exception, int keyIndex) {
+        if (keyIndex >= apiKeysToTry.size() - 1) {
+            return false;
+        }
+        if (isQuotaExceeded(exception) || isInvalidApiKey(exception)) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isQuotaExceeded(RestClientException exception) {
+        if (!(exception instanceof HttpStatusCodeException httpException)) {
+            return false;
+        }
+        int status = httpException.getStatusCode().value();
+        String body = httpException.getResponseBodyAsString();
+        return status == 429 || (body != null && body.contains("RESOURCE_EXHAUSTED"));
+    }
+
+    private boolean isInvalidApiKey(RestClientException exception) {
+        if (!(exception instanceof HttpStatusCodeException httpException)) {
+            return false;
+        }
+        int status = httpException.getStatusCode().value();
+        return status == 401 || status == 403;
+    }
+
+    private boolean shouldRetryTransient(RestClientException exception, int attempt) {
+        if (attempt >= MAX_ATTEMPTS_PER_MODEL || isQuotaExceeded(exception) || isInvalidApiKey(exception)) {
             return false;
         }
         if (exception instanceof HttpStatusCodeException httpException) {
             int status = httpException.getStatusCode().value();
             String body = httpException.getResponseBodyAsString();
             return status == 503
-                    || status == 429
                     || status == 500
-                    || (body != null && (body.contains("UNAVAILABLE") || body.contains("RESOURCE_EXHAUSTED")));
+                    || (body != null && body.contains("UNAVAILABLE"));
         }
         String message = exception.getMessage();
         return message != null
                 && (message.contains("Read timed out") || message.contains("connect timed out"));
+    }
+
+    private String summarizeException(RestClientException exception) {
+        if (exception instanceof HttpStatusCodeException httpException) {
+            return "status=" + httpException.getStatusCode().value();
+        }
+        return exception.getMessage();
     }
 
     private void sleepQuietly(long delayMs) {
@@ -289,21 +420,32 @@ public class GeminiService {
         }
     }
 
-    private String resolveApiFailureMessage(RestClientException exception) {
+    private String resolveApiFailureMessage(RestClientException exception, int configuredApiKeyCount) {
         if (exception == null) {
             return "AI API 호출에 실패했습니다.";
         }
         if (exception instanceof HttpStatusCodeException httpException) {
             int status = httpException.getStatusCode().value();
             String body = httpException.getResponseBodyAsString();
-            log.warn("Gemini API call failed: status={}, models={}", status, modelsToTry);
+            log.warn(
+                    "Gemini API call failed: status={}, models={}, configuredApiKeys={}",
+                    status,
+                    modelsToTry,
+                    configuredApiKeyCount
+            );
             if (status == 503 || (body != null && body.contains("UNAVAILABLE"))) {
                 return "AI 서버가 일시적으로 과부하 상태입니다. 잠시 후 다시 시도해 주세요.";
             }
             if (status == 429 || (body != null && body.contains("RESOURCE_EXHAUSTED"))) {
+                if (configuredApiKeyCount > 1) {
+                    return "모든 Gemini API 키의 사용 한도를 초과했습니다. 잠시 후 다시 시도하거나 예비 키·할당량을 확인해 주세요.";
+                }
                 return "AI API 사용 한도를 초과했습니다. 잠시 후 다시 시도하거나 Google AI Studio 요금제·할당량을 확인해 주세요.";
             }
             if (status == 401 || status == 403) {
+                if (configuredApiKeyCount > 1) {
+                    return "설정된 모든 Gemini API 키가 유효하지 않습니다. .env의 GEMINI_API_KEY 및 예비 키를 확인해 주세요.";
+                }
                 return "Gemini API 키가 유효하지 않습니다. .env의 GEMINI_API_KEY를 확인해 주세요.";
             }
             if (status == 404) {
