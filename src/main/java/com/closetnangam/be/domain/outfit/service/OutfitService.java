@@ -108,16 +108,24 @@ public class OutfitService {
                 .map(OutfitItemRequest::getClothesId)
                 .toList();
 
-        Map<Long, Clothes> clothesMap = wardrobeClothesRepository.findAllByClothesIdsAndUserId(clothesIds, userId).stream()
+        // 1. 유저 소유 옷장에서 먼저 조회
+        Map<Long, Clothes> clothesMap = wardrobeClothesRepository
+                .findAllByClothesIdsAndUserId(clothesIds, userId).stream()
                 .map(WardrobeClothes::getClothes)
                 .collect(Collectors.toMap(Clothes::getId, c -> c, (first, second) -> first));
 
         List<OutfitItem> items = itemRequests.stream()
                 .map(itemRequest -> {
                     Clothes clothes = clothesMap.get(itemRequest.getClothesId());
+
+                    // 2. WardrobeClothes에 없으면 Clothes 마스터에서 폴백 조회
+                    // AI MD가 저장한 외부 상품 등 옷장에 없는 Clothes 허용
                     if (clothes == null) {
-                        throw new EntityNotFoundException("사용자 옷장에서 옷을 찾을 수 없습니다. ID: " + itemRequest.getClothesId());
+                        clothes = clothesRepository.findById(itemRequest.getClothesId())
+                                .orElseThrow(() -> new EntityNotFoundException(
+                                        "옷을 찾을 수 없습니다. ID: " + itemRequest.getClothesId()));
                     }
+
                     return OutfitItem.builder()
                             .outfit(outfit)
                             .clothes(clothes)
