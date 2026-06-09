@@ -15,7 +15,13 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "recommendation_feedbacks")
+@Table(
+        name = "recommendation_feedbacks",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_feedback_user_clothes",
+                columnNames = {"user_id", "clothes_id"}
+        )
+)
 public class RecommendationFeedback extends BaseEntity {
 
     @Id

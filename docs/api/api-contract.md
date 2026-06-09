@@ -379,12 +379,12 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 ```json
 {
   "clothesId": 123,
-  "feedbackType": "SAVE"
+  "feedbackType": "SAVED"
 }
 ```
 
 - **피드백 타입 (`feedbackType`)**
-  - `SAVE`: 저장하기 (긍정)
+  - `SAVED`: 저장하기 (긍정)
   - `DISLIKE`: 싫어요 (부정)
   - `EXCLUDE`: 추천 제외 (부정 + 후보 제외)
 
