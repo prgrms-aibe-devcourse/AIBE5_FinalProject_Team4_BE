@@ -1,6 +1,7 @@
 package com.closetnangam.be.domain.outfit.controller;
 
 import com.closetnangam.be.domain.outfit.dto.request.OutfitCreateRequest;
+import com.closetnangam.be.domain.outfit.dto.request.OutfitUpdateRequest;
 import com.closetnangam.be.domain.outfit.dto.response.OutfitBookResponse;
 import com.closetnangam.be.domain.outfit.dto.response.OutfitResponse;
 import com.closetnangam.be.domain.outfit.service.OutfitService;
@@ -12,9 +13,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,5 +61,27 @@ public class OutfitController {
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(outfitService.createOutfit(bookId, userId, request)));
+    }
+
+    @Operation(summary = "코디 수정", description = "코디북의 기존 코디를 수정합니다.")
+    @PutMapping("/{bookId}/outfits/{outfitId}")
+    public ResponseEntity<ApiResponse<OutfitResponse>> updateOutfit(
+            @PathVariable Long bookId,
+            @PathVariable Long outfitId,
+            @Valid @RequestBody OutfitUpdateRequest request
+    ) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.ok(outfitService.updateOutfit(bookId, outfitId, userId, request)));
+    }
+
+    @Operation(summary = "코디 삭제", description = "코디북에서 특정 코디를 삭제합니다.")
+    @DeleteMapping("/{bookId}/outfits/{outfitId}")
+    public ResponseEntity<ApiResponse<Void>> deleteOutfit(
+            @PathVariable Long bookId,
+            @PathVariable Long outfitId
+    ) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        outfitService.deleteOutfit(bookId, outfitId, userId);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }
