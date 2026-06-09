@@ -35,7 +35,7 @@ last_updated: 2026-06-08
 | RECO-001 | 추천 | 추천 메인 | 메인 페이지를 추천 중심 화면으로 사용 | 추천 도메인                                                                    | 추천 메인 |
 | RECO-002 | 추천 | 취향 기반 상품 추천 | 사용자 스타일 점수를 기반으로 상품 추천 | `USER_STYLES`, `RECOMMENDATION_FEEDBACKS`, `GET /api/v1/recommendations/{wardrobeId}` | 추천 메인 |
 | RECO-003 | 추천 | 유사 상품 추천 | 선택한 옷과 유사한 상품 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/similar-products`         | 옷 상세, 추천 상세 |
-| RECO-004 | 추천 | 보유 옷 기준 상품 추천 | 보유 옷과 어울리는 상의/하의/아우터/신발 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations`          | 추천 상세 |
+| RECO-004 | 추천 | 옷장 기반 어울리는 옷 추천 | 옷장에 등록한 옷과 어울리는 상의/하의/아우터/신발 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations`          | 추천 상세 |
 | RECO-005 | 추천 | 날씨/계절/지역 기반 추천 | 사용자 지역과 날씨 정보를 추천에 반영 | `GET /api/weather`                                                        | 추천 메인 |
 | RECO-006 | 추천 | AI MD 추천 | 사용자 성별에 맞는 AI MD가 보유 옷과 외부 상품 후보를 바탕으로 상품 또는 코디 후보를 추천하고, 사용자가 선택한 코디만 저장 | `GET /api/v1/users/{userId}/recommendations/ai-md/personas`, `GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products`, `POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits`, `POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save`, `OUTFITS`, `OUTFIT_ITEMS`, Gemini, 네이버쇼핑 | 추천 상세, 코디북 |
 | RECO-007 | 추천 | 추천 싫어요/제외 | 비선호 상품에 피드백을 남기고 추천에서 제외 | `RECOMMENDATION_FEEDBACKS`                                                | 추천 상세 |

@@ -110,7 +110,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | PATCH | `/api/v1/clothes/{clothesId}/favorite` | 옷 즐겨찾기 변경 |
 | PATCH | `/api/v1/clothes/{clothesId}` | 옷 정보 수정 |
 | DELETE | `/api/v1/clothes/{clothesId}` | 사용자 옷장에서 옷 연결 삭제 |
-| GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 보유 옷 기준 추천 조회 |
+| GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 옷장 기반 어울리는 옷 추천 조회 (`limitPerCategory` query, 아래 [옷장 기반 어울리는 옷 추천](#옷장-기반-어울리는-옷-추천-get-recommendations) 참고) |
 
 #### 옷 저장/수정 공통 분류 필드
 
@@ -210,13 +210,95 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | Method | Path | 설명 |
 | --- | --- | --- |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/similar-products` | 유사 상품 추천 조회 |
-| GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 보유 옷 기준 추천 조회 |
+| GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 옷장 기반 어울리는 옷 추천 조회 (`limitPerCategory` query, 아래 [옷장 기반 어울리는 옷 추천](#옷장-기반-어울리는-옷-추천-get-recommendations) 참고) |
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
 | GET | `/api/v1/ootd/{wardrobeId}?currentTemp={temp}` | 내 옷장 기반 OOTD 추천 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 사용자 성별에 맞는 AI MD 목록 조회 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/products` | 선택한 AI MD 기준 외부 상품 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save` | 선택한 AI MD 코디 후보 저장 |
+
+#### 옷장 기반 어울리는 옷 추천 (`GET .../recommendations`)
+
+옷장에 등록한 보유 옷 1벌을 기준으로 **같은 카테고리를 제외한 외부 쇼핑 DB 후보**를 점수화해 카테고리별로 반환합니다. 옷장에 이미 등록된 `clothesId`는 후보에서 제외됩니다.
+
+| Query | 필수 | 설명 |
+| --- | --- | --- |
+| `limitPerCategory` | N | 카테고리당 최대 추천 수. 기본 `5`, 허용 범위 `1`~`10` |
+
+JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해당 사용자의 보유 옷(`OWNED`)이어야 합니다.
+
+**응답 (`ClothesRecommendationResponse`)**
+
+| 필드 | 설명 |
+| --- | --- |
+| `anchor` | 기준 옷 요약 (`clothesId`, `name`, `imageUrl`, `userImageUrl`, `category`, `itemType`, `primaryColor`, `primaryColorDisplay`) |
+| `recommendations` | 카테고리 code → 추천 목록. key 예: `TOP`, `BOTTOM`, `OUTER`, `SHOES` (기준 옷과 **동일 카테고리 key는 포함되지 않음**) |
+
+**추천 항목 (`RecommendedItem`)**
+
+| 필드 | 설명 |
+| --- | --- |
+| `clothesId` | 외부 `CLOTHES` ID |
+| `wardrobeClothesId` | 옷장 연결 ID. 외부 후보는 보통 `null` |
+| `name`, `imageUrl`, `userImageUrl` | 상품명·이미지 |
+| `category`, `itemType` | 대·소분류 code |
+| `primaryColor`, `primaryColorDisplay`, `secondaryColors` | 색상 |
+| `styleCodes` | 스타일 code 배열 |
+| `season` | 시즌 code 또는 `null` |
+| `gender` | 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`) |
+| `compatibilityScore` | 어울림 점수 (0~100, 내림차순 정렬) |
+
+```json
+{
+  "success": true,
+  "data": {
+    "anchor": {
+      "clothesId": 101,
+      "name": "화이트 반팔 티셔츠",
+      "imageUrl": "https://...",
+      "userImageUrl": "https://...",
+      "category": "TOP",
+      "itemType": "SHORT_SLEEVE",
+      "primaryColor": "WHITE",
+      "primaryColorDisplay": {
+        "code": "WHITE",
+        "label": "화이트",
+        "hex": "#FFFFFF"
+      }
+    },
+    "recommendations": {
+      "BOTTOM": [
+        {
+          "clothesId": 502,
+          "wardrobeClothesId": null,
+          "name": "와이드 슬랙스",
+          "imageUrl": "https://...",
+          "userImageUrl": null,
+          "category": "BOTTOM",
+          "itemType": "SLACKS",
+          "primaryColor": "BLACK",
+          "primaryColorDisplay": {
+            "code": "BLACK",
+            "label": "블랙",
+            "hex": "#000000"
+          },
+          "secondaryColors": [],
+          "styleCodes": ["MINIMAL"],
+          "season": "ALL_SEASON",
+          "compatibilityScore": 87,
+          "gender": "UNISEX"
+        }
+      ],
+      "OUTER": [],
+      "SHOES": []
+    }
+  },
+  "message": null
+}
+```
+
+> **Note**: 점수는 색상(35%)·스타일(30%)·itemType(20%)·시즌(15%) 가중 합산입니다. 동점 후보는 BE에서 랜덤 순서가 될 수 있습니다. FE는 사용자 프로필 성별에 맞지 않는 `gender` 후보를 클라이언트에서 추가 필터링할 수 있습니다.
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 
