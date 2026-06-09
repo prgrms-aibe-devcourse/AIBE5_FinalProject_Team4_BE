@@ -364,6 +364,39 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 | --- | --- | --- |
 | GET | `/api/weather` | 날씨 정보 조회 |
 
+### 추천
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| GET | `/api/v1/users/{userId}/recommendations` | 취향 기반 상품 추천 목록 조회 |
+| POST | `/api/v1/users/{userId}/recommendations/feedback` | 추천 상품에 대한 피드백(저장/싫어요/제외) 제출 |
+
+#### 추천 피드백 제출
+
+**POST** `/api/v1/users/{userId}/recommendations/feedback`
+
+- **요청 Body**
+```json
+{
+  "clothesId": 123,
+  "feedbackType": "SAVE"
+}
+```
+
+- **피드백 타입 (`feedbackType`)**
+  - `SAVE`: 저장하기 (긍정)
+  - `DISLIKE`: 싫어요 (부정)
+  - `EXCLUDE`: 추천 제외 (부정 + 후보 제외)
+
+- **응답 (성공)**
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "피드백이 반영되었습니다."
+}
+```
+
 ### 코디북/코디
 
 | Method | Path | 설명 |

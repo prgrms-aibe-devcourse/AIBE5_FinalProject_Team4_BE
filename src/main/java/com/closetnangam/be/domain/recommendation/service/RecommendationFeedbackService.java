@@ -93,12 +93,6 @@ public class RecommendationFeedbackService {
 
             int amount = (tag.getStyleRole() == StyleRole.PRIMARY) ? 7 : 3;
             int newWeight = userStyle.getFeedbackWeight() + (amount * delta);
-            
-            // 음수 방어
-            if (newWeight < 0) {
-                newWeight = 0;
-            }
-            
             userStyle.updateFeedbackWeight(newWeight);
         }
     }
