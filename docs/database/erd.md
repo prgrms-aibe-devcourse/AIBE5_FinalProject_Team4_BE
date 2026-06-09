@@ -110,6 +110,8 @@ erd_version: v2.1
 
 | 컬럼 | 의미 |
 | --- | --- |
+| `saved` | 저장하기 여부 |
+| `saved_at` | 저장하기 시점 |
 | `disliked` | 추천 싫어요 여부 |
 | `disliked_at` | 추천 싫어요 시점 |
 | `excluded` | 추천 제외 여부 |
@@ -148,7 +150,7 @@ erd_version: v2.1
 | `SOCIAL_ACCOUNTS` | `SocialAccount` | `created_at` + `last_login_at`만 매핑 |
 | `USER_EXTERNAL_LINKS` | `UserExternalLink` | 엔티티·Repository만. **마이페이지 CRUD API는 후속 (USER-002)** |
 | `FEED_*`, `USER_FOLLOWS` | 미구현 | 엔티티 셸 또는 없음. 룩피드 도메인 후속 |
-| `RECOMMENDATION_FEEDBACKS` | 미구현 | 추천 피드백 도메인 후속 |
+| `RECOMMENDATION_FEEDBACKS` | `RecommendationFeedback` | saved/disliked/excluded 피드백 구현 완료 |
 
 ## 데이터 보존 기준
 
