@@ -28,6 +28,7 @@ class PurchaseCaptureDraftSupportTest {
                 "WHITE",
                 List.of(),
                 List.of("CASUAL"),
+                "UNISEX",
                 "M",
                 "MUSINSA",
                 "https://cdn.example.com/tee.jpg",
@@ -45,15 +46,15 @@ class PurchaseCaptureDraftSupportTest {
     @Test
     void resolveItems_prefersItemsArrayForMultipleProducts() {
         GeminiPurchaseCaptureItem first = new GeminiPurchaseCaptureItem(
-                "티셔츠", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "M", "MUSINSA",
+                "티셔츠", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "UNISEX", "M", "MUSINSA",
                 "https://cdn.example.com/tee.jpg", null, "구매 확정"
         );
         GeminiPurchaseCaptureItem second = new GeminiPurchaseCaptureItem(
-                "팬츠", "B", "BOTTOM", "JEANS", "BLUE", List.of(), List.of("CASUAL"), "32", "MUSINSA",
+                "팬츠", "B", "BOTTOM", "JEANS", "BLUE", List.of(), List.of("CASUAL"), "UNISEX", "32", "MUSINSA",
                 "https://cdn.example.com/jeans.jpg", null, "구매 확정"
         );
         GeminiPurchaseCaptureExtractionResult result = new GeminiPurchaseCaptureExtractionResult(
-                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null,
                 List.of(first, second)
         );
 
@@ -102,8 +103,8 @@ class PurchaseCaptureDraftSupportTest {
     @Test
     void resolveItemPreviewImageUrl_fallsBackWhenOnlyOneRegistrableItemRemainsOnMultiRowCapture() {
         List<GeminiPurchaseCaptureItem> mixed = List.of(
-                new GeminiPurchaseCaptureItem("반품 티", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "M", "MUSINSA", null, null, "반품 완료"),
-                new GeminiPurchaseCaptureItem("티셔츠", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "M", "MUSINSA", null, null, "구매 확정")
+                new GeminiPurchaseCaptureItem("반품 티", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "UNISEX", "M", "MUSINSA", null, null, "반품 완료"),
+                new GeminiPurchaseCaptureItem("티셔츠", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "UNISEX", "M", "MUSINSA", null, null, "구매 확정")
         );
 
         assertThat(PurchaseCaptureDraftSupport.countRegistrableItems(mixed)).isEqualTo(1);
@@ -117,7 +118,7 @@ class PurchaseCaptureDraftSupportTest {
     @Test
     void normalizeExtractionItems_defaultsBrandAndStyle() {
         GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(
-                "슬랙스", null, "BOTTOM", "SLACKS", "BLACK", List.of(), List.of(), "36", "MUSINSA",
+                "슬랙스", null, "BOTTOM", "SLACKS", "BLACK", List.of(), List.of(), "UNISEX", "36", "MUSINSA",
                 null, null, "구매 확정"
         );
 
@@ -130,11 +131,11 @@ class PurchaseCaptureDraftSupportTest {
     @Test
     void filterRegistrableItems_excludesReturnOrders() {
         GeminiPurchaseCaptureItem returned = new GeminiPurchaseCaptureItem(
-                "데님", "A", "BOTTOM", "JEANS", "BLACK", List.of(), List.of("CASUAL"), "38", "MUSINSA",
+                "데님", "A", "BOTTOM", "JEANS", "BLACK", List.of(), List.of("CASUAL"), "UNISEX", "38", "MUSINSA",
                 null, null, "반품 완료"
         );
         GeminiPurchaseCaptureItem owned = new GeminiPurchaseCaptureItem(
-                "슬랙스", "B", "BOTTOM", "SLACKS", "BLACK", List.of(), List.of("CASUAL"), "36", "MUSINSA",
+                "슬랙스", "B", "BOTTOM", "SLACKS", "BLACK", List.of(), List.of("CASUAL"), "UNISEX", "36", "MUSINSA",
                 null, null, "구매 확정"
         );
 
@@ -176,7 +177,7 @@ class PurchaseCaptureDraftSupportTest {
     void validateExtractionItemCatalogCodes_acceptsValidCodes() {
         CategoryCatalogService catalogService = new CategoryCatalogService(mock(StyleRepository.class));
         GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(
-                "슬랙스", "BRAND", "BOTTOM", "SLACKS", "BLACK", List.of(), List.of("CASUAL"), "36", "MUSINSA",
+                "슬랙스", "BRAND", "BOTTOM", "SLACKS", "BLACK", List.of(), List.of("CASUAL"), "UNISEX", "36", "MUSINSA",
                 null, null, "구매 확정"
         );
 
@@ -187,7 +188,7 @@ class PurchaseCaptureDraftSupportTest {
     void validateExtractionItemCatalogCodes_rejectsInvalidCategory() {
         CategoryCatalogService catalogService = new CategoryCatalogService(mock(StyleRepository.class));
         GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(
-                "슬랙스", "BRAND", "INVALID", "SLACKS", "BLACK", List.of(), List.of("CASUAL"), "36", "MUSINSA",
+                "슬랙스", "BRAND", "INVALID", "SLACKS", "BLACK", List.of(), List.of("CASUAL"), "UNISEX", "36", "MUSINSA",
                 null, null, "구매 확정"
         );
 
@@ -201,8 +202,8 @@ class PurchaseCaptureDraftSupportTest {
     @Test
     void resolveClothesImageUrl_fallsBackToCaptureForMultiItemWithoutItemUrl() {
         List<GeminiPurchaseCaptureItem> items = List.of(
-                new GeminiPurchaseCaptureItem("티셔츠", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "M", "MUSINSA", null, null, "구매 확정"),
-                new GeminiPurchaseCaptureItem("팬츠", "B", "BOTTOM", "JEANS", "BLUE", List.of(), List.of("CASUAL"), "32", "MUSINSA", null, null, "구매 확정")
+                new GeminiPurchaseCaptureItem("티셔츠", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "UNISEX", "M", "MUSINSA", null, null, "구매 확정"),
+                new GeminiPurchaseCaptureItem("팬츠", "B", "BOTTOM", "JEANS", "BLUE", List.of(), List.of("CASUAL"), "UNISEX", "32", "MUSINSA", null, null, "구매 확정")
         );
 
         assertThat(PurchaseCaptureDraftSupport.resolveClothesImageUrl(

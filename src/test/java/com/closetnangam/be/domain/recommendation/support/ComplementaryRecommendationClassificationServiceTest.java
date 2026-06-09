@@ -2,6 +2,7 @@ package com.closetnangam.be.domain.recommendation.support;
 
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.enums.StyleCode;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.global.external.gemini.GeminiService;
@@ -102,8 +103,10 @@ class ComplementaryRecommendationClassificationServiceTest {
                 "DENIM",
                 "BLACK",
                 List.of(),
-                List.of("CASUAL", "STREET")
+                List.of("CASUAL", "STREET"),
+                "MALE"
         ));
+        given(categoryCatalogService.resolveGenderOrDefault("MALE")).willReturn(ClothesGender.MALE);
 
         Style casual = Style.from(StyleCode.CASUAL);
         ReflectionTestUtils.setField(casual, "id", 1L);
@@ -117,11 +120,13 @@ class ComplementaryRecommendationClassificationServiceTest {
         assertThat(result).isPresent();
         assertThat(result.get().category()).isEqualTo("BOTTOM");
         assertThat(result.get().itemType()).isEqualTo("DENIM");
+        assertThat(result.get().gender()).isEqualTo("MALE");
         assertThat(result.get().colors()).hasSize(1);
         assertThat(result.get().styles()).hasSize(2);
         verify(categoryCatalogService).validateCategoryAndItemType("BOTTOM", "DENIM");
         verify(categoryCatalogService).validateClothesColors("BLACK", List.of());
         verify(categoryCatalogService).validateStyleCodes(List.of("CASUAL", "STREET"));
+        verify(categoryCatalogService).validateGenderCode("MALE");
     }
 
     @Test
