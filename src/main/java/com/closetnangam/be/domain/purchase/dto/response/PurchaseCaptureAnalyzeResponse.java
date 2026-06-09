@@ -14,6 +14,7 @@ public record PurchaseCaptureAnalyzeResponse(
         String brandName,
         String category,
         String itemType,
+        String gender,
         String primaryColor,
         List<String> secondaryColors,
         List<String> styles,

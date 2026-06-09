@@ -1,7 +1,7 @@
 ---
 doc_type: be_database
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-02
+last_updated: 2026-06-09
 erd_version: v2.1
 ---
 
@@ -68,6 +68,7 @@ erd_version: v2.1
 | `image_url` | 대표 이미지 URL |
 | `category` | 옷 카테고리 코드 |
 | `item_type` | 카테고리 하위 옷 타입 코드 |
+| `gender` | 옷 대상 성별 코드: `MALE`, `FEMALE`, `UNISEX` |
 | `clothes_info_source` | 옷 정보 출처: `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |
 | `external_source` | 외부 쇼핑몰 또는 직접 입력 출처 |
 | `external_product_id` | 외부 상품 ID |

@@ -6,6 +6,7 @@ import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
 import com.closetnangam.be.domain.ai.repository.ClothingAiPhotoRepository;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.global.external.gemini.GeminiService;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.global.external.gemini.dto.GeminiClothingClassificationResult;
 import com.closetnangam.be.global.storage.LocalImageStorageService;
 import com.closetnangam.be.global.storage.StoredImageAnalysisContext;
@@ -114,6 +115,7 @@ public class AiService {
                         finalResult.brandName(),
                         finalResult.category(),
                         finalResult.itemType(),
+                        ClothesGender.fromUserGender(photo.getUser().getGender()).name(),
                         finalResult.primaryColor(),
                         toColorsJson(finalResult.secondaryColors()),
                         toStylesJson(finalResult.styles()),
@@ -219,8 +221,14 @@ public class AiService {
                 photo.getDraftItemType(),
                 photo.getDraftPrimaryColor(),
                 secondaryColors,
-                styles
+                styles,
+                resolveRegistrationDraftGender(photo)
         );
+    }
+
+    private String resolveRegistrationDraftGender(ClothingAiPhoto photo) {
+        String defaultGender = ClothesGender.fromUserGender(photo.getUser().getGender()).name();
+        return StringUtils.hasText(photo.getDraftGender()) ? photo.getDraftGender() : defaultGender;
     }
 
     private List<String> parseColors(String draftSecondaryColorsJson) {

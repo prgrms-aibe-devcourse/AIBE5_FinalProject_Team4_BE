@@ -138,6 +138,19 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             @Param("excludeCategory") String excludeCategory
     );
 
+    @Query("""
+            select c.id from WardrobeClothes wc
+            join wc.clothes c
+            join wc.wardrobe w
+            where w.user.id = :userId
+              and wc.ownershipStatus = :ownershipStatus
+              and wc.deletedAt is null
+            """)
+    List<Long> findOwnedClothesIdsByUserId(
+            @Param("userId") Long userId,
+            @Param("ownershipStatus") OwnershipStatus ownershipStatus
+    );
+
     /**
      * 옷장 통계용: 보유 옷 + 스타일 태그 + Style 을 한 번에 로딩합니다.
      */
