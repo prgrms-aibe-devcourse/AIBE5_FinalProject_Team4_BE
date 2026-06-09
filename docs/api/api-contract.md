@@ -170,10 +170,37 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 보유 옷 기준 추천 조회 |
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
 | GET | `/api/v1/ootd/{wardrobeId}?currentTemp={temp}` | 내 옷장 기반 OOTD 추천 |
+| POST | `/api/v1/users/{userId}/recommendations/feedback` | 추천 상품에 대한 피드백(저장/싫어요/제외) 제출 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 사용자 성별에 맞는 AI MD 목록 조회 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/products` | 선택한 AI MD 기준 외부 상품 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save` | 선택한 AI MD 코디 후보 저장 |
+
+#### 추천 피드백 제출
+
+**POST** `/api/v1/users/{userId}/recommendations/feedback`
+
+- **요청 Body**
+```json
+{
+  "clothesId": 123,
+  "feedbackType": "SAVED"
+}
+```
+
+- **피드백 타입 (`feedbackType`)**
+  - `SAVED`: 저장하기 (긍정 - 가중치 미반영)
+  - `DISLIKE`: 싫어요 (부정 - 가중치 마이너스 반영)
+  - `EXCLUDE`: 추천 제외 (부정 + 후보 제외 - 가중치 마이너스 반영)
+
+- **응답 (성공)**
+```json
+{
+  "success": true,
+  "data": null,
+  "message": null
+}
+```
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 
@@ -363,39 +390,6 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 | Method | Path | 설명 |
 | --- | --- | --- |
 | GET | `/api/weather` | 날씨 정보 조회 |
-
-### 추천
-
-| Method | Path | 설명 |
-| --- | --- | --- |
-| GET | `/api/v1/users/{userId}/recommendations` | 취향 기반 상품 추천 목록 조회 |
-| POST | `/api/v1/users/{userId}/recommendations/feedback` | 추천 상품에 대한 피드백(저장/싫어요/제외) 제출 |
-
-#### 추천 피드백 제출
-
-**POST** `/api/v1/users/{userId}/recommendations/feedback`
-
-- **요청 Body**
-```json
-{
-  "clothesId": 123,
-  "feedbackType": "SAVED"
-}
-```
-
-- **피드백 타입 (`feedbackType`)**
-  - `SAVED`: 저장하기 (긍정)
-  - `DISLIKE`: 싫어요 (부정)
-  - `EXCLUDE`: 추천 제외 (부정 + 후보 제외)
-
-- **응답 (성공)**
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "피드백이 반영되었습니다."
-}
-```
 
 ### 코디북/코디
 

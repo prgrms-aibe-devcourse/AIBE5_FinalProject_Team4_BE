@@ -77,7 +77,7 @@ public class RecommendationFeedbackService {
 
     private int calculateWeightDelta(FeedbackType type) {
         return switch (type) {
-            case SAVED -> 1;
+            case SAVED -> 0;
             case DISLIKE, EXCLUDE -> -1;
         };
     }
