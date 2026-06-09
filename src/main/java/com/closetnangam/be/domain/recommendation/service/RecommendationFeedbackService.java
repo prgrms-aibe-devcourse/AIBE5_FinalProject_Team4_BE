@@ -61,7 +61,7 @@ public class RecommendationFeedbackService {
 
     private boolean isAlreadyFeedbacked(Long userId, Long clothesId, FeedbackType type) {
         return switch (type) {
-            case SAVE -> recommendationFeedbackRepository.existsByUserIdAndClothesIdAndSavedIsTrue(userId, clothesId);
+            case SAVED -> recommendationFeedbackRepository.existsByUserIdAndClothesIdAndSavedIsTrue(userId, clothesId);
             case DISLIKE -> recommendationFeedbackRepository.existsByUserIdAndClothesIdAndDislikedIsTrue(userId, clothesId);
             case EXCLUDE -> recommendationFeedbackRepository.existsByUserIdAndClothesIdAndExcludedIsTrue(userId, clothesId);
         };
@@ -69,7 +69,7 @@ public class RecommendationFeedbackService {
 
     private void updateFeedbackState(RecommendationFeedback feedback, FeedbackType type) {
         switch (type) {
-            case SAVE -> feedback.updateSaved(true);
+            case SAVED -> feedback.updateSaved(true);
             case DISLIKE -> feedback.updateDisliked(true);
             case EXCLUDE -> feedback.updateExcluded(true);
         }
@@ -77,7 +77,7 @@ public class RecommendationFeedbackService {
 
     private int calculateWeightDelta(FeedbackType type) {
         return switch (type) {
-            case SAVE -> 1;
+            case SAVED -> 1;
             case DISLIKE, EXCLUDE -> -1;
         };
     }

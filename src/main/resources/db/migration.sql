@@ -76,7 +76,7 @@ ALTER TABLE `clothes`
 -- =====================================================================
 -- 6. RECOMMENDATION_FEEDBACKS 테이블 변경
 -- =====================================================================
--- ALTER TABLE `recommendation_feedbacks` (
+-- CREATE TABLE `recommendation_feedbacks` (
 --     `recommendation_feedback_id` BIGINT NOT NULL AUTO_INCREMENT,
 --     `user_id` BIGINT NOT NULL,
 --     `clothes_id` BIGINT NOT NULL,
