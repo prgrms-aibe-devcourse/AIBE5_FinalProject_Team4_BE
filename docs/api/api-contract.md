@@ -183,7 +183,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/save` | 구매내역 기반 옷 저장 (`itemIndex` 선택, 생략 시 0) |
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/items/{itemIndex}/skip` | 구매내역 캡처 상품 건너뛰기 |
 
-draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 포함합니다.
+단일 상품 draft/analyze 응답은 `name`, `category`, `itemType`, `gender` 등 flat 필드와 `items[0]` 모두에 분류 값을 포함합니다. 복수 상품 시 flat 분류 필드는 `null`이며 `items[]`(`itemIndex`, `gender`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 사용합니다.
 
 #### 구매내역 저장 요청 (`PurchaseCaptureSaveRequest`)
 

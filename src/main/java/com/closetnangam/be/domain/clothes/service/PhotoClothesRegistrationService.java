@@ -75,6 +75,11 @@ public class PhotoClothesRegistrationService {
         return toDraftResponse(photo);
     }
 
+    private String resolveRegistrationDraftGender(ClothingAiPhoto photo) {
+        String defaultGender = ClothesGender.fromUserGender(photo.getUser().getGender()).name();
+        return StringUtils.hasText(photo.getDraftGender()) ? photo.getDraftGender() : defaultGender;
+    }
+
     @Transactional
     public PhotoClothesRegistrationResponse savePhotoClothes(
             Long userId,
@@ -181,7 +186,7 @@ public class PhotoClothesRegistrationService {
                 photo.getDraftPrimaryColor(),
                 parseColors(photo.getDraftSecondaryColorsJson()),
                 styles,
-                photo.getDraftGender()
+                resolveRegistrationDraftGender(photo)
         );
     }
 

@@ -1,13 +1,19 @@
 package com.closetnangam.be.domain.purchase.support;
 
+import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
+import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureDraftResponse;
+import com.closetnangam.be.domain.purchase.entity.PurchaseCapture;
 import com.closetnangam.be.domain.purchase.enums.PurchaseCaptureItemStatus;
+import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureExtractionResult;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureItem;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,6 +23,132 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PurchaseCaptureDraftSupportTest {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    void toDraftResponse_exposesFlatGenderForSingleProduct() {
+        GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(
+                "티셔츠", "BRAND", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "FEMALE", "M", "MUSINSA",
+                null, null, "구매 확정"
+        );
+        User user = mock(User.class);
+        when(user.getGender()).thenReturn(User.Gender.FEMALE);
+        PurchaseCapture capture = PurchaseCapture.builder()
+                .user(user)
+                .imageUrl("http://localhost:8080/capture.jpg")
+                .storedPath("/captures/1.jpg")
+                .originalFilename("capture.jpg")
+                .contentType("image/jpeg")
+                .analysisStatus(AiAnalysisStatus.SUCCESS)
+                .build();
+        capture.applyAnalysisSuccess(
+                item.name(),
+                item.brandName(),
+                item.category(),
+                item.itemType(),
+                item.primaryColor(),
+                PurchaseCaptureDraftSupport.toColorsJson(item.secondaryColors(), objectMapper),
+                PurchaseCaptureDraftSupport.toStylesJson(item.styles(), objectMapper),
+                item.optionText(),
+                item.suggestedExternalSource(),
+                PurchaseCaptureDraftSupport.toItemsJson(
+                        PurchaseCaptureDraftSupport.applyRegistrationDefaultGender(List.of(item), "FEMALE"),
+                        objectMapper
+                ),
+                null
+        );
+
+        PurchaseCaptureDraftResponse draft = PurchaseCaptureDraftSupport.toDraftResponse(capture, objectMapper);
+
+        assertThat(draft.gender()).isEqualTo("FEMALE");
+        assertThat(draft.items()).hasSize(1);
+        assertThat(draft.items().get(0).gender()).isEqualTo("FEMALE");
+    }
+
+    @Test
+    void toDraftResponse_usesUserProfileGenderInsteadOfStoredItemGender() {
+        GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(
+                "티셔츠", "BRAND", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "FEMALE", "M", "MUSINSA",
+                null, null, "구매 확정"
+        );
+        User user = mock(User.class);
+        when(user.getGender()).thenReturn(User.Gender.MALE);
+        PurchaseCapture capture = PurchaseCapture.builder()
+                .user(user)
+                .imageUrl("http://localhost:8080/capture.jpg")
+                .storedPath("/captures/1.jpg")
+                .originalFilename("capture.jpg")
+                .contentType("image/jpeg")
+                .analysisStatus(AiAnalysisStatus.SUCCESS)
+                .build();
+        capture.applyAnalysisSuccess(
+                item.name(),
+                item.brandName(),
+                item.category(),
+                item.itemType(),
+                item.primaryColor(),
+                PurchaseCaptureDraftSupport.toColorsJson(item.secondaryColors(), objectMapper),
+                PurchaseCaptureDraftSupport.toStylesJson(item.styles(), objectMapper),
+                item.optionText(),
+                item.suggestedExternalSource(),
+                PurchaseCaptureDraftSupport.toItemsJson(List.of(item), objectMapper),
+                null
+        );
+
+        PurchaseCaptureDraftResponse draft = PurchaseCaptureDraftSupport.toDraftResponse(capture, objectMapper);
+
+        assertThat(draft.gender()).isEqualTo("MALE");
+        assertThat(draft.items().get(0).gender()).isEqualTo("MALE");
+    }
+
+    @Test
+    void applyRegistrationDefaultGender_overwritesItemGender() {
+        GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(
+                "티셔츠", "BRAND", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "FEMALE", "M", "MUSINSA",
+                null, null, "구매 확정"
+        );
+
+        List<GeminiPurchaseCaptureItem> normalized = PurchaseCaptureDraftSupport.applyRegistrationDefaultGender(
+                List.of(item),
+                "MALE"
+        );
+
+        assertThat(normalized.get(0).gender()).isEqualTo("MALE");
+    }
+
+    @Test
+    void toDraftResponse_omitsFlatGenderForMultipleProducts() {
+        GeminiPurchaseCaptureItem first = new GeminiPurchaseCaptureItem(
+                "티셔츠", "A", "TOP", "SHORT_SLEEVE", "WHITE", List.of(), List.of("CASUAL"), "MALE", "M", "MUSINSA",
+                null, null, "구매 확정"
+        );
+        GeminiPurchaseCaptureItem second = new GeminiPurchaseCaptureItem(
+                "팬츠", "B", "BOTTOM", "JEANS", "BLUE", List.of(), List.of("CASUAL"), "FEMALE", "32", "MUSINSA",
+                null, null, "구매 확정"
+        );
+        User user = mock(User.class);
+        when(user.getGender()).thenReturn(User.Gender.MALE);
+        PurchaseCapture capture = PurchaseCapture.builder()
+                .user(user)
+                .imageUrl("http://localhost:8080/capture.jpg")
+                .storedPath("/captures/1.jpg")
+                .originalFilename("capture.jpg")
+                .contentType("image/jpeg")
+                .analysisStatus(AiAnalysisStatus.SUCCESS)
+                .build();
+        capture.applyAnalysisSuccess(
+                null, null, null, null, null, null, null, null, null,
+                PurchaseCaptureDraftSupport.toItemsJson(List.of(first, second), objectMapper),
+                null
+        );
+
+        PurchaseCaptureDraftResponse draft = PurchaseCaptureDraftSupport.toDraftResponse(capture, objectMapper);
+
+        assertThat(draft.gender()).isNull();
+        assertThat(draft.items()).hasSize(2);
+        assertThat(draft.items()).extracting("gender").containsOnly("MALE");
+    }
 
     @Test
     void resolveItems_usesFlatFieldsForSingleProduct() {

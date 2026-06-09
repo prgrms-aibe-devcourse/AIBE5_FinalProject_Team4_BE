@@ -2,6 +2,7 @@ package com.closetnangam.be.domain.purchase.support;
 
 import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureAnalyzeResponse;
 import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureDraftResponse;
 import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureItemDraft;
@@ -110,9 +111,6 @@ public final class PurchaseCaptureDraftSupport {
                         normalizeSecondaryColors(item.secondaryColors())
                 );
                 categoryCatalogService.validateStyleCodes(item.styles());
-                categoryCatalogService.validateGenderCode(
-                        categoryCatalogService.resolveGenderOrDefault(item.gender()).name()
-                );
             } catch (IllegalArgumentException exception) {
                 throw new IllegalStateException(
                         "AI 추출 결과 " + itemNumber + "번째 상품의 분류 코드가 유효하지 않습니다: "
@@ -138,7 +136,7 @@ public final class PurchaseCaptureDraftSupport {
                     item.primaryColor(),
                     normalizeSecondaryColors(item.secondaryColors()),
                     styles,
-                    StringUtils.hasText(item.gender()) ? item.gender() : "UNISEX",
+                    resolveGenderOrDefault(item.gender()),
                     item.optionText(),
                     item.suggestedExternalSource(),
                     item.imageUrl(),
@@ -147,6 +145,36 @@ public final class PurchaseCaptureDraftSupport {
             ));
         }
         return normalized;
+    }
+
+    /**
+     * 사진·구매내역 등록 draft에는 사용자 프로필 성별을 기본 gender로 사용합니다.
+     */
+    public static List<GeminiPurchaseCaptureItem> applyRegistrationDefaultGender(
+            List<GeminiPurchaseCaptureItem> items,
+            String defaultGenderCode
+    ) {
+        return items.stream()
+                .map(item -> new GeminiPurchaseCaptureItem(
+                        item.name(),
+                        item.brandName(),
+                        item.category(),
+                        item.itemType(),
+                        item.primaryColor(),
+                        item.secondaryColors(),
+                        item.styles(),
+                        defaultGenderCode,
+                        item.optionText(),
+                        item.suggestedExternalSource(),
+                        item.imageUrl(),
+                        item.thumbnailRegion(),
+                        item.orderStatus()
+                ))
+                .toList();
+    }
+
+    public static String registrationDefaultGenderCode(PurchaseCapture capture) {
+        return ClothesGender.fromUserGender(capture.getUser().getGender()).name();
     }
 
     public static String toItemsJson(List<GeminiPurchaseCaptureItem> items, ObjectMapper objectMapper) {
@@ -318,6 +346,7 @@ public final class PurchaseCaptureDraftSupport {
                 draft.brandName(),
                 draft.category(),
                 draft.itemType(),
+                draft.gender(),
                 draft.primaryColor(),
                 draft.secondaryColors(),
                 draft.styles(),
@@ -343,6 +372,7 @@ public final class PurchaseCaptureDraftSupport {
                 view.flatBrandName(),
                 view.flatCategory(),
                 view.flatItemType(),
+                view.flatGender(),
                 view.flatPrimaryColor(),
                 view.flatSecondaryColors(),
                 view.flatStyles(),
@@ -358,6 +388,7 @@ public final class PurchaseCaptureDraftSupport {
         List<GeminiPurchaseCaptureItem> storedItems = parseRegistrableItems(capture.getDraftItemsJson(), objectMapper);
         Map<String, ItemProgressEntry> progress = parseProgress(capture.getItemProgressJson(), objectMapper);
         int registrableItemCount = storedItems.size();
+        String defaultGenderCode = registrationDefaultGenderCode(capture);
 
         if (!storedItems.isEmpty()) {
             List<PurchaseCaptureItemDraft> itemDrafts = new ArrayList<>();
@@ -367,11 +398,12 @@ public final class PurchaseCaptureDraftSupport {
                         storedItems.get(index),
                         capture.getImageUrl(),
                         registrableItemCount,
-                        progress
+                        progress,
+                        defaultGenderCode
                 ));
             }
             if (storedItems.size() > 1) {
-                return new DraftView(null, null, null, null, null, null, null, null, null, itemDrafts);
+                return new DraftView(null, null, null, null, null, null, null, null, null, null, itemDrafts);
             }
             GeminiPurchaseCaptureItem first = storedItems.get(0);
             return new DraftView(
@@ -379,6 +411,7 @@ public final class PurchaseCaptureDraftSupport {
                     first.brandName(),
                     first.category(),
                     first.itemType(),
+                    defaultGenderCode,
                     first.primaryColor(),
                     first.secondaryColors(),
                     first.styles(),
@@ -393,6 +426,7 @@ public final class PurchaseCaptureDraftSupport {
                 capture.getDraftBrandName(),
                 capture.getDraftCategory(),
                 capture.getDraftItemType(),
+                defaultGenderCode,
                 capture.getDraftPrimaryColor(),
                 parseStringList(capture.getDraftSecondaryColorsJson(), objectMapper),
                 parseStringList(capture.getDraftStylesJson(), objectMapper),
@@ -407,7 +441,8 @@ public final class PurchaseCaptureDraftSupport {
             GeminiPurchaseCaptureItem item,
             String captureImageUrl,
             int registrableItemCount,
-            Map<String, ItemProgressEntry> progress
+            Map<String, ItemProgressEntry> progress,
+            String defaultGenderCode
     ) {
         return new PurchaseCaptureItemDraft(
                 itemIndex,
@@ -419,7 +454,7 @@ public final class PurchaseCaptureDraftSupport {
                 item.primaryColor(),
                 normalizeSecondaryColors(item.secondaryColors()),
                 item.styles() != null ? item.styles() : List.of(),
-                StringUtils.hasText(item.gender()) ? item.gender() : "UNISEX",
+                defaultGenderCode,
                 item.optionText(),
                 normalizeSuggestedExternalSource(item.suggestedExternalSource()),
                 resolveItemPreviewImageUrl(item.imageUrl(), captureImageUrl, registrableItemCount)
@@ -474,6 +509,10 @@ public final class PurchaseCaptureDraftSupport {
         return suggestedExternalSource.trim().toUpperCase(Locale.ROOT);
     }
 
+    private static String resolveGenderOrDefault(String gender) {
+        return StringUtils.hasText(gender) ? gender : "UNISEX";
+    }
+
     public record ItemProgressEntry(
             PurchaseCaptureItemStatus status,
             Long clothesId,
@@ -486,6 +525,7 @@ public final class PurchaseCaptureDraftSupport {
             String flatBrandName,
             String flatCategory,
             String flatItemType,
+            String flatGender,
             String flatPrimaryColor,
             List<String> flatSecondaryColors,
             List<String> flatStyles,

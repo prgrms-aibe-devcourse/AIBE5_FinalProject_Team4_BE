@@ -263,6 +263,7 @@ AI 응답 규칙:
 
 - `category`, `itemType`, `gender`, `primaryColor`, `secondaryColors`, `styles`는 이 문서의 code 목록만 사용합니다.
 - `gender`는 `MALE`, `FEMALE`, `UNISEX` 중 하나입니다. 모델·상품명·옷 종류로 추정하고 불확실하면 `UNISEX`를 사용합니다.
+- 사진·구매내역 등록 draft의 `gender` 기본값은 AI 추정이 아니라 **로그인 사용자 프로필 성별**(`MALE`/`FEMALE`, `OTHER`→`UNISEX`)입니다. 저장 요청에서 다른 값을 보내면 변경할 수 있습니다.
 - `itemType`은 선택한 `category` 하위 코드여야 합니다.
 - `secondaryColors`가 없으면 빈 배열 `[]`을 사용합니다.
 - `suggestedExternalSource`가 불확실하면 `null`을 사용합니다.

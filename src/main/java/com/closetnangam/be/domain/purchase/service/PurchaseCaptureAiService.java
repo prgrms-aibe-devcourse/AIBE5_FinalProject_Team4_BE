@@ -118,6 +118,8 @@ public class PurchaseCaptureAiService {
                         items,
                         resolved
                 );
+                String defaultGenderCode = PurchaseCaptureDraftSupport.registrationDefaultGenderCode(capture);
+                items = PurchaseCaptureDraftSupport.applyRegistrationDefaultGender(items, defaultGenderCode);
                 GeminiPurchaseCaptureItem first = items.get(0);
                 capture.applyAnalysisSuccess(
                         first.name(),

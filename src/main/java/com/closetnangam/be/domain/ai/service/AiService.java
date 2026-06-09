@@ -115,7 +115,7 @@ public class AiService {
                         finalResult.brandName(),
                         finalResult.category(),
                         finalResult.itemType(),
-                        categoryCatalogService.resolveGenderOrDefault(finalResult.gender()).name(),
+                        ClothesGender.fromUserGender(photo.getUser().getGender()).name(),
                         finalResult.primaryColor(),
                         toColorsJson(finalResult.secondaryColors()),
                         toStylesJson(finalResult.styles()),
@@ -155,9 +155,6 @@ public class AiService {
             categoryCatalogService.validateCategoryAndItemType(result.category(), result.itemType());
             categoryCatalogService.validateClothesColors(result.primaryColor(), normalizeSecondaryColors(result.secondaryColors()));
             categoryCatalogService.validateStyleCodes(result.styles());
-            categoryCatalogService.validateGenderCode(
-                    categoryCatalogService.resolveGenderOrDefault(result.gender()).name()
-            );
         } catch (IllegalArgumentException e) {
             // AI가 유효하지 않은 category/color/style 코드를 반환한 경우
             throw new IllegalStateException("AI가 유효하지 않은 분류 결과를 반환했습니다: " + e.getMessage(), e);
@@ -225,8 +222,13 @@ public class AiService {
                 photo.getDraftPrimaryColor(),
                 secondaryColors,
                 styles,
-                photo.getDraftGender()
+                resolveRegistrationDraftGender(photo)
         );
+    }
+
+    private String resolveRegistrationDraftGender(ClothingAiPhoto photo) {
+        String defaultGender = ClothesGender.fromUserGender(photo.getUser().getGender()).name();
+        return StringUtils.hasText(photo.getDraftGender()) ? photo.getDraftGender() : defaultGender;
     }
 
     private List<String> parseColors(String draftSecondaryColorsJson) {
