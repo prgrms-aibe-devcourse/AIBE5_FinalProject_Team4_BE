@@ -2,6 +2,7 @@ package com.closetnangam.be.domain.outfit.service;
 
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.outfit.dto.request.OutfitCreateRequest;
@@ -118,12 +119,17 @@ public class OutfitService {
                 .map(itemRequest -> {
                     Clothes clothes = clothesMap.get(itemRequest.getClothesId());
 
-                    // 2. WardrobeClothes에 없으면 Clothes 마스터에서 폴백 조회
-                    // AI MD가 저장한 외부 상품 등 옷장에 없는 Clothes 허용
+                    // 2. WardrobeClothes에 없으면 EXTERNAL_SHOPPING만 폴백 허용
+                    // PHOTO / PURCHASE_HISTORY는 반드시 본인 옷장 소유여야 함
                     if (clothes == null) {
                         clothes = clothesRepository.findById(itemRequest.getClothesId())
                                 .orElseThrow(() -> new EntityNotFoundException(
                                         "옷을 찾을 수 없습니다. ID: " + itemRequest.getClothesId()));
+
+                        if (clothes.getClothesInfoSource() != ClothesInfoSource.EXTERNAL_SHOPPING) {
+                            throw new EntityNotFoundException(
+                                    "사용자 옷장에서 옷을 찾을 수 없습니다. ID: " + itemRequest.getClothesId());
+                        }
                     }
 
                     return OutfitItem.builder()
