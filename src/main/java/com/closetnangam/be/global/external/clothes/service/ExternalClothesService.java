@@ -1,5 +1,6 @@
 package com.closetnangam.be.global.external.clothes.service;
 
+import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.enums.StyleCode;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
@@ -135,8 +136,8 @@ public class ExternalClothesService {
             ));
         }
 
-        String fallbackCategory = refineCategory(product.category3());
-        if (!ComplementaryRecommendationProductFilter.isAllowedCategory(fallbackCategory)) {
+        ClothesCategory fallbackCategory = refineCategory(product.category3());
+        if (!ComplementaryRecommendationProductFilter.isAllowedCategory(fallbackCategory.name())) {
             return Optional.empty();
         }
         String colorCode = refineColor(cleanTitle);
@@ -146,8 +147,8 @@ public class ExternalClothesService {
                 request,
                 List.of(new ClothingColorDto(colorCode, ColorRole.PRIMARY, (byte) 1)),
                 List.of(new ClothesStyleDto(casualStyle.getId(), StyleRole.PRIMARY, (byte) 1)),
-                fallbackCategory,
-                refineItemType(fallbackCategory, product.category3(), cleanTitle),
+                fallbackCategory.name(),
+                refineItemType(fallbackCategory.name(), product.category3(), cleanTitle),
                 ClothesGender.UNISEX.name()
         ));
     }
@@ -276,12 +277,12 @@ public class ExternalClothesService {
         } else {
             // DB에 없는 새로운 상품일 때만 생성 (마스터 도감 적재)
             String brandName = StringUtils.hasText(request.brand()) ? request.brand().trim() : UNKNOWN;
-            String category = StringUtils.hasText(categoryOverride)
-                    ? categoryOverride.trim()
+            ClothesCategory category = StringUtils.hasText(categoryOverride)
+                    ? ClothesCategory.valueOf(categoryOverride.trim())
                     : refineCategory(request.category3());
             String itemType = StringUtils.hasText(itemTypeOverride)
                     ? itemTypeOverride.trim()
-                    : refineItemType(category, request.category3(), cleanTitle);
+                    : refineItemType(category.name(), request.category3(), cleanTitle);
 
             clothes = Clothes.builder()
                     .name(cleanTitle) // 태그와 품번이 세탁된 깔끔한 이름
@@ -289,7 +290,7 @@ public class ExternalClothesService {
                     .clothesInfoSource(ClothesInfoSource.EXTERNAL_SHOPPING)
                     .productCode(extractedProductCode)
                     .imageUrl(request.image())
-                    .category(category)
+                    .category(category.name())
                     .itemType(itemType)
                     .targetGender(ClothesGender.fromCodeOrDefault(genderOverride))
                     .externalSource("NAVER")
@@ -326,33 +327,33 @@ public class ExternalClothesService {
 
         return clothes.getId();
     }
-    private String refineCategory(String naverCategory3) {
+    private ClothesCategory refineCategory(String naverCategory3) {
         String categoryText = normalizeText(naverCategory3);
         if (categoryText.isEmpty()) {
-            return DEFAULT_CATEGORY;
+            return ClothesCategory.valueOf(DEFAULT_CATEGORY);
         }
 
         if (containsAny(categoryText, "신발", "구두", "슈즈", "스니커즈", "운동화", "로퍼", "더비", "부츠", "샌들", "슬리퍼", "힐", "플랫")) {
-            return "SHOES";
+            return ClothesCategory.SHOES;
         }
 
         if (containsAny(categoryText, "부츠컷")) {
-            return "BOTTOM";
+            return ClothesCategory.BOTTOM;
         }
 
         if (containsAny(categoryText, "바지", "팬츠", "슬랙스", "데님", "청바지", "스커트", "치마", "쇼츠", "반바지", "카고", "조거")) {
-            return "BOTTOM";
+            return ClothesCategory.BOTTOM;
         }
 
         if (containsAny(categoryText, "패딩", "코트", "자켓", "재킷", "점퍼", "바람막이", "집업", "블루종", "블레이저", "무스탕", "베스트", "조끼", "야상", "아우터")) {
-            return "OUTER";
+            return ClothesCategory.OUTER;
         }
 
         if (containsAny(categoryText, "셔츠", "티셔츠", "맨투맨", "후드티", "니트", "스웨터", "가디건", "블라우스", "민소매", "나시", "카라", "폴로", "탑")) {
-            return "TOP";
+            return ClothesCategory.TOP;
         }
 
-        return DEFAULT_CATEGORY;
+        return ClothesCategory.valueOf(DEFAULT_CATEGORY);
     }
 
     private String refineItemType(String category, String naverCategory3, String title) {

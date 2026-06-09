@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.clothes.entity;
 
+
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;

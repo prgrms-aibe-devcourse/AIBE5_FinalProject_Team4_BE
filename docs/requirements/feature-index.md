@@ -39,6 +39,7 @@ last_updated: 2026-06-08
 | RECO-005 | 추천 | 날씨/계절/지역 기반 추천 | 사용자 지역과 날씨 정보를 추천에 반영 | `GET /api/weather`                                                        | 추천 메인 |
 | RECO-006 | 추천 | AI MD 추천 | 사용자 성별에 맞는 AI MD가 보유 옷과 외부 상품 후보를 바탕으로 상품 또는 코디 후보를 추천하고, 사용자가 선택한 코디만 저장 | `GET /api/v1/users/{userId}/recommendations/ai-md/personas`, `GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products`, `POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits`, `POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save`, `OUTFITS`, `OUTFIT_ITEMS`, Gemini, 네이버쇼핑 | 추천 상세, 코디북 |
 | RECO-007 | 추천 | 추천 싫어요/제외 | 비선호 상품에 피드백을 남기고 추천에서 제외 | `RECOMMENDATION_FEEDBACKS`                                                | 추천 상세 |
+| RECO-008 | 추천 | 내 옷장 기반 OOTD 추천 | 현재 기온에 맞는 상+하+외투 조합 추천 | `GET /api/v1/ootd/{wardrobeId}`, `WeatherCompatibilityTable`              | 추천 메인 |
 | OUTFIT-001 | 코디북 | 사용자별 단일 코디북 | 회원마다 1개의 코디북 생성 및 관리 | `OUTFIT_BOOKS`, `/api/v1/outfit-books`                                    | 코디북 |
 | OUTFIT-002 | 코디 | 코디 저장/조회 | 추천받거나 직접 구성한 코디를 저장하고 조회 | `OUTFITS`, `OUTFIT_ITEMS`                                                 | 코디북, 코디 상세 |
 | OUTFIT-003 | 코디 | 코디 스타일 | 코디 구성 옷을 기반으로 대표/보조 스타일 관리 | `OUTFIT_STYLES`                                                           | 코디 상세 |

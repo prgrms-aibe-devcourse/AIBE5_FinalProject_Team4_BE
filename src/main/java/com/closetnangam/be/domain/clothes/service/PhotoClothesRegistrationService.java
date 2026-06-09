@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.clothes.service;
 
+import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.domain.ai.entity.ClothingAiPhoto;
 import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
 import com.closetnangam.be.domain.ai.repository.ClothingAiPhotoRepository;
