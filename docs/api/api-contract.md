@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-08
+last_updated: 2026-06-09
 ---
 
 # API 계약
@@ -112,6 +112,49 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | DELETE | `/api/v1/clothes/{clothesId}` | 사용자 옷장에서 옷 연결 삭제 |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 보유 옷 기준 추천 조회 |
 
+#### 옷 저장/수정 공통 분류 필드
+
+아래 필드는 보유 옷 등록(`POST /api/v1/users/{userId}/clothes`), 옷 수정(`PATCH /api/v1/clothes/{clothesId}`), 사진 저장, 구매내역 저장, 미보유 저장 요청에 공통으로 포함됩니다.
+
+| 필드 | 필수 | 설명 |
+| --- | --- | --- |
+| `category` | Y | 대분류 code (`TOP`, `BOTTOM`, `OUTER`, `SHOES`) |
+| `itemType` | Y | 소분류 code. 선택한 `category` 하위 값 |
+| `gender` | Y | 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`) |
+| `primaryColor` | Y | 대표 색상 code |
+| `secondaryColors` | N | 보조 색상 code 배열 |
+| `styles` | Y | 스타일 code 배열 (최소 1개) |
+
+허용 code 목록은 [카탈로그 사용 가이드](../domain/catalog.md)를 따릅니다. AI 분석 초안(`draft`)에도 `gender`가 포함되며, 저장 요청 시 `@NotBlank` validation이 적용됩니다.
+
+#### 옷 조회 응답 (`ClothesResponse`)
+
+옷 목록/상세/저장 성공 응답에는 분류 필드와 함께 `gender`가 포함됩니다. 값은 `MALE`, `FEMALE`, `UNISEX` enum code입니다.
+
+```json
+{
+  "success": true,
+  "data": {
+    "clothesId": 1,
+    "wardrobeClothesId": 10,
+    "name": "화이트 반팔 티셔츠",
+    "category": "TOP",
+    "itemType": "SHORT_SLEEVE",
+    "gender": "UNISEX",
+    "primaryColor": "WHITE",
+    "secondaryColors": [],
+    "styles": [
+      { "styleCode": "CASUAL", "styleRole": "PRIMARY" }
+    ],
+    "ownershipStatus": "OWNED",
+    "clothesInfoSource": "PHOTO"
+  },
+  "message": null
+}
+```
+
+> **Note**: 응답 예시는 주요 필드만 발췌했습니다. 실제 응답에는 옷장/외부 연동 필드가 추가로 포함됩니다.
+
 ### 미보유 옷
 
 | Method | Path | 설명 |
@@ -146,7 +189,7 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
-| `name`, `brandName`, `productCode`, `category`, `itemType`, `primaryColor`, `styles`, `externalSource`, `size`, `favorite`, `isVerified` | Y | 옷 공통·옷장 정보 |
+| `name`, `brandName`, `productCode`, `category`, `itemType`, `gender`, `primaryColor`, `styles`, `externalSource`, `size`, `favorite`, `isVerified` | Y | 옷 공통·옷장 정보 |
 | `secondaryColors`, `season` | N | 보조 색상, 계절 |
 | `itemIndex` | N | 생략 시 0. 복수 상품일 때 저장 대상 인덱스 |
 | `imageUrl` | N | 상품별 이미지 URL. 생략 시 draft `items[].imageUrl` 또는 캡처 `previewUrl`로 fallback |

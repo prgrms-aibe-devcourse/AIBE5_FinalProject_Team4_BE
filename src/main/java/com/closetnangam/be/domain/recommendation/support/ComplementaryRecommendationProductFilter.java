@@ -240,4 +240,3 @@ public final class ComplementaryRecommendationProductFilter {
                 .replaceAll("\\s+", "");
     }
 }
-

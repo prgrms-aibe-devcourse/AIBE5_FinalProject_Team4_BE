@@ -1,7 +1,7 @@
 ---
 doc_type: shared_with_be_details
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-03
+last_updated: 2026-06-09
 ---
 
 # 옷 등록 플로우 가이드
@@ -27,7 +27,7 @@ last_updated: 2026-06-03
 
 | 데이터 | 저장 위치 | 설명 |
 | --- | --- | --- |
-| 상품명, 브랜드, 품번, 이미지, 카테고리, 타입 | `CLOTHES` | 옷 자체의 공통 정보 |
+| 상품명, 브랜드, 품번, 이미지, 카테고리, 타입, 대상 성별 | `CLOTHES` | 옷 자체의 공통 정보 |
 | 옷 정보 출처 | `CLOTHES.clothes_info_source` | `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |
 | 보유/미보유 | `WARDROBE_CLOTHES.ownership_status` | `OWNED`, `WISHLIST` |
 | 사용자별 사이즈, 계절, 즐겨찾기 | `WARDROBE_CLOTHES` | 사용자 옷장 기준 정보 |
@@ -63,6 +63,7 @@ last_updated: 2026-06-03
   "productCode": "UNKNOWN-001",
   "category": "TOP",
   "itemType": "SHORT_SLEEVE",
+  "gender": "UNISEX",
   "primaryColor": "WHITE",
   "secondaryColors": ["NAVY"],
   "styles": ["CASUAL", "MINIMAL"],
@@ -94,7 +95,7 @@ last_updated: 2026-06-03
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/save` | 구매내역 기반 옷 저장 (상품별 순차 저장) |
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/items/{itemIndex}/skip` | 복수 상품 캡처에서 특정 상품 건너뛰기 |
 
-한 캡처에 여러 상품이 있으면 `itemIndex`별로 저장·건너뛰기를 반복합니다. 모든 상품이 `SAVED` 또는 `SKIPPED`가 되면 캡처가 완료됩니다. draft/analyze 응답의 `items[]`에는 `itemIndex`, `imageUrl`, `status`가 포함되고, `pendingItemCount`·`captureCompleted`로 진행 상태를 확인합니다.
+한 캡처에 여러 상품이 있으면 `itemIndex`별로 저장·건너뛰기를 반복합니다. 모든 상품이 `SAVED` 또는 `SKIPPED`가 되면 캡처가 완료됩니다. draft/analyze 응답의 `items[]`에는 `itemIndex`, `gender`, `imageUrl`, `status`가 포함되고, `pendingItemCount`·`captureCompleted`로 진행 상태를 확인합니다.
 
 저장 요청 예시 (단일 상품 — `itemIndex` 생략 시 0번 상품):
 
@@ -105,6 +106,7 @@ last_updated: 2026-06-03
   "productCode": "PRODUCT-001",
   "category": "TOP",
   "itemType": "SHORT_SLEEVE",
+  "gender": "UNISEX",
   "primaryColor": "WHITE",
   "secondaryColors": [],
   "styles": ["CASUAL"],
@@ -125,7 +127,7 @@ last_updated: 2026-06-03
 
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
-| `items` | `PurchaseCaptureItemDraft[]` | 상품별 초안. `itemIndex`, `status`(`PENDING`/`SAVED`/`SKIPPED`), `imageUrl` 포함 |
+| `items` | `PurchaseCaptureItemDraft[]` | 상품별 초안. `itemIndex`, `status`(`PENDING`/`SAVED`/`SKIPPED`), `gender`, `imageUrl` 포함 |
 | `pendingItemCount` | number | 아직 저장·건너뛰기하지 않은 상품 수 |
 | `captureCompleted` | boolean | 모든 상품이 `SAVED` 또는 `SKIPPED`이면 true |
 
@@ -158,6 +160,7 @@ last_updated: 2026-06-03
   "imageUrl": "https://example.com/image.jpg",
   "category": "TOP",
   "itemType": "HOODIE",
+  "gender": "UNISEX",
   "primaryColor": "NAVY",
   "secondaryColors": [],
   "styles": ["CASUAL", "STREET"],
@@ -179,7 +182,7 @@ last_updated: 2026-06-03
 
 - 업로드 중, 분석 중, 분석 실패, 초안 확인, 저장 완료 상태를 구분합니다.
 - 분석 결과는 사용자가 수정할 수 있어야 합니다.
-- 카테고리, 아이템 타입, 색상, 스타일은 [카탈로그 사용 가이드](../domain/catalog.md)의 code 값을 사용합니다.
+- 카테고리, 아이템 타입, 색상, 스타일, 대상 성별(`gender`)은 [카탈로그 사용 가이드](../domain/catalog.md)의 code 값을 사용합니다.
 - 구매내역 캡처 분석에서 일부 값이 불확실할 수 있으므로 수동 보정 UI가 필요합니다.
 - AI가 카탈로그 code가 아닌 값을 반환하면 `analysisStatus=FAILED`로 처리하고, 유효한 code만 `SUCCESS` 초안으로 내려갑니다.
 - 외부 쇼핑몰 상품 저장은 보유 옷 등록과 미보유 저장을 구분해야 합니다.
