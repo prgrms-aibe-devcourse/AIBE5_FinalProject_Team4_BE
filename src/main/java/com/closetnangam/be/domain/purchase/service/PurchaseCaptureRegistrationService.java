@@ -123,7 +123,7 @@ public class PurchaseCaptureRegistrationService {
                 .imageUrl(itemImageUrl)
                 .category(request.category())
                 .itemType(request.itemType())
-                .targetGender(ClothesGender.fromCode(request.gender()))
+                .gender(ClothesGender.fromCode(request.gender()))
                 .clothesInfoSource(ClothesInfoSource.PURCHASE_HISTORY)
                 .externalSource(request.externalSource())
                 .externalProductId(Clothes.EXTERNAL_NONE)

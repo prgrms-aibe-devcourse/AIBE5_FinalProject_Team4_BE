@@ -20,7 +20,7 @@ last_updated: 2026-06-09
 | --- | --- | --- |
 | `category` | `CLOTHES.category` | 대분류: 상의, 하의, 아우터, 신발 |
 | `itemType` | `CLOTHES.item_type` | 소분류: 반팔, 데님, 패딩 등 |
-| `gender` | `CLOTHES.target_gender` | 대상 성별: 남성, 여성, 유니섹스 |
+| `gender` | `CLOTHES.gender` | 대상 성별: 남성, 여성, 유니섹스 |
 | `primaryColor` | `CLOTHING_COLORS.color_code` | 대표 색상 1개 |
 | `secondaryColors` | `CLOTHING_COLORS.color_code` | 보조 색상 목록 |
 | `styles` | `STYLES`, `CLOTHING_STYLES` | 스타일 코드 목록 |

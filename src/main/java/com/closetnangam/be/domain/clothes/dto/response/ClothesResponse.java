@@ -87,7 +87,7 @@ public record ClothesResponse(
                 clothes.getImageUrl(),
                 clothes.getCategory(),
                 clothes.getItemType(),
-                clothes.getTargetGender(),
+                clothes.getGender(),
                 primaryColorCode,
                 primaryColorDisplay,
                 secondaryColors,

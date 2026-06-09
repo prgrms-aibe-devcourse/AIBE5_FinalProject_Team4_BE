@@ -247,7 +247,7 @@ public class ClothesService {
                 .imageUrl(imageUrl)
                 .category(category)
                 .itemType(itemType)
-                .targetGender(ClothesGender.fromCode(gender))
+                .gender(ClothesGender.fromCode(gender))
                 .clothesInfoSource(clothesInfoSource)
                 .externalSource(externalSource)
                 .externalProductId(externalProductId)

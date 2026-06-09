@@ -116,7 +116,7 @@ public class PhotoClothesRegistrationService {
                 .imageUrl(photo.getImageUrl())
                 .category(request.category())
                 .itemType(request.itemType())
-                .targetGender(ClothesGender.fromCode(request.gender()))
+                .gender(ClothesGender.fromCode(request.gender()))
                 .clothesInfoSource(ClothesInfoSource.PHOTO)
                 .externalSource(Clothes.EXTERNAL_NONE)
                 .externalProductId(Clothes.EXTERNAL_NONE)

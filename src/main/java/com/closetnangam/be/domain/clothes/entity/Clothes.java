@@ -61,8 +61,8 @@ public class Clothes extends BaseEntity {
     private String itemType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "target_gender", nullable = false, length = 20)
-    private ClothesGender targetGender;
+    @Column(name = "gender", nullable = false, length = 20)
+    private ClothesGender gender;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "clothes_info_source", nullable = false, length = 50)
@@ -111,7 +111,7 @@ public class Clothes extends BaseEntity {
             String imageUrl,
             String category,
             String itemType,
-            ClothesGender targetGender,
+            ClothesGender gender,
             ClothesInfoSource clothesInfoSource,
             String externalSource,
             String externalProductId,
@@ -124,7 +124,7 @@ public class Clothes extends BaseEntity {
         this.imageUrl = imageUrl;
         this.category = category;
         this.itemType = itemType;
-        this.targetGender = targetGender != null ? targetGender : ClothesGender.UNISEX;
+        this.gender = gender != null ? gender : ClothesGender.UNISEX;
         if (clothesInfoSource == null) {
             throw new IllegalArgumentException("옷 정보 출처는 필수입니다.");
         }
@@ -142,7 +142,7 @@ public class Clothes extends BaseEntity {
             String imageUrl,
             String category,
             String itemType,
-            ClothesGender targetGender,
+            ClothesGender gender,
             Boolean isVerified
     ) {
         this.name = name;
@@ -151,7 +151,7 @@ public class Clothes extends BaseEntity {
         this.imageUrl = imageUrl;
         this.category = category;
         this.itemType = itemType;
-        this.targetGender = targetGender != null ? targetGender : ClothesGender.UNISEX;
+        this.gender = gender != null ? gender : ClothesGender.UNISEX;
         this.isVerified = isVerified;
     }
 

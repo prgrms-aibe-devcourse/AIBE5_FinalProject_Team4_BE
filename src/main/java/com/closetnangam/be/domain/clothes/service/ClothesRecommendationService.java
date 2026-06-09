@@ -211,7 +211,7 @@ public class ClothesRecommendationService {
                 candidateTags.styleCodes(),
                 entry.season(),
                 total,
-                candidateClothes.getTargetGender().name()
+                candidateClothes.getGender().name()
         );
     }
 

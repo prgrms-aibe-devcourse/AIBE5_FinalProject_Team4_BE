@@ -292,7 +292,7 @@ public class ExternalClothesService {
                     .imageUrl(request.image())
                     .category(category.name())
                     .itemType(itemType)
-                    .targetGender(ClothesGender.fromCodeOrDefault(genderOverride))
+                    .gender(ClothesGender.fromCodeOrDefault(genderOverride))
                     .externalSource("NAVER")
                     .externalProductId(productId)
                     .externalProductUrl(request.link())
