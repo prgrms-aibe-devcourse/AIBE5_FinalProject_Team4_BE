@@ -72,3 +72,23 @@ ALTER TABLE `clothes`
 -- ALTER TABLE `clothes` DROP COLUMN `color`;
 -- ALTER TABLE `clothes` DROP COLUMN `wardrobe_id`;
 -- ALTER TABLE `clothes` DROP COLUMN `is_favorite`;
+
+-- =====================================================================
+-- 6. RECOMMENDATION_FEEDBACKS 테이블 변경
+-- =====================================================================
+CREATE TABLE `recommendation_feedbacks` (
+    `recommendation_feedback_id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL,
+    `clothes_id` BIGINT NOT NULL,
+    `disliked` TINYINT(1) NOT NULL DEFAULT 0,
+    `disliked_at` DATETIME NULL,
+    `excluded` TINYINT(1) NOT NULL DEFAULT 0,
+    `excluded_at` DATETIME NULL,
+    `saved` TINYINT(1) NOT NULL DEFAULT 0,
+    `saved_at` DATETIME NULL,
+    `created_at` DATETIME NOT NULL,
+    `updated_at` DATETIME NOT NULL,
+    PRIMARY KEY (`recommendation_feedback_id`),
+    CONSTRAINT `fk_feedback_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
+    CONSTRAINT `fk_feedback_clothes` FOREIGN KEY (`clothes_id`) REFERENCES `clothes` (`clothes_id`)
+);
