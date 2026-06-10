@@ -75,7 +75,7 @@ app:
         # Gemini Batch API 대량 분류·적재. local에서 enabled=true 시 기동 후 자동 실행.
         enabled: false
         # submit | import | submit-and-wait
-        mode: import
+        mode: submit
         model: gemini-3.5-flash
         max-products: 1000
         # import 모드에서 state.json 대신 직접 지정할 때 사용 (예: batches/123456789)

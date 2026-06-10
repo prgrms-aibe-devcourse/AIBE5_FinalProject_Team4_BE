@@ -159,10 +159,12 @@ public class ClothesService {
 
     /**
      * 추천 후보 등 이미 {@link Clothes} 마스터에 존재하는 옷을 사용자 위시리스트에 연결합니다.
+     * 공개 추천 풀과 동일하게 {@link ClothesInfoSource#EXTERNAL_SHOPPING}만 허용합니다.
      */
     @Transactional
     public ClothesResponse addExistingClothesToWishlist(Long userId, Long clothesId) {
         Clothes clothes = clothesRepository.findById(clothesId)
+                .filter(candidate -> candidate.getClothesInfoSource() == ClothesInfoSource.EXTERNAL_SHOPPING)
                 .orElseThrow(() -> new NoSuchElementException("옷을 찾을 수 없습니다."));
 
         var existingLink = wardrobeClothesRepository.findByClothesIdAndUserIdIgnoringSoftDelete(clothesId, userId);
@@ -195,16 +197,27 @@ public class ClothesService {
     @Transactional
     public ClothesResponse convertToOwned(Long userId, Long clothesId, ClothesConvertToOwnedRequest request) {
         WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
-        ClothesInfoSource originalInfoSource = wardrobeClothes.getClothes().getClothesInfoSource();
+        Clothes linkedClothes = wardrobeClothes.getClothes();
+        ClothesInfoSource originalInfoSource = linkedClothes.getClothesInfoSource();
 
+        Clothes ownedClothes = linkedClothes;
+        if (originalInfoSource == ClothesInfoSource.EXTERNAL_SHOPPING) {
+            ownedClothes = cloneExternalShoppingAsOwned(linkedClothes, request.productCode(), request.isVerified());
+            wardrobeClothes.relinkClothes(ownedClothes);
+        } else {
+            linkedClothes.convertToOwned(request.productCode(), request.isVerified());
+        }
+
+        ClothesInfoSource ownedRegistrationSource = originalInfoSource == ClothesInfoSource.EXTERNAL_SHOPPING
+                ? ClothesInfoSource.PURCHASE_HISTORY
+                : originalInfoSource;
         wardrobeClothes.convertToOwned(
                 request.size(),
                 request.userImageUrl(),
-                originalInfoSource
+                ownedRegistrationSource
         );
-        wardrobeClothes.getClothes().convertToOwned(request.productCode(), request.isVerified());
 
-        return ClothesResponse.from(wardrobeClothes.getClothes(), wardrobeClothes);
+        return ClothesResponse.from(ownedClothes, wardrobeClothes);
     }
 
     @Transactional
@@ -304,5 +317,29 @@ public class ClothesService {
         clothesTagHelper.applyColorTags(clothes, primaryColor, secondaryColors);
         clothesTagHelper.applyStyleTags(clothes, styles);
         return clothes;
+    }
+
+    /**
+     * 공용 {@link ClothesInfoSource#EXTERNAL_SHOPPING} 마스터는 그대로 두고,
+     * 사용자 보유 전환용 {@link ClothesInfoSource#PURCHASE_HISTORY} 행을 새로 만듭니다.
+     */
+    private Clothes cloneExternalShoppingAsOwned(Clothes source, String productCode, Boolean isVerified) {
+        Clothes owned = Clothes.builder()
+                .name(source.getName())
+                .brandName(source.getBrandName())
+                .productCode(productCode)
+                .imageUrl(source.getImageUrl())
+                .category(source.getCategory())
+                .itemType(source.getItemType())
+                .gender(source.getGender())
+                .season(source.getSeason())
+                .clothesInfoSource(ClothesInfoSource.PURCHASE_HISTORY)
+                .externalSource(Clothes.EXTERNAL_NONE)
+                .externalProductId(Clothes.EXTERNAL_NONE)
+                .externalProductUrl(Clothes.EXTERNAL_NONE)
+                .isVerified(isVerified)
+                .build();
+        clothesTagHelper.copyTagsFrom(source, owned);
+        return clothesRepository.save(owned);
     }
 }

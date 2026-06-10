@@ -73,6 +73,15 @@ public class ClothesTagHelper {
         buildStyleTags(clothes, styleCodes).forEach(clothes::addStyleTag);
     }
 
+    public void copyTagsFrom(Clothes source, Clothes target) {
+        source.getSortedColorTags().forEach(color -> target.addColorTag(
+                ClothingColor.create(target, color.getColorCode(), color.getColorRole(), color.getSortOrder())
+        ));
+        source.getSortedStyleTags().forEach(styleTag -> target.addStyleTag(
+                ClothesStyleTag.create(target, styleTag.getStyle(), styleTag.getStyleRole(), styleTag.getSortOrder())
+        ));
+    }
+
     public void replaceStyleTags(Clothes clothes, List<String> styleCodes) {
         if (hasSameStyleCodes(clothes, styleCodes)) {
             return;

@@ -118,6 +118,11 @@ public class WardrobeClothes extends BaseEntity {
                 : this.clothes.getClothesInfoSource();
     }
 
+    /** 공용 {@link Clothes} 마스터를 유지한 채 사용자 전용 복제본으로 옷장 연결을 바꿉니다. */
+    public void relinkClothes(Clothes clothes) {
+        this.clothes = clothes;
+    }
+
     public boolean isDeleted() {
         return deletedAt != null;
     }
