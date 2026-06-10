@@ -1,7 +1,7 @@
 ---
 doc_type: be_doc_index
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-03
+last_updated: 2026-06-09
 ---
 
 # 프로젝트 문서
@@ -12,6 +12,7 @@ last_updated: 2026-06-03
 
 - 공통 기획/기능/도메인 문서는 BE 레포를 기준으로 관리합니다.
 - FE 레포에는 공통 문서의 동일본을 둡니다.
+- 기능 요구사항과 세부기능 ID의 공식 기준은 [requirements/requirements-definition.md](./requirements/requirements-definition.md)입니다.
 - API 계약, DB, ERD 상세는 BE 문서를 원본으로 봅니다.
 - FE 화면 흐름, FE API 사용 방식, mock 정책, 로딩/에러/빈 상태는 FE 문서에서 상세화합니다.
 - 코드와 문서가 다르면 PR에서 코드가 문서를 따를지, 문서 기준을 수정할지 명시합니다.
@@ -23,13 +24,14 @@ last_updated: 2026-06-03
 | 문서 | 성격 | 역할 |
 | --- | --- | --- |
 | [planning/project-plan.md](./planning/project-plan.md) | 공통 | 서비스 기획, 문제 정의, MVP 범위, 주요 화면 구조 |
-| [requirements/feature-index.md](./requirements/feature-index.md) | 공통 | 기능 ID, 기능 범위, API/화면/도메인 연결 기준 |
+| [requirements/requirements-definition.md](./requirements/requirements-definition.md) | 공통 | 요구사항 ID, 세부기능 ID, 기능 요구, 정책/제약 기준 |
+| [requirements/feature-index.md](./requirements/feature-index.md) | 공통 | 요구사항 정의서의 세부기능 ID와 API/화면/도메인 연결 기준 |
 | [domain/glossary.md](./domain/glossary.md) | 공통 | 프로젝트에서 사용하는 도메인 용어와 enum 기준 |
 | [domain/catalog.md](./domain/catalog.md) | 공통 | 카테고리, 타입, 색상, 스타일, 외부 출처 code 사용 기준 |
 | [domain/invariants.md](./domain/invariants.md) | 공통 | 구현 중 유지해야 하는 핵심 도메인 규칙 |
 | [features/recommendation-policy.md](./features/recommendation-policy.md) | 공통 | 추천 점수, 피드백, 추천 제외, 동점 처리 기준 |
 | [features/garment-registration.md](./features/garment-registration.md) | 공통 + BE 상세 | 옷 등록 흐름과 BE 저장/API 기준 |
-| [database/erd.md](./database/erd.md) | BE | 확정 ERD v2.1, 테이블 역할, 관계 기준 |
+| [database/erd.md](./database/erd.md) | BE | 확정 ERD v2.2, 테이블 역할, 관계 기준 |
 | [database/data-lifecycle.md](./database/data-lifecycle.md) | BE | 데이터 생성, 삭제, 보존 기준 |
 | [api/api-contract.md](./api/api-contract.md) | BE | API 경로, 응답 형식, 오류 처리, 엔드포인트 기준 |
 | [architecture/package-structure.md](./architecture/package-structure.md) | BE | BE 패키지 구조와 책임 경계 |
@@ -40,15 +42,16 @@ last_updated: 2026-06-03
 처음 문서를 읽거나 BE 기능을 작성, 수정, 삭제, 검토할 때는 아래 순서를 따릅니다.
 
 1. [기획서](./planning/project-plan.md)에서 서비스 목표와 MVP 범위를 확인합니다.
-2. [기능 인덱스](./requirements/feature-index.md)에서 기능 ID, API, 데이터, FE 화면 연결 기준을 확인합니다.
-3. [도메인 용어집](./domain/glossary.md), [카탈로그 사용 가이드](./domain/catalog.md), [도메인 규칙](./domain/invariants.md)에서 데이터 의미, enum, code, 불변 규칙을 확인합니다.
-4. [BE 구현 정합성 현황](./backend/implementation-gaps.md)에서 현재 코드와 공식 기준의 차이, 개발/임시 API 경계를 확인합니다.
-5. [추천 정책](./features/recommendation-policy.md)과 [옷 등록 플로우](./features/garment-registration.md)에서 주요 기능 정책을 확인합니다.
-6. [API 계약](./api/api-contract.md)에서 경로, 요청/응답 DTO, 공통 응답, 인증/인가, 오류 처리 기준을 확인합니다.
-7. [ERD](./database/erd.md)와 [데이터 생명주기](./database/data-lifecycle.md)에서 테이블 책임, 관계, 삭제/보존 기준을 확인합니다.
-8. [패키지 구조](./architecture/package-structure.md)에서 controller, service, repository, entity, dto 위치와 책임 경계를 확인합니다.
-9. 문서 기준과 코드가 다르면 코드가 문서를 따를지, 문서 기준을 수정할지 PR 안에서 명시합니다.
-10. 현재 코드와 공식 기준의 차이가 생기거나 해소되면 [BE 구현 정합성 현황](./backend/implementation-gaps.md)을 같은 PR에서 수정합니다.
+2. [요구사항 정의서](./requirements/requirements-definition.md)에서 요구사항 ID, 세부기능 ID, 기능 요구, 정책/제약을 확인합니다.
+3. [기능 인덱스](./requirements/feature-index.md)에서 세부기능 ID와 API, 데이터, FE 화면 연결 기준을 확인합니다.
+4. [도메인 용어집](./domain/glossary.md), [카탈로그 사용 가이드](./domain/catalog.md), [도메인 규칙](./domain/invariants.md)에서 데이터 의미, enum, code, 불변 규칙을 확인합니다.
+5. [BE 구현 정합성 현황](./backend/implementation-gaps.md)에서 현재 코드와 공식 기준의 차이, 개발/임시 API 경계를 확인합니다.
+6. [추천 정책](./features/recommendation-policy.md)과 [옷 등록 플로우](./features/garment-registration.md)에서 주요 기능 정책을 확인합니다.
+7. [API 계약](./api/api-contract.md)에서 경로, 요청/응답 DTO, 공통 응답, 인증/인가, 오류 처리 기준을 확인합니다.
+8. [ERD](./database/erd.md)와 [데이터 생명주기](./database/data-lifecycle.md)에서 테이블 책임, 관계, 삭제/보존 기준을 확인합니다.
+9. [패키지 구조](./architecture/package-structure.md)에서 controller, service, repository, entity, dto 위치와 책임 경계를 확인합니다.
+10. 문서 기준과 코드가 다르면 코드가 문서를 따를지, 문서 기준을 수정할지 PR 안에서 명시합니다.
+11. 현재 코드와 공식 기준의 차이가 생기거나 해소되면 [BE 구현 정합성 현황](./backend/implementation-gaps.md)을 같은 PR에서 수정합니다.
 
 ## 문서와 코드 정합성 기준
 
@@ -68,6 +71,7 @@ FE 레포에는 아래 문서의 동일본을 둡니다.
 
 ```text
 docs/planning/project-plan.md
+docs/requirements/requirements-definition.md
 docs/requirements/feature-index.md
 docs/domain/glossary.md
 docs/domain/catalog.md
