@@ -5,6 +5,7 @@ import com.closetnangam.be.global.auth.jwt.JwtTokenProvider;
 import com.closetnangam.be.global.auth.jwt.RefreshTokenService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -26,7 +27,8 @@ public class AuthController {
     @Operation(summary = "Access Token 재발급")
     @PostMapping("/refresh")
     public ResponseEntity<Void> refresh (
-            @CookieValue(name = "refresh_token", required = false) String refreshToken
+            @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletRequest request
     ) {
         if (refreshToken == null || !jwtTokenProvider.isValid(refreshToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -43,9 +45,11 @@ public class AuthController {
 
         ResponseCookie cookie = ResponseCookie.from("access_token", newAccessToken)
                 .httpOnly(true)
+                .secure(request.isSecure())
                 .sameSite("Lax")
                 .path("/")
                 .build();
+
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
@@ -55,7 +59,8 @@ public class AuthController {
     @Operation(summary = "로그아웃")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
-            @CookieValue(name = "refresh_token", required = false) String refreshToken
+            @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletRequest request
     ){
         if(refreshToken != null && jwtTokenProvider.isValid(refreshToken)){
             Long userId = jwtTokenProvider.extractUserId(refreshToken);
@@ -64,6 +69,7 @@ public class AuthController {
 
         ResponseCookie accessCookie = ResponseCookie.from("access_token", "")
                 .httpOnly(true)
+                .secure(request.isSecure())
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(0)
@@ -71,6 +77,7 @@ public class AuthController {
 
         ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
+                .secure(request.isSecure())
                 .sameSite("Lax")
                 .path("/api/v1/auth")
                 .maxAge(0)
