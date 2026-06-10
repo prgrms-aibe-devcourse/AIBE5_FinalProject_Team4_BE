@@ -19,13 +19,28 @@ public interface ClothesRepository extends JpaRepository<Clothes, Long> {
     List<Clothes> findAllForRecommendation(Pageable pageable);
 
     /**
-     * RECO-004 어울리는 옷 추천 전용 외부 후보 조회.
-     * RECO-002 취향 기반 추천과 분리해 EXTERNAL_SHOPPING만 사용한다.
+     * RECO-004 어울리는 옷 추천 후보 — CLOTHES 전체에서 카테고리별 최신순 조회.
+     *
+     * <p>styleTags/colorTags는 {@link Clothes}의 {@code @Fetch(SUBSELECT)}로 별도 로딩합니다.
+     * fetch join + DISTINCT는 Pageable LIMIT이 DB가 아닌 메모리에서 적용되는 HHH90003004를 유발할 수 있어 사용하지 않습니다.
      */
     @Query("""
-            select distinct c from Clothes c
-            left join fetch c.styleTags st
-            left join fetch st.style
+            select c from Clothes c
+            where c.category = :category
+            order by c.createdAt desc
+            """)
+    List<Clothes> findComplementaryRecommendationCandidatesByCategory(
+            @Param("category") String category,
+            Pageable pageable
+    );
+
+    /**
+     * @deprecated 카테고리별 상한이 없어 한 카테고리에 후보가 쏠립니다.
+     *             {@link #findComplementaryRecommendationCandidatesByCategory}를 카테고리마다 호출하세요.
+     */
+    @Deprecated
+    @Query("""
+            select c from Clothes c
             where c.clothesInfoSource = com.closetnangam.be.domain.clothes.enums.ClothesInfoSource.EXTERNAL_SHOPPING
               and c.category <> :excludeCategory
               and c.category in ('TOP', 'BOTTOM', 'OUTER', 'SHOES')

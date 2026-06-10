@@ -111,6 +111,9 @@ public class ComplementaryRecommendationClassificationService {
         categoryCatalogService.validateGenderCode(
                 categoryCatalogService.resolveGenderOrDefault(result.gender()).name()
         );
+        categoryCatalogService.validateSeasonCode(
+                categoryCatalogService.resolveSeasonOrDefault(result.season()).name()
+        );
     }
 
     private ResolvedClassification toResolvedClassification(GeminiClothingClassificationResult result) {
@@ -140,6 +143,7 @@ public class ComplementaryRecommendationClassificationService {
                 result.category(),
                 result.itemType(),
                 categoryCatalogService.resolveGenderOrDefault(result.gender()).name(),
+                categoryCatalogService.resolveSeasonOrDefault(result.season()).name(),
                 colors,
                 styles
         );
@@ -190,6 +194,7 @@ public class ComplementaryRecommendationClassificationService {
             String category,
             String itemType,
             String gender,
+            String season,
             List<ClothingColorDto> colors,
             List<ClothesStyleDto> styles
     ) {

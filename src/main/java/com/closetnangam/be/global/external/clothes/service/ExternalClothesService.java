@@ -10,6 +10,7 @@ import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.StyleRole;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
@@ -132,7 +133,8 @@ public class ExternalClothesService {
                     resolved.styles(),
                     resolved.category(),
                     resolved.itemType(),
-                    resolved.gender()
+                    resolved.gender(),
+                    resolved.season()
             ));
         }
 
@@ -149,7 +151,8 @@ public class ExternalClothesService {
                 List.of(new ClothesStyleDto(casualStyle.getId(), StyleRole.PRIMARY, (byte) 1)),
                 fallbackCategory.name(),
                 refineItemType(fallbackCategory.name(), product.category3(), cleanTitle),
-                ClothesGender.UNISEX.name()
+                ClothesGender.UNISEX.name(),
+                ClothesSeason.ALL_SEASON.name()
         ));
     }
 
@@ -197,7 +200,8 @@ public class ExternalClothesService {
                 resolved.styles(),
                 resolved.category(),
                 resolved.itemType(),
-                resolved.gender()
+                resolved.gender(),
+                resolved.season()
         ));
     }
 
@@ -210,7 +214,8 @@ public class ExternalClothesService {
             List<ClothesStyleDto> styleDtos,
             String categoryOverride,
             String itemTypeOverride,
-            String genderOverride
+            String genderOverride,
+            String seasonOverride
     ) {
         return Objects.requireNonNull(transactionTemplate.execute(status ->
                 getOrCreateExternalClothes(
@@ -219,7 +224,8 @@ public class ExternalClothesService {
                         styleDtos,
                         categoryOverride,
                         itemTypeOverride,
-                        genderOverride
+                        genderOverride,
+                        seasonOverride
                 )
         ));
     }
@@ -229,7 +235,7 @@ public class ExternalClothesService {
     public Long getOrCreateExternalClothes(NaverProductCreateRequest request,
                                            List<ClothingColorDto> colorDtos,
                                            List<ClothesStyleDto> styleDtos) {
-        return getOrCreateExternalClothes(request, colorDtos, styleDtos, null, null, null);
+        return getOrCreateExternalClothes(request, colorDtos, styleDtos, null, null, null, null);
     }
 
     @Transactional
@@ -238,7 +244,7 @@ public class ExternalClothesService {
                                            List<ClothesStyleDto> styleDtos,
                                            String categoryOverride,
                                            String itemTypeOverride) {
-        return getOrCreateExternalClothes(request, colorDtos, styleDtos, categoryOverride, itemTypeOverride, null);
+        return getOrCreateExternalClothes(request, colorDtos, styleDtos, categoryOverride, itemTypeOverride, null, null);
     }
 
     @Transactional
@@ -248,6 +254,17 @@ public class ExternalClothesService {
                                            String categoryOverride,
                                            String itemTypeOverride,
                                            String genderOverride) {
+        return getOrCreateExternalClothes(request, colorDtos, styleDtos, categoryOverride, itemTypeOverride, genderOverride, null);
+    }
+
+    @Transactional
+    public Long getOrCreateExternalClothes(NaverProductCreateRequest request,
+                                           List<ClothingColorDto> colorDtos,
+                                           List<ClothesStyleDto> styleDtos,
+                                           String categoryOverride,
+                                           String itemTypeOverride,
+                                           String genderOverride,
+                                           String seasonOverride) {
 
         // 0. 안전한 리스트 처리
         List<ClothingColorDto> safeColors = (colorDtos != null) ? colorDtos : new ArrayList<>();
@@ -283,6 +300,9 @@ public class ExternalClothesService {
             String itemType = StringUtils.hasText(itemTypeOverride)
                     ? itemTypeOverride.trim()
                     : refineItemType(category.name(), request.category3(), cleanTitle);
+            String seasonCode = StringUtils.hasText(seasonOverride)
+                    ? seasonOverride
+                    : request.season();
 
             clothes = Clothes.builder()
                     .name(cleanTitle) // 태그와 품번이 세탁된 깔끔한 이름
@@ -293,6 +313,7 @@ public class ExternalClothesService {
                     .category(category.name())
                     .itemType(itemType)
                     .gender(ClothesGender.fromCodeOrDefault(genderOverride))
+                    .season(ClothesSeason.fromCodeOrDefault(seasonCode))
                     .externalSource("NAVER")
                     .externalProductId(productId)
                     .externalProductUrl(request.link())

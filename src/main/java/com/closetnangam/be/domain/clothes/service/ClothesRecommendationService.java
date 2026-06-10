@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResp
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
+import com.closetnangam.be.domain.clothes.enums.SeasonType;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
@@ -28,8 +29,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -41,7 +44,7 @@ import java.util.stream.Collectors;
 public class ClothesRecommendationService {
 
     private static final String CLOTHES_NOT_FOUND_MESSAGE = "해당 옷을 찾을 수 없습니다.";
-    private static final int EXTERNAL_CANDIDATE_LIMIT = 500;
+    private static final int CANDIDATE_LIMIT_PER_CATEGORY = 500;
     private static final String EXTERNAL_DEFAULT_SEASON = "ALL_SEASON";
 
     /**
@@ -87,7 +90,11 @@ public class ClothesRecommendationService {
     private final ClothesRepository clothesRepository;
 
     /**
-     * 기준 옷({clothesId})와 어울리는 외부 쇼핑 상품을 카테고리별로 추천합니다.
+     * 기준 옷({clothesId})와 어울리는 상품을 카테고리별로 추천합니다.
+     *
+     * <p>후보 풀: {@code CLOTHES} 전체(출처 무관). 기준 옷과 같은 카테고리를 제외하고
+     * TOP/BOTTOM/OUTER/SHOES 각각 최대 500건(최신순)을 조회한 뒤
+     * 점수 상위를 반환합니다.
      *
      * <p><b>Precondition:</b> 호출 전에 컨트롤러에서 {@code SecurityUtils.verifyUserIdMatch(userId)}로
      * JWT 사용자 일치를 검증해야 합니다.
@@ -114,26 +121,48 @@ public class ClothesRecommendationService {
                 .stream()
                 .collect(Collectors.toSet());
 
-        List<ScoringCandidate> candidates = clothesRepository
-                .findExternalCandidatesForComplementaryRecommendation(
-                        excludeCategory,
-                        PageRequest.of(0, EXTERNAL_CANDIDATE_LIMIT)
-                )
-                .stream()
-                .filter(clothes -> clothes.getId() != null && !ownedClothesIds.contains(clothes.getId()))
-                .map(clothes -> new ScoringCandidate(
-                        clothes,
-                        clothes.getRecommendationTagSnapshot(),
-                        EXTERNAL_DEFAULT_SEASON,
-                        null,
-                        null
-                ))
-                .toList();
+        List<ScoringCandidate> candidates = loadCandidates(excludeCategory, ownedClothesIds);
 
         AnchorScoringContext anchorContext = AnchorScoringContext.from(anchor);
         Map<String, List<RecommendedItem>> recommendations = scoredAndGrouped(anchorContext, candidates, limitPerCategory);
 
         return new ClothesRecommendationResponse(toAnchorItem(anchor, anchorClothes, anchorContext.tagSnapshot()), recommendations);
+    }
+
+    private List<ScoringCandidate> loadCandidates(String excludeCategory, Set<Long> ownedClothesIds) {
+        /*
+         * 카테고리별로 DB를 분리 조회합니다 (요청당 최대 CATEGORY_ORDER.size()-1 회, 각 CANDIDATE_LIMIT_PER_CATEGORY 건).
+         *
+         * 의도: 단일 쿼리(findExternalCandidatesForComplementaryRecommendation)는 LIMIT 500을 전체에 적용해
+         * 한 카테고리(예: TOP)에 후보가 쏠릴 수 있습니다. 카테고리마다 최신 N건을 보장하려면
+         * 카테고리별 페이징이 필요합니다.
+         *
+         * 트레이드오프: anchor 제외 시 최대 3×500=1500건 후보 로드. 트래픽 증가 시
+         * CANDIDATE_LIMIT_PER_CATEGORY 조정 또는 캐시를 검토하세요.
+         *
+         * 태그(style/color)는 Clothes @Fetch(SUBSELECT)로 채점 시점에 일괄 로딩됩니다.
+         */
+        List<ScoringCandidate> candidates = new ArrayList<>();
+        for (String category : CATEGORY_ORDER) {
+            if (category.equals(excludeCategory)) {
+                continue;
+            }
+            clothesRepository.findComplementaryRecommendationCandidatesByCategory(
+                            category,
+                            PageRequest.of(0, CANDIDATE_LIMIT_PER_CATEGORY)
+                    )
+                    .stream()
+                    .filter(clothes -> clothes.getId() != null && !ownedClothesIds.contains(clothes.getId()))
+                    .map(clothes -> new ScoringCandidate(
+                            clothes,
+                            clothes.getRecommendationTagSnapshot(),
+                            resolveCandidateSeason(clothes),
+                            null,
+                            null
+                    ))
+                    .forEach(candidates::add);
+        }
+        return candidates;
     }
 
     // ── 점수 계산 및 카테고리별 그룹화 ────────────────────────────────────
@@ -155,6 +184,9 @@ public class ClothesRecommendationService {
             }
             if (candidate.tagSnapshot() == null) {
                 log.debug("Clothes(id={})의 태그 스냅샷을 생성할 수 없습니다 — 후보에서 제외합니다.", clothes.getId());
+                continue;
+            }
+            if (isSummerWinterSeasonClash(anchorContext.season(), candidate.season(), clothes.getItemType())) {
                 continue;
             }
             candidatesByCategory
@@ -201,6 +233,7 @@ public class ClothesRecommendationService {
                 candidateClothes.getId(),
                 entry.wardrobeClothesId(),
                 candidateClothes.getName(),
+                candidateClothes.getBrandName(),
                 candidateClothes.getImageUrl(),
                 entry.userImageUrl(),
                 candidateClothes.getCategory(),
@@ -211,7 +244,8 @@ public class ClothesRecommendationService {
                 candidateTags.styleCodes(),
                 entry.season(),
                 total,
-                candidateClothes.getGender().name()
+                candidateClothes.getGender().name(),
+                candidateClothes.getExternalProductUrl()
         );
     }
 
@@ -302,6 +336,40 @@ public class ClothesRecommendationService {
         return anchorSeason.equals(candidateSeason) ? 1.0 : SCORE_SEASON_MISMATCH;
     }
 
+    /**
+     * 여름(HOT) ↔ 겨울(COLD) 조합은 추천 후보에서 제외합니다.
+     * ALL/ALL_SEASON·미입력·봄가을(MILD) 등은 기존 점수 로직만 적용합니다.
+     */
+    private boolean isSummerWinterSeasonClash(String anchorSeason, String candidateSeason, String candidateItemType) {
+        Optional<SeasonType> anchorType = resolveSeasonType(anchorSeason);
+        Optional<SeasonType> candidateType = resolveSeasonType(candidateSeason)
+                .or(() -> ItemTypeCompatibilityTable.inferSeasonTypeFromItemType(candidateItemType));
+
+        if (anchorType.isEmpty() || candidateType.isEmpty()) {
+            return false;
+        }
+        return (anchorType.get() == SeasonType.HOT && candidateType.get() == SeasonType.COLD)
+                || (anchorType.get() == SeasonType.COLD && candidateType.get() == SeasonType.HOT);
+    }
+
+    private static Optional<SeasonType> resolveSeasonType(String season) {
+        if (!StringUtils.hasText(season)) {
+            return Optional.empty();
+        }
+        String normalized = season.trim().toUpperCase(Locale.ROOT);
+        if ("ALL".equals(normalized) || "ALL_SEASON".equals(normalized)) {
+            return Optional.empty();
+        }
+
+        List<SeasonType> matched = Arrays.stream(SeasonType.values())
+                .filter(type -> type.matches(season))
+                .toList();
+        if (matched.size() != 1) {
+            return Optional.empty();
+        }
+        return Optional.of(matched.get(0));
+    }
+
     // ── 변환 헬퍼 ─────────────────────────────────────────────────────────
 
     private AnchorItem toAnchorItem(WardrobeClothes wc, Clothes clothes, ClothesTagSnapshot tagSnapshot) {
@@ -329,6 +397,13 @@ public class ClothesRecommendationService {
             return UNKNOWN_COLOR_INFO;
         }
         return cached;
+    }
+
+    private static String resolveCandidateSeason(Clothes clothes) {
+        if (clothes.getSeason() == null) {
+            return EXTERNAL_DEFAULT_SEASON;
+        }
+        return clothes.getSeason().name();
     }
 
     private record ScoringCandidate(

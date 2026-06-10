@@ -42,17 +42,23 @@ public class GeminiBatchService {
             "JOB_STATE_EXPIRED",
             "BATCH_STATE_EXPIRED"
     );
+    private static final String FILE_STATE_ACTIVE = "ACTIVE";
+    private static final String FILE_STATE_FAILED = "FAILED";
 
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     private final String apiKey;
     private final String apiBaseUrl;
+    private final int fileActivePollIntervalSeconds;
+    private final int fileActiveMaxPollAttempts;
 
     public GeminiBatchService(
             ObjectMapper objectMapper,
             RestTemplateBuilder restTemplateBuilder,
             @Value("${gemini.api-key:}") String apiKey,
-            @Value("${gemini.base-url:https://generativelanguage.googleapis.com/v1beta}") String apiBaseUrl
+            @Value("${gemini.base-url:https://generativelanguage.googleapis.com/v1beta}") String apiBaseUrl,
+            @Value("${app.recommendation.complementary.batch.file-active-poll-interval-seconds:5}") int fileActivePollIntervalSeconds,
+            @Value("${app.recommendation.complementary.batch.file-active-max-poll-attempts:60}") int fileActiveMaxPollAttempts
     ) {
         this.objectMapper = objectMapper;
         this.restTemplate = restTemplateBuilder
@@ -61,8 +67,14 @@ public class GeminiBatchService {
                 .build();
         this.apiKey = apiKey;
         this.apiBaseUrl = apiBaseUrl;
+        this.fileActivePollIntervalSeconds = fileActivePollIntervalSeconds;
+        this.fileActiveMaxPollAttempts = fileActiveMaxPollAttempts;
     }
 
+    /**
+     * JSONL 업로드만 수행합니다. Gemini Files API ACTIVE 대기는 {@link #waitForFileActive(String)}에서 별도 처리하세요.
+     * HTTP 요청·{@code @Transactional} 스레드에서 {@link #waitForFileActive} 장시간 폴링을 호출하지 마세요.
+     */
     public String uploadJsonl(byte[] jsonlBytes, String displayName) {
         if (!StringUtils.hasText(apiKey)) {
             throw new IllegalStateException("Gemini API 키가 설정되어 있지 않습니다.");
@@ -132,6 +144,69 @@ public class GeminiBatchService {
         }
     }
 
+    /**
+     * JSONL 업로드 후 Files API ACTIVE까지 대기합니다. Batch submit 전용 — {@link #uploadJsonl}과 {@link #waitForFileActive}를
+     * 각각 호출하지 마세요.
+     */
+    public String uploadJsonlAndWaitForActive(byte[] jsonlBytes, String displayName) {
+        String fileName = uploadJsonl(jsonlBytes, displayName);
+        waitForFileActive(fileName);
+        return fileName;
+    }
+
+    public void waitForFileActive(String fileName) {
+        waitForFileActive(fileName, fileActivePollIntervalSeconds, fileActiveMaxPollAttempts);
+    }
+
+    /**
+     * Batch job 생성 전 input file ACTIVE 대기. 최대 {@code pollIntervalSeconds * maxPollAttempts}초 블로킹합니다.
+     * 오프라인 배치 전용 — 웹 요청·DB 트랜잭션 스레드에서 호출하지 마세요.
+     */
+    public void waitForFileActive(String fileName, int pollIntervalSeconds, int maxPollAttempts) {
+        if (!StringUtils.hasText(fileName)) {
+            throw new IllegalArgumentException("Batch input file name이 비어 있습니다.");
+        }
+
+        for (int attempt = 1; attempt <= maxPollAttempts; attempt++) {
+            String state = getFileState(fileName);
+            if (FILE_STATE_ACTIVE.equals(state)) {
+                if (attempt > 1) {
+                    log.info("Gemini Batch input file 준비 완료. file={}, attempts={}", fileName, attempt);
+                }
+                return;
+            }
+            if (FILE_STATE_FAILED.equals(state)) {
+                throw new ExternalApiException("Gemini Batch input file 처리에 실패했습니다. file=" + fileName);
+            }
+
+            log.info("Gemini Batch input file 처리 대기. file={}, state={}, attempt={}/{}",
+                    fileName, state, attempt, maxPollAttempts);
+            sleepQuietly(pollIntervalSeconds * 1000L);
+        }
+
+        throw new ExternalApiException(
+                "Gemini Batch input file이 ACTIVE 상태가 되지 않았습니다. file=" + fileName
+                        + ", timeoutSeconds=" + (pollIntervalSeconds * maxPollAttempts)
+        );
+    }
+
+    public String getFileState(String fileName) {
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    apiBaseUrl + "/" + fileName,
+                    HttpMethod.GET,
+                    buildJsonEntity(null),
+                    String.class
+            );
+            JsonNode root = objectMapper.readTree(response.getBody());
+            return root.path("state").asText(null);
+        } catch (RestClientException exception) {
+            throw new ExternalApiException("Gemini Batch input file 상태 조회에 실패했습니다. file=" + fileName, exception);
+        } catch (Exception exception) {
+            throw new ExternalApiException("Gemini Batch input file 응답을 해석하지 못했습니다. file=" + fileName, exception);
+        }
+    }
+
     public String createBatchJob(String model, String inputFileName, String displayName) {
         String url = apiBaseUrl + "/models/" + model + ":batchGenerateContent";
         Map<String, Object> body = Map.of(
@@ -157,6 +232,13 @@ public class GeminiBatchService {
             return jobName;
         } catch (ExternalApiException exception) {
             throw exception;
+        } catch (HttpStatusCodeException exception) {
+            throw new ExternalApiException(
+                    "Gemini Batch job 생성에 실패했습니다. status="
+                            + exception.getStatusCode().value()
+                            + ", body=" + exception.getResponseBodyAsString(),
+                    exception
+            );
         } catch (RestClientException exception) {
             throw new ExternalApiException("Gemini Batch job 생성에 실패했습니다.", exception);
         } catch (Exception exception) {
@@ -243,6 +325,15 @@ public class GeminiBatchService {
             return first;
         }
         return StringUtils.hasText(second) ? second : null;
+    }
+
+    private static void sleepQuietly(long delayMs) {
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new ExternalApiException("Gemini Batch input file 대기가 중단되었습니다.", exception);
+        }
     }
 
     public record GeminiBatchJobStatus(

@@ -75,7 +75,8 @@ public class WardrobeClothes extends BaseEntity {
             String size,
             String season,
             Boolean favorite,
-            String userImageUrl
+            String userImageUrl,
+            ClothesInfoSource registrationSource
     ) {
         this.wardrobe = wardrobe;
         this.clothes = clothes;
@@ -84,10 +85,17 @@ public class WardrobeClothes extends BaseEntity {
         this.season = season;
         this.favorite = favorite != null ? favorite : false;
         this.userImageUrl = userImageUrl;
-        if (clothes.getClothesInfoSource() == null) {
+        this.registrationSource = resolveRegistrationSource(clothes, registrationSource);
+    }
+
+    private static ClothesInfoSource resolveRegistrationSource(Clothes clothes, ClothesInfoSource registrationSource) {
+        ClothesInfoSource resolved = registrationSource != null
+                ? registrationSource
+                : clothes.getClothesInfoSource();
+        if (resolved == null) {
             throw new IllegalArgumentException("옷 정보 출처가 설정되지 않았습니다.");
         }
-        this.registrationSource = clothes.getClothesInfoSource();
+        return resolved;
     }
 
     public void updateFavorite(Boolean favorite) {
@@ -100,7 +108,12 @@ public class WardrobeClothes extends BaseEntity {
         this.userImageUrl = userImageUrl;
     }
 
-    public void convertToOwned(String size, String season, String userImageUrl) {
+    public void convertToOwned(
+            String size,
+            String season,
+            String userImageUrl,
+            ClothesInfoSource registrationSource
+    ) {
         if (this.ownershipStatus != OwnershipStatus.WISHLIST) {
             throw new IllegalArgumentException("미보유 옷만 보유 옷으로 전환할 수 있습니다.");
         }
@@ -108,7 +121,9 @@ public class WardrobeClothes extends BaseEntity {
         this.size = size;
         this.season = season;
         this.userImageUrl = userImageUrl;
-        this.registrationSource = this.clothes.getClothesInfoSource();
+        this.registrationSource = registrationSource != null
+                ? registrationSource
+                : this.clothes.getClothesInfoSource();
     }
 
     public boolean isDeleted() {
@@ -123,5 +138,29 @@ public class WardrobeClothes extends BaseEntity {
             throw new IllegalStateException("이미 삭제된 옷장 항목입니다.");
         }
         this.deletedAt = LocalDateTime.now(ZoneOffset.UTC);
+    }
+
+    /** 소프트 삭제된 옷장 연결을 미보유 옷으로 복원합니다. */
+    public void restoreAsWishlist(String userImageUrl) {
+        restoreAsWishlist(userImageUrl, null);
+    }
+
+    /**
+     * @param registrationSource null이면 기존 {@link #registrationSource}를 유지합니다.
+     *                           지정 시 {@link #convertToOwned}와 동일하게 호출자 의도를 반영합니다.
+     */
+    public void restoreAsWishlist(String userImageUrl, ClothesInfoSource registrationSource) {
+        if (deletedAt == null) {
+            throw new IllegalStateException("활성 옷장 항목은 복원할 수 없습니다.");
+        }
+        this.deletedAt = null;
+        this.ownershipStatus = OwnershipStatus.WISHLIST;
+        this.size = "FREE";
+        this.season = null;
+        this.favorite = false;
+        this.userImageUrl = userImageUrl;
+        if (registrationSource != null) {
+            this.registrationSource = registrationSource;
+        }
     }
 }

@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.StyleRole;
@@ -46,8 +47,8 @@ class ClothesRecommendationServiceTest {
     private ClothesRecommendationService clothesRecommendationService;
 
     @Test
-    @DisplayName("어울리는 옷 추천은 외부 쇼핑 후보 풀에서 카테고리별 점수 상위를 반환한다")
-    void recommendUsesExternalCandidates() {
+    @DisplayName("어울리는 옷 추천은 DB 전체 후보 풀에서 카테고리별 점수 상위를 반환한다")
+    void recommendUsesAllDbCandidatesPerCategory() {
         WardrobeClothes anchor = createAnchorWardrobeClothes(1L, "TOP", "SHORT_SLEEVE", "WHITE");
         Clothes bottomCandidate = createExternalClothes(200L, "BOTTOM", "SLACKS", "BLACK");
         Clothes ownedDuplicate = createExternalClothes(300L, "BOTTOM", "DENIM", "BLUE");
@@ -55,8 +56,12 @@ class ClothesRecommendationServiceTest {
         given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(anchor));
         given(wardrobeClothesRepository.findOwnedClothesIdsByUserId(1L, OwnershipStatus.OWNED))
                 .willReturn(List.of(10L, 300L));
-        given(clothesRepository.findExternalCandidatesForComplementaryRecommendation(eq("TOP"), any(Pageable.class)))
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("BOTTOM"), any(Pageable.class)))
                 .willReturn(List.of(bottomCandidate, ownedDuplicate));
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("OUTER"), any(Pageable.class)))
+                .willReturn(List.of());
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("SHOES"), any(Pageable.class)))
+                .willReturn(List.of());
 
         ClothesRecommendationResponse response = clothesRecommendationService.recommend(1L, 10L, 5);
 
@@ -71,11 +76,89 @@ class ClothesRecommendationServiceTest {
                 });
     }
 
+    @Test
+    @DisplayName("기준 옷 시즌이 여름이면 겨울 아우터(패딩)는 추천에서 제외한다")
+    void recommendExcludesWinterOuterWhenAnchorSeasonIsSummer() {
+        WardrobeClothes anchor = createAnchorWardrobeClothes(1L, "BOTTOM", "SHORTS", "WHITE", "SUMMER");
+        Clothes padding = createExternalClothes(200L, "OUTER", "PADDING", "BLACK");
+        Clothes windbreaker = createExternalClothes(201L, "OUTER", "WINDBREAKER", "NAVY");
+
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(anchor));
+        given(wardrobeClothesRepository.findOwnedClothesIdsByUserId(1L, OwnershipStatus.OWNED))
+                .willReturn(List.of(10L));
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("TOP"), any(Pageable.class)))
+                .willReturn(List.of());
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("OUTER"), any(Pageable.class)))
+                .willReturn(List.of(padding, windbreaker));
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("SHOES"), any(Pageable.class)))
+                .willReturn(List.of());
+
+        ClothesRecommendationResponse response = clothesRecommendationService.recommend(1L, 10L, 5);
+
+        assertThat(response.recommendations().get("OUTER"))
+                .extracting(item -> item.clothesId())
+                .containsExactly(201L);
+    }
+
+    @Test
+    @DisplayName("기준 옷 시즌이 ALL_SEASON이면 겨울 아우터도 점수 기준으로 추천될 수 있다")
+    void recommendDoesNotHardExcludeWinterOuterWhenAnchorSeasonIsAllSeason() {
+        WardrobeClothes anchor = createAnchorWardrobeClothes(1L, "BOTTOM", "SHORTS", "WHITE", "ALL_SEASON");
+        Clothes padding = createExternalClothes(200L, "OUTER", "PADDING", "BLACK");
+
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(anchor));
+        given(wardrobeClothesRepository.findOwnedClothesIdsByUserId(1L, OwnershipStatus.OWNED))
+                .willReturn(List.of(10L));
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("TOP"), any(Pageable.class)))
+                .willReturn(List.of());
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("OUTER"), any(Pageable.class)))
+                .willReturn(List.of(padding));
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("SHOES"), any(Pageable.class)))
+                .willReturn(List.of());
+
+        ClothesRecommendationResponse response = clothesRecommendationService.recommend(1L, 10L, 5);
+
+        assertThat(response.recommendations().get("OUTER"))
+                .extracting(item -> item.clothesId())
+                .containsExactly(200L);
+    }
+
+    @Test
+    @DisplayName("외부 후보에 WINTER 시즌이 저장되어 있으면 여름 기준 옷 추천에서 제외한다")
+    void recommendExcludesWinterOuterWhenCandidateSeasonIsWinter() {
+        WardrobeClothes anchor = createAnchorWardrobeClothes(1L, "BOTTOM", "SHORTS", "WHITE", "SUMMER");
+        Clothes padding = createExternalClothes(200L, "OUTER", "PADDING", "BLACK", ClothesSeason.WINTER);
+
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(anchor));
+        given(wardrobeClothesRepository.findOwnedClothesIdsByUserId(1L, OwnershipStatus.OWNED))
+                .willReturn(List.of(10L));
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("TOP"), any(Pageable.class)))
+                .willReturn(List.of());
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("OUTER"), any(Pageable.class)))
+                .willReturn(List.of(padding));
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("SHOES"), any(Pageable.class)))
+                .willReturn(List.of());
+
+        ClothesRecommendationResponse response = clothesRecommendationService.recommend(1L, 10L, 5);
+
+        assertThat(response.recommendations()).doesNotContainKey("OUTER");
+    }
+
     private WardrobeClothes createAnchorWardrobeClothes(
             Long userId,
             String category,
             String itemType,
             String color
+    ) {
+        return createAnchorWardrobeClothes(userId, category, itemType, color, "ALL_SEASON");
+    }
+
+    private WardrobeClothes createAnchorWardrobeClothes(
+            Long userId,
+            String category,
+            String itemType,
+            String color,
+            String season
     ) {
         User user = User.builder()
                 .nickname("user-" + userId)
@@ -94,7 +177,7 @@ class ClothesRecommendationServiceTest {
                 .clothes(clothes)
                 .ownershipStatus(OwnershipStatus.OWNED)
                 .size("L")
-                .season("ALL_SEASON")
+                .season(season)
                 .favorite(false)
                 .userImageUrl("https://example.com/anchor.jpg")
                 .build();
@@ -103,12 +186,26 @@ class ClothesRecommendationServiceTest {
     }
 
     private Clothes createExternalClothes(Long clothesId, String category, String itemType, String color) {
-        Clothes clothes = createClothes(clothesId, category, itemType, color);
+        return createExternalClothes(clothesId, category, itemType, color, ClothesSeason.ALL_SEASON);
+    }
+
+    private Clothes createExternalClothes(
+            Long clothesId,
+            String category,
+            String itemType,
+            String color,
+            ClothesSeason season
+    ) {
+        Clothes clothes = createClothes(clothesId, category, itemType, color, season);
         ReflectionTestUtils.setField(clothes, "clothesInfoSource", ClothesInfoSource.EXTERNAL_SHOPPING);
         return clothes;
     }
 
     private Clothes createClothes(Long clothesId, String category, String itemType, String color) {
+        return createClothes(clothesId, category, itemType, color, ClothesSeason.ALL_SEASON);
+    }
+
+    private Clothes createClothes(Long clothesId, String category, String itemType, String color, ClothesSeason season) {
         Clothes clothes = Clothes.builder()
                 .name("item-" + clothesId)
                 .brandName("brand")
@@ -116,6 +213,7 @@ class ClothesRecommendationServiceTest {
                 .imageUrl("https://example.com/" + clothesId + ".jpg")
                 .category(category)
                 .itemType(itemType)
+                .season(season)
                 .clothesInfoSource(ClothesInfoSource.PHOTO)
                 .externalSource("NONE")
                 .externalProductId("NONE")

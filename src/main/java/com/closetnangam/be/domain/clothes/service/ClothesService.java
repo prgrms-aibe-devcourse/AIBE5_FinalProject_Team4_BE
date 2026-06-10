@@ -154,12 +154,54 @@ public class ClothesService {
         return ClothesResponse.from(savedClothes, wardrobeClothes);
     }
 
+    /**
+     * 추천 후보 등 이미 {@link Clothes} 마스터에 존재하는 옷을 사용자 위시리스트에 연결합니다.
+     */
+    @Transactional
+    public ClothesResponse addExistingClothesToWishlist(Long userId, Long clothesId) {
+        Clothes clothes = clothesRepository.findById(clothesId)
+                .orElseThrow(() -> new NoSuchElementException("옷을 찾을 수 없습니다."));
+
+        var existingLink = wardrobeClothesRepository.findByClothesIdAndUserIdIgnoringSoftDelete(clothesId, userId);
+        if (existingLink.isPresent()) {
+            WardrobeClothes wardrobeClothes = existingLink.get();
+            if (!wardrobeClothes.isDeleted()) {
+                if (wardrobeClothes.getOwnershipStatus() == OwnershipStatus.WISHLIST) {
+                    throw new IllegalStateException("이미 위시리스트에 등록된 옷입니다.");
+                }
+                throw new IllegalStateException("이미 보유 중인 옷입니다.");
+            }
+            wardrobeClothes.restoreAsWishlist(clothes.getImageUrl(), null);
+            return ClothesResponse.from(clothes, wardrobeClothes);
+        }
+
+        Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
+        WardrobeClothes wardrobeClothes = wardrobeClothesRepository.save(WardrobeClothes.builder()
+                .wardrobe(wardrobe)
+                .clothes(clothes)
+                .ownershipStatus(OwnershipStatus.WISHLIST)
+                .size("FREE")
+                .season(null)
+                .favorite(false)
+                .userImageUrl(clothes.getImageUrl())
+                .registrationSource(clothes.getClothesInfoSource())
+                .build());
+
+        return ClothesResponse.from(clothes, wardrobeClothes);
+    }
+
     @Transactional
     public ClothesResponse convertToOwned(Long userId, Long clothesId, ClothesConvertToOwnedRequest request) {
         WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
+        ClothesInfoSource originalInfoSource = wardrobeClothes.getClothes().getClothesInfoSource();
 
+        wardrobeClothes.convertToOwned(
+                request.size(),
+                request.season(),
+                request.userImageUrl(),
+                originalInfoSource
+        );
         wardrobeClothes.getClothes().convertToOwned(request.productCode(), request.isVerified());
-        wardrobeClothes.convertToOwned(request.size(), request.season(), request.userImageUrl());
 
         return ClothesResponse.from(wardrobeClothes.getClothes(), wardrobeClothes);
     }

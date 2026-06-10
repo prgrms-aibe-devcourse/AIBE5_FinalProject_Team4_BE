@@ -131,6 +131,7 @@ public class GeminiService {
                 name은 옷 이름(한국어), brandName은 브랜드명(모르면 "UNKNOWN")을 추정합니다.
                 분류 순서: 1) category·itemType·색상·스타일 2) gender — 이미지 속 착용 모델의 성별을 우선 확인하고,
                 모델이 없으면 옷 종류·상품명으로 추정하세요. 남녀 공용이면 UNISEX.
+                3) season — 두께·소재·소매 길이·보온성으로 착용 시즌을 판별하세요. 불확실하면 ALL_SEASON.
 
                 %s
 
@@ -143,7 +144,8 @@ public class GeminiService {
                   "primaryColor": "WHITE",
                   "secondaryColors": ["NAVY"],
                   "styles": ["CASUAL"],
-                  "gender": "UNISEX"
+                  "gender": "UNISEX",
+                  "season": "ALL_SEASON"
                 }
                 """.formatted(classificationGuide);
 

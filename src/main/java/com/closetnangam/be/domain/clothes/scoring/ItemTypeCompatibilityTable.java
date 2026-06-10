@@ -1,11 +1,13 @@
 package com.closetnangam.be.domain.clothes.scoring;
 
 import com.closetnangam.be.domain.catalog.enums.ClothesItemType;
+import com.closetnangam.be.domain.clothes.enums.SeasonType;
 
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -181,6 +183,23 @@ public final class ItemTypeCompatibilityTable {
         if (explicit != null) return explicit;
 
         return groupScore(anchor, candidate);
+    }
+
+    /**
+     * itemType cohesion group으로 계절 성향을 추정합니다.
+     * WINTER만 있으면 COLD, SUMMER만 있으면 HOT, 그 외는 empty.
+     */
+    public static Optional<SeasonType> inferSeasonTypeFromItemType(String itemType) {
+        Set<CohesionGroup> groups = GROUPS.getOrDefault(itemType, Collections.emptySet());
+        boolean winter = groups.contains(CohesionGroup.WINTER);
+        boolean summer = groups.contains(CohesionGroup.SUMMER);
+        if (winter && !summer) {
+            return Optional.of(SeasonType.COLD);
+        }
+        if (summer && !winter) {
+            return Optional.of(SeasonType.HOT);
+        }
+        return Optional.empty();
     }
 
     private static Double lookupExplicit(String a, String b) {
