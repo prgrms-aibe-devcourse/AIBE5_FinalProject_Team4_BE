@@ -27,6 +27,7 @@ public record ClothesRecommendationResponse(
             Long clothesId,
             Long wardrobeClothesId,
             String name,
+            String brandName,
             String imageUrl,
             // TODO: S3 signed URL 도입 시 만료 시간을 포함한 presigned URL로 교체 필요
             String userImageUrl,
@@ -38,7 +39,8 @@ public record ClothesRecommendationResponse(
             List<String> styleCodes,
             String season,
             int compatibilityScore,
-            String gender
+            String gender,
+            String externalProductUrl
     ) {}
 
     /** 색상 코드 + 한글명 + hex */

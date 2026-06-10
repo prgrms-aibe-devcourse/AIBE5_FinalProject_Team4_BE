@@ -30,6 +30,7 @@ public record ClothesResponse(
         List<StyleTagResponse> styles,
         OwnershipStatus ownershipStatus,
         ClothesInfoSource clothesInfoSource,
+        ClothesInfoSource registrationSource,
         String externalSource,
         String externalProductId,
         String externalProductUrl,
@@ -94,13 +95,14 @@ public record ClothesResponse(
                 styles,
                 wardrobeClothes != null ? wardrobeClothes.getOwnershipStatus() : null,
                 clothes.getClothesInfoSource(),
+                wardrobeClothes != null ? wardrobeClothes.getRegistrationSource() : null,
                 clothes.getExternalSource(),
                 clothes.getExternalProductId(),
                 clothes.getExternalProductUrl(),
                 clothes.getIsVerified(),
                 wardrobeClothes != null ? wardrobeClothes.getFavorite() : null,
                 wardrobeClothes != null ? wardrobeClothes.getSize() : null,
-                wardrobeClothes != null ? wardrobeClothes.getSeason() : null,
+                resolveSeason(clothes),
                 wardrobeClothes != null ? wardrobeClothes.getUserImageUrl() : null,
                 clothes.getCreatedAt(),
                 clothes.getUpdatedAt()
@@ -133,6 +135,10 @@ public record ClothesResponse(
             return null;
         }
         return wardrobe.getUser().getId();
+    }
+
+    private static String resolveSeason(Clothes clothes) {
+        return clothes.getSeason() != null ? clothes.getSeason().name() : null;
     }
 
     public record ColorDisplayResponse(

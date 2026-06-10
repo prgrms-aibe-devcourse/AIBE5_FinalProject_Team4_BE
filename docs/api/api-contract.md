@@ -167,8 +167,10 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | --- | --- | --- |
 | GET | `/api/users/{userId}/wishlist-clothes` | 미보유 옷 목록 조회 |
 | GET | `/api/users/{userId}/wishlist-clothes/favorites` | 즐겨찾기 미보유 옷 조회 |
-| POST | `/api/users/{userId}/wishlist-clothes` | 미보유 옷 저장 |
-| PATCH | `/api/clothes/{clothesId}/convert-to-owned` | 미보유 옷을 보유 옷으로 전환 |
+| POST | `/api/users/{userId}/wishlist-clothes` | 미보유 옷 저장 (신규 CLOTHES 생성) |
+| POST | `/api/users/{userId}/wishlist-clothes/{clothesId}` | 기존 `EXTERNAL_SHOPPING` CLOTHES를 위시리스트에 연결 (추천 상품 저장) |
+| PATCH | `/api/v1/clothes/{clothesId}/convert-to-owned` | 미보유 옷을 보유 옷으로 전환 (**공식 경로**) |
+| PATCH | `/api/clothes/{clothesId}/convert-to-owned` | 위와 동일 (legacy 호환. 신규 FE는 `/api/v1` 사용) |
 
 ### 사진 기반 옷 등록
 
@@ -196,7 +198,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
 | `name`, `brandName`, `productCode`, `category`, `itemType`, `gender`, `primaryColor`, `styles`, `externalSource`, `size`, `favorite`, `isVerified` | Y | 옷 공통·옷장 정보 |
-| `secondaryColors`, `season` | N | 보조 색상, 계절 |
+| `secondaryColors`, `season` | N | 보조 색상, `CLOTHES.season` code (생략 시 `ALL_SEASON`) |
 | `itemIndex` | N | 생략 시 0. 복수 상품일 때 저장 대상 인덱스 |
 | `imageUrl` | N | 상품별 이미지 URL. 생략 시 draft `items[].imageUrl` 또는 캡처 `previewUrl`로 fallback |
 
@@ -227,7 +229,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 
 #### 옷장 기반 어울리는 옷 추천 (`GET .../recommendations`)
 
-옷장에 등록한 보유 옷 1벌을 기준으로 **같은 카테고리를 제외한 외부 쇼핑 DB 후보**를 점수화해 카테고리별로 반환합니다. 옷장에 이미 등록된 `clothesId`는 후보에서 제외됩니다.
+옷장에 등록한 보유 옷 1벌을 기준으로 **같은 카테고리를 제외한 `EXTERNAL_SHOPPING` 공용 DB 후보**를 점수화해 카테고리별로 반환합니다. `PHOTO`·`PURCHASE_HISTORY` 등 다른 사용자 개인 등록 마스터는 후보에 포함하지 않습니다. 옷장에 이미 등록된 `clothesId`(본인 보유)는 후보에서 제외됩니다.
 
 | Query | 필수 | 설명 |
 | --- | --- | --- |
@@ -249,10 +251,11 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | `clothesId` | 외부 `CLOTHES` ID |
 | `wardrobeClothesId` | 옷장 연결 ID. 외부 후보는 보통 `null` |
 | `name`, `imageUrl`, `userImageUrl` | 상품명·이미지 |
+| `brandName` | 브랜드명 (`UNKNOWN` 가능) |
 | `category`, `itemType` | 대·소분류 code |
 | `primaryColor`, `primaryColorDisplay`, `secondaryColors` | 색상 |
 | `styleCodes` | 스타일 code 배열 |
-| `season` | 시즌 code 또는 `null` |
+| `season` | `CLOTHES.season` code. 옷장 등록·수정 요청에서 설정하며 `WARDROBE_CLOTHES`에는 저장하지 않음 |
 | `gender` | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 사용자 화면 표시 대상 아님 |
 | `compatibilityScore` | 어울림 점수 (0~100, 내림차순 정렬) |
 
@@ -601,7 +604,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: `items[].clothes`가 사용자 옷장에 연결된 보유 옷이면 `wardrobeClothesId`, `wardrobeId`, `userId`, `size`, `season` 등이 함께 채워집니다. AI MD가 섞은 외부 상품처럼 옷장 연결이 없는 옷은 해당 필드가 `null`입니다.
+> **Note**: `items[].clothes`가 사용자 옷장에 연결된 보유 옷이면 `wardrobeClothesId`, `wardrobeId`, `userId`, `size` 등이 함께 채워집니다. `season`은 `CLOTHES` 마스터 값입니다. AI MD가 섞은 외부 상품처럼 옷장 연결이 없는 옷은 해당 필드가 `null`입니다.
 
 ### 이미지
 

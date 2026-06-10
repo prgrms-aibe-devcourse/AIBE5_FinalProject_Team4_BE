@@ -82,4 +82,7 @@ app:
         job-name:
         poll-interval-seconds: 30
         max-poll-attempts: 2880
+        # uploadJsonl → createBatchJob 사이 Files API ACTIVE 대기 (기본 5초×60 = 5분)
+        file-active-poll-interval-seconds: 5
+        file-active-max-poll-attempts: 60
         state-dir: build/reco-004-batch

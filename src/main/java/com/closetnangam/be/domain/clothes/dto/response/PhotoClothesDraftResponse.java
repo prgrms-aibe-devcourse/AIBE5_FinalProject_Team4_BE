@@ -17,6 +17,7 @@ public record PhotoClothesDraftResponse(
         String primaryColor,
         List<String> secondaryColors,
         List<String> styles,
-        String gender
+        String gender,
+        String season
 ) {
 }

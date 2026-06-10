@@ -140,7 +140,6 @@ class SimilarProductRecommendationServiceTest {
                 .clothes(clothes)
                 .ownershipStatus(OwnershipStatus.OWNED)
                 .size("L")
-                .season("SPRING")
                 .favorite(false)
                 .userImageUrl("https://example.com/user-image.jpg")
                 .build();

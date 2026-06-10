@@ -53,6 +53,20 @@ public class WishlistClothesController {
                 .body(ApiResponse.ok(clothesService.createWishlistClothes(userId, request)));
     }
 
+    @Operation(
+            summary = "기존 옷을 미보유 옷으로 저장",
+            description = "추천 결과 등 이미 CLOTHES 마스터에 등록된 상품을 사용자 위시리스트에 연결합니다."
+    )
+    @PostMapping("/api/users/{userId}/wishlist-clothes/{clothesId}")
+    public ResponseEntity<ApiResponse<ClothesResponse>> addExistingClothesToWishlist(
+            @PathVariable Long userId,
+            @PathVariable Long clothesId
+    ) {
+        SecurityUtils.verifyUserIdMatch(userId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(clothesService.addExistingClothesToWishlist(userId, clothesId)));
+    }
+
     @Operation(summary = "미보유 → 보유 전환", description = "구매 후 미보유 옷을 보유 옷(OWNED)으로 전환합니다.")
     @PatchMapping({
             "/api/clothes/{clothesId}/convert-to-owned",

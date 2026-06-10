@@ -116,6 +116,7 @@ public class AiService {
                         finalResult.category(),
                         finalResult.itemType(),
                         ClothesGender.fromUserGender(photo.getUser().getGender()).name(),
+                        categoryCatalogService.resolveSeasonOrDefault(finalResult.season()).name(),
                         finalResult.primaryColor(),
                         toColorsJson(finalResult.secondaryColors()),
                         toStylesJson(finalResult.styles()),
@@ -222,8 +223,15 @@ public class AiService {
                 photo.getDraftPrimaryColor(),
                 secondaryColors,
                 styles,
-                resolveRegistrationDraftGender(photo)
+                resolveRegistrationDraftGender(photo),
+                resolveRegistrationDraftSeason(photo)
         );
+    }
+
+    private String resolveRegistrationDraftSeason(ClothingAiPhoto photo) {
+        return StringUtils.hasText(photo.getDraftSeason())
+                ? photo.getDraftSeason()
+                : "ALL_SEASON";
     }
 
     private String resolveRegistrationDraftGender(ClothingAiPhoto photo) {

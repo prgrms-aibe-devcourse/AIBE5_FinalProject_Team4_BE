@@ -15,6 +15,7 @@ public record PurchaseCaptureDraftResponse(
         String category,
         String itemType,
         String gender,
+        String season,
         String primaryColor,
         List<String> secondaryColors,
         List<String> styles,
