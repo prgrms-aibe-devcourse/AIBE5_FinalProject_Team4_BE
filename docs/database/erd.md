@@ -68,6 +68,7 @@ erd_version: v2.2
 | `image_url` | 대표 이미지 URL |
 | `category` | 옷 카테고리 코드 |
 | `gender` | 옷 대상 성별 코드: `MALE`, `FEMALE`, `UNISEX`. 사용자 화면 표시 대상이 아닌 내부 분류/추천용 값 |
+| `season` | 마스터 옷 착용 시즌 code: `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON`. 옷장 등록·수정·AI draft 저장 및 어울리는 옷 추천 **기준/후보** 시즌 점수/필터에 사용 |
 | `item_type` | 카테고리 하위 옷 타입 코드 |
 | `clothes_info_source` | 옷 정보 출처: `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |
 | `external_source` | 외부 쇼핑몰 또는 직접 입력 출처 |
@@ -85,7 +86,6 @@ erd_version: v2.2
 | `clothes_id` | 연결된 공통 옷 ID |
 | `ownership_status` | 보유 상태: `OWNED`, `WISHLIST` |
 | `size` | 사용자별 사이즈 |
-| `season` | 사용자별 착용 계절 |
 | `favorite` | 사용자별 즐겨찾기 여부 |
 | `registration_source` | 사용자가 옷장에 등록한 경로 |
 | `user_image_url` | 사용자 업로드 이미지 URL |

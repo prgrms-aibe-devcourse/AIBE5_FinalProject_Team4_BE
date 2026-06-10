@@ -15,6 +15,7 @@ public record PurchaseCaptureItemDraft(
         List<String> secondaryColors,
         List<String> styles,
         String gender,
+        String season,
         String optionText,
         String suggestedExternalSource,
         String imageUrl

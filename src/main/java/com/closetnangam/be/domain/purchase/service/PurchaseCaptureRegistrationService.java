@@ -7,6 +7,7 @@ import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.helper.WardrobeDuplicateGuard;
@@ -91,6 +92,7 @@ public class PurchaseCaptureRegistrationService {
                 request.gender()
         );
         clothesTagHelper.validateExternalSource(request.externalSource());
+        clothesTagHelper.validateSeasonIfPresent(request.season());
 
         wardrobeDuplicateGuard.rejectIfAlreadyInWardrobe(
                 userId,
@@ -124,6 +126,7 @@ public class PurchaseCaptureRegistrationService {
                 .category(request.category())
                 .itemType(request.itemType())
                 .gender(ClothesGender.fromCode(request.gender()))
+                .season(ClothesSeason.fromCodeOrDefault(request.season()))
                 .clothesInfoSource(ClothesInfoSource.PURCHASE_HISTORY)
                 .externalSource(request.externalSource())
                 .externalProductId(Clothes.EXTERNAL_NONE)
@@ -140,7 +143,6 @@ public class PurchaseCaptureRegistrationService {
                 .clothes(savedClothes)
                 .ownershipStatus(OwnershipStatus.OWNED)
                 .size(request.size())
-                .season(request.season())
                 .favorite(request.favorite())
                 .userImageUrl(itemImageUrl)
                 .build());
@@ -158,7 +160,7 @@ public class PurchaseCaptureRegistrationService {
                 savedClothes.getClothesInfoSource(),
                 savedClothes.getExternalSource(),
                 wardrobeClothes.getSize(),
-                wardrobeClothes.getSeason(),
+                savedClothes.getSeason() != null ? savedClothes.getSeason().name() : null,
                 wardrobeClothes.getFavorite(),
                 draft.pendingItemCount(),
                 draft.captureCompleted(),

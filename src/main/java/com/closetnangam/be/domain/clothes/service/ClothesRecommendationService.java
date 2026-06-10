@@ -92,9 +92,9 @@ public class ClothesRecommendationService {
     /**
      * 기준 옷({clothesId})와 어울리는 상품을 카테고리별로 추천합니다.
      *
-     * <p>후보 풀: {@code CLOTHES} 전체(출처 무관). 기준 옷과 같은 카테고리를 제외하고
-     * TOP/BOTTOM/OUTER/SHOES 각각 최대 500건(최신순)을 조회한 뒤
-     * 점수 상위를 반환합니다.
+     * <p>후보 풀: {@code CLOTHES} 중 {@code clothes_info_source = EXTERNAL_SHOPPING} 공용 쇼핑 마스터만.
+     * 기준 옷과 같은 카테고리를 제외하고 TOP/BOTTOM/OUTER/SHOES 각각 최대 500건(최신순)을 조회한 뒤
+     * 점수 상위를 반환합니다. PHOTO·PURCHASE_HISTORY 등 개인 등록 마스터는 후보에 포함하지 않습니다.
      *
      * <p><b>Precondition:</b> 호출 전에 컨트롤러에서 {@code SecurityUtils.verifyUserIdMatch(userId)}로
      * JWT 사용자 일치를 검증해야 합니다.
@@ -426,7 +426,7 @@ public class ClothesRecommendationService {
             return new AnchorScoringContext(
                     clothes.getRecommendationTagSnapshot(),
                     clothes.getItemType(),
-                    anchor.getSeason()
+                    resolveCandidateSeason(clothes)
             );
         }
     }

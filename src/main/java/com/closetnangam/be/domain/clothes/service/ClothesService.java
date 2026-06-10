@@ -11,6 +11,7 @@ import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
@@ -75,6 +76,7 @@ public class ClothesService {
                 request.styles(),
                 request.gender()
         );
+        clothesTagHelper.validateSeasonIfPresent(request.season());
 
         Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
         Clothes clothes = buildClothes(
@@ -85,6 +87,7 @@ public class ClothesService {
                 request.category(),
                 request.itemType(),
                 request.gender(),
+                request.season(),
                 ClothesInfoSource.PURCHASE_HISTORY,
                 Clothes.EXTERNAL_NONE,
                 Clothes.EXTERNAL_NONE,
@@ -101,7 +104,6 @@ public class ClothesService {
                 .clothes(savedClothes)
                 .ownershipStatus(OwnershipStatus.OWNED)
                 .size(request.size())
-                .season(request.season())
                 .favorite(false)
                 .userImageUrl(request.imageUrl())
                 .build());
@@ -120,6 +122,7 @@ public class ClothesService {
                 request.gender()
         );
         clothesTagHelper.validateExternalSource(request.externalSource());
+        clothesTagHelper.validateSeasonIfPresent(request.season());
 
         Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
         Clothes clothes = buildClothes(
@@ -130,6 +133,7 @@ public class ClothesService {
                 request.category(),
                 request.itemType(),
                 request.gender(),
+                request.season(),
                 ClothesInfoSource.EXTERNAL_SHOPPING,
                 request.externalSource(),
                 request.externalProductId(),
@@ -146,7 +150,6 @@ public class ClothesService {
                 .clothes(savedClothes)
                 .ownershipStatus(OwnershipStatus.WISHLIST)
                 .size(request.size())
-                .season(request.season())
                 .favorite(false)
                 .userImageUrl(request.imageUrl())
                 .build());
@@ -181,7 +184,6 @@ public class ClothesService {
                 .clothes(clothes)
                 .ownershipStatus(OwnershipStatus.WISHLIST)
                 .size("FREE")
-                .season(null)
                 .favorite(false)
                 .userImageUrl(clothes.getImageUrl())
                 .registrationSource(clothes.getClothesInfoSource())
@@ -197,7 +199,6 @@ public class ClothesService {
 
         wardrobeClothes.convertToOwned(
                 request.size(),
-                request.season(),
                 request.userImageUrl(),
                 originalInfoSource
         );
@@ -216,6 +217,7 @@ public class ClothesService {
                 request.styles(),
                 request.gender()
         );
+        clothesTagHelper.validateSeasonIfPresent(request.season());
 
         WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
         Clothes clothes = wardrobeClothes.getClothes();
@@ -228,6 +230,7 @@ public class ClothesService {
                 request.category(),
                 request.itemType(),
                 ClothesGender.fromCode(request.gender()),
+                ClothesSeason.fromCodeOrDefault(request.season()),
                 request.isVerified()
         );
         clothesTagHelper.replaceColorTags(clothes, request.primaryColor(), request.secondaryColors());
@@ -235,7 +238,6 @@ public class ClothesService {
 
         wardrobeClothes.updateWardrobeDetails(
                 request.size(),
-                request.season(),
                 request.imageUrl()
         );
 
@@ -273,6 +275,7 @@ public class ClothesService {
             String category,
             String itemType,
             String gender,
+            String season,
             ClothesInfoSource clothesInfoSource,
             String externalSource,
             String externalProductId,
@@ -290,6 +293,7 @@ public class ClothesService {
                 .category(category)
                 .itemType(itemType)
                 .gender(ClothesGender.fromCode(gender))
+                .season(ClothesSeason.fromCodeOrDefault(season))
                 .clothesInfoSource(clothesInfoSource)
                 .externalSource(externalSource)
                 .externalProductId(externalProductId)

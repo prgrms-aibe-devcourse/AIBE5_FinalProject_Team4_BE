@@ -171,13 +171,12 @@ class ClothesRecommendationServiceTest {
         Wardrobe wardrobe = Wardrobe.create(user);
         ReflectionTestUtils.setField(wardrobe, "id", 100L);
 
-        Clothes clothes = createClothes(10L, category, itemType, color);
+        Clothes clothes = createClothes(10L, category, itemType, color, ClothesSeason.fromCodeOrDefault(season));
         WardrobeClothes wardrobeClothes = WardrobeClothes.builder()
                 .wardrobe(wardrobe)
                 .clothes(clothes)
                 .ownershipStatus(OwnershipStatus.OWNED)
                 .size("L")
-                .season(season)
                 .favorite(false)
                 .userImageUrl("https://example.com/anchor.jpg")
                 .build();

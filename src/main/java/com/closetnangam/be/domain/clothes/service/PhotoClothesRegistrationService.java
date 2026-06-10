@@ -14,6 +14,7 @@ import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
@@ -94,6 +95,7 @@ public class PhotoClothesRegistrationService {
                 request.secondaryColors(),
                 request.styles()
         );
+        clothesTagHelper.validateSeasonIfPresent(request.season());
 
         // 비관적 락으로 동시 저장 요청 직렬화: 두 트랜잭션이 동시에 isAlreadySaved()==false를 보고 중복 생성하는 경쟁 조건 방지
         ClothingAiPhoto photo = clothingAiPhotoRepository.findByIdAndUser_IdForUpdate(photoId, userId)
@@ -122,6 +124,7 @@ public class PhotoClothesRegistrationService {
                 .category(request.category())
                 .itemType(request.itemType())
                 .gender(ClothesGender.fromCode(request.gender()))
+                .season(ClothesSeason.fromCodeOrDefault(request.season()))
                 .clothesInfoSource(ClothesInfoSource.PHOTO)
                 .externalSource(Clothes.EXTERNAL_NONE)
                 .externalProductId(Clothes.EXTERNAL_NONE)
@@ -138,7 +141,6 @@ public class PhotoClothesRegistrationService {
                 .clothes(savedClothes)
                 .ownershipStatus(OwnershipStatus.OWNED)
                 .size(request.size())
-                .season(request.season())
                 .favorite(request.favorite())
                 .userImageUrl(photo.getImageUrl())
                 .build());
@@ -153,7 +155,7 @@ public class PhotoClothesRegistrationService {
                 wardrobeClothes.getOwnershipStatus(),
                 savedClothes.getClothesInfoSource(),
                 wardrobeClothes.getSize(),
-                wardrobeClothes.getSeason(),
+                savedClothes.getSeason() != null ? savedClothes.getSeason().name() : null,
                 wardrobeClothes.getFavorite(),
                 com.closetnangam.be.domain.clothes.dto.response.ClothesResponse.from(savedClothes, wardrobeClothes)
         );
@@ -186,8 +188,15 @@ public class PhotoClothesRegistrationService {
                 photo.getDraftPrimaryColor(),
                 parseColors(photo.getDraftSecondaryColorsJson()),
                 styles,
-                resolveRegistrationDraftGender(photo)
+                resolveRegistrationDraftGender(photo),
+                resolveRegistrationDraftSeason(photo)
         );
+    }
+
+    private String resolveRegistrationDraftSeason(ClothingAiPhoto photo) {
+        return StringUtils.hasText(photo.getDraftSeason())
+                ? photo.getDraftSeason()
+                : "ALL_SEASON";
     }
 
     private List<String> parseColors(String draftSecondaryColorsJson) {

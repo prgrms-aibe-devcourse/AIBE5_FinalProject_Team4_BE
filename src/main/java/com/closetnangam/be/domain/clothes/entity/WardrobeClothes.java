@@ -49,9 +49,6 @@ public class WardrobeClothes extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String size;
 
-    @Column(length = 50)
-    private String season;
-
     @Column(nullable = false)
     private Boolean favorite = false;
 
@@ -73,7 +70,6 @@ public class WardrobeClothes extends BaseEntity {
             Clothes clothes,
             OwnershipStatus ownershipStatus,
             String size,
-            String season,
             Boolean favorite,
             String userImageUrl,
             ClothesInfoSource registrationSource
@@ -82,7 +78,6 @@ public class WardrobeClothes extends BaseEntity {
         this.clothes = clothes;
         this.ownershipStatus = ownershipStatus;
         this.size = size;
-        this.season = season;
         this.favorite = favorite != null ? favorite : false;
         this.userImageUrl = userImageUrl;
         this.registrationSource = resolveRegistrationSource(clothes, registrationSource);
@@ -102,15 +97,13 @@ public class WardrobeClothes extends BaseEntity {
         this.favorite = favorite;
     }
 
-    public void updateWardrobeDetails(String size, String season, String userImageUrl) {
+    public void updateWardrobeDetails(String size, String userImageUrl) {
         this.size = size;
-        this.season = season;
         this.userImageUrl = userImageUrl;
     }
 
     public void convertToOwned(
             String size,
-            String season,
             String userImageUrl,
             ClothesInfoSource registrationSource
     ) {
@@ -119,7 +112,6 @@ public class WardrobeClothes extends BaseEntity {
         }
         this.ownershipStatus = OwnershipStatus.OWNED;
         this.size = size;
-        this.season = season;
         this.userImageUrl = userImageUrl;
         this.registrationSource = registrationSource != null
                 ? registrationSource
@@ -156,7 +148,6 @@ public class WardrobeClothes extends BaseEntity {
         this.deletedAt = null;
         this.ownershipStatus = OwnershipStatus.WISHLIST;
         this.size = "FREE";
-        this.season = null;
         this.favorite = false;
         this.userImageUrl = userImageUrl;
         if (registrationSource != null) {

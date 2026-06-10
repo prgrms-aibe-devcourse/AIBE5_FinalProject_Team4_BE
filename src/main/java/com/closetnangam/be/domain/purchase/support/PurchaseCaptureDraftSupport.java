@@ -3,6 +3,7 @@ package com.closetnangam.be.domain.purchase.support;
 import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.domain.clothes.enums.ClothesGender;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureAnalyzeResponse;
 import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureDraftResponse;
 import com.closetnangam.be.domain.purchase.dto.response.PurchaseCaptureItemDraft;
@@ -47,6 +48,7 @@ public final class PurchaseCaptureDraftSupport {
                 result.secondaryColors(),
                 result.styles(),
                 result.gender(),
+                result.season(),
                 result.optionText(),
                 result.suggestedExternalSource(),
                 result.imageUrl(),
@@ -137,6 +139,7 @@ public final class PurchaseCaptureDraftSupport {
                     normalizeSecondaryColors(item.secondaryColors()),
                     styles,
                     resolveGenderOrDefault(item.gender()),
+                    resolveSeasonOrDefault(item.season()),
                     item.optionText(),
                     item.suggestedExternalSource(),
                     item.imageUrl(),
@@ -164,6 +167,7 @@ public final class PurchaseCaptureDraftSupport {
                         item.secondaryColors(),
                         item.styles(),
                         defaultGenderCode,
+                        resolveSeasonOrDefault(item.season()),
                         item.optionText(),
                         item.suggestedExternalSource(),
                         item.imageUrl(),
@@ -347,6 +351,7 @@ public final class PurchaseCaptureDraftSupport {
                 draft.category(),
                 draft.itemType(),
                 draft.gender(),
+                draft.season(),
                 draft.primaryColor(),
                 draft.secondaryColors(),
                 draft.styles(),
@@ -373,6 +378,7 @@ public final class PurchaseCaptureDraftSupport {
                 view.flatCategory(),
                 view.flatItemType(),
                 view.flatGender(),
+                view.flatSeason(),
                 view.flatPrimaryColor(),
                 view.flatSecondaryColors(),
                 view.flatStyles(),
@@ -403,7 +409,7 @@ public final class PurchaseCaptureDraftSupport {
                 ));
             }
             if (storedItems.size() > 1) {
-                return new DraftView(null, null, null, null, null, null, null, null, null, null, itemDrafts);
+                return new DraftView(null, null, null, null, null, null, null, null, null, null, null, itemDrafts);
             }
             GeminiPurchaseCaptureItem first = storedItems.get(0);
             return new DraftView(
@@ -412,6 +418,7 @@ public final class PurchaseCaptureDraftSupport {
                     first.category(),
                     first.itemType(),
                     defaultGenderCode,
+                    resolveSeasonOrDefault(first.season()),
                     first.primaryColor(),
                     first.secondaryColors(),
                     first.styles(),
@@ -427,6 +434,7 @@ public final class PurchaseCaptureDraftSupport {
                 capture.getDraftCategory(),
                 capture.getDraftItemType(),
                 defaultGenderCode,
+                "ALL_SEASON",
                 capture.getDraftPrimaryColor(),
                 parseStringList(capture.getDraftSecondaryColorsJson(), objectMapper),
                 parseStringList(capture.getDraftStylesJson(), objectMapper),
@@ -455,6 +463,7 @@ public final class PurchaseCaptureDraftSupport {
                 normalizeSecondaryColors(item.secondaryColors()),
                 item.styles() != null ? item.styles() : List.of(),
                 defaultGenderCode,
+                resolveSeasonOrDefault(item.season()),
                 item.optionText(),
                 normalizeSuggestedExternalSource(item.suggestedExternalSource()),
                 resolveItemPreviewImageUrl(item.imageUrl(), captureImageUrl, registrableItemCount)
@@ -513,6 +522,10 @@ public final class PurchaseCaptureDraftSupport {
         return StringUtils.hasText(gender) ? gender : "UNISEX";
     }
 
+    private static String resolveSeasonOrDefault(String season) {
+        return ClothesSeason.fromCodeOrDefault(season).name();
+    }
+
     public record ItemProgressEntry(
             PurchaseCaptureItemStatus status,
             Long clothesId,
@@ -526,6 +539,7 @@ public final class PurchaseCaptureDraftSupport {
             String flatCategory,
             String flatItemType,
             String flatGender,
+            String flatSeason,
             String flatPrimaryColor,
             List<String> flatSecondaryColors,
             List<String> flatStyles,

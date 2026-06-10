@@ -12,6 +12,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,6 +47,12 @@ public class ClothesTagHelper {
 
     public void validateExternalSource(String externalSource) {
         categoryCatalogService.validateExternalSource(externalSource);
+    }
+
+    public void validateSeasonIfPresent(String seasonCode) {
+        if (StringUtils.hasText(seasonCode)) {
+            categoryCatalogService.validateSeasonCode(seasonCode);
+        }
     }
 
     public void applyColorTags(Clothes clothes, String primaryColor, List<String> secondaryColors) {

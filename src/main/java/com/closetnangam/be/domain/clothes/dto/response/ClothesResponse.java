@@ -102,7 +102,7 @@ public record ClothesResponse(
                 clothes.getIsVerified(),
                 wardrobeClothes != null ? wardrobeClothes.getFavorite() : null,
                 wardrobeClothes != null ? wardrobeClothes.getSize() : null,
-                wardrobeClothes != null ? wardrobeClothes.getSeason() : null,
+                resolveSeason(clothes),
                 wardrobeClothes != null ? wardrobeClothes.getUserImageUrl() : null,
                 clothes.getCreatedAt(),
                 clothes.getUpdatedAt()
@@ -135,6 +135,10 @@ public record ClothesResponse(
             return null;
         }
         return wardrobe.getUser().getId();
+    }
+
+    private static String resolveSeason(Clothes clothes) {
+        return clothes.getSeason() != null ? clothes.getSeason().name() : null;
     }
 
     public record ColorDisplayResponse(
