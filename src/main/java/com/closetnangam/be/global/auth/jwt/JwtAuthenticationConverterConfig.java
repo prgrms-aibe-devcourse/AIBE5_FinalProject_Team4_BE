@@ -23,6 +23,12 @@ public class JwtAuthenticationConverterConfig {
     public Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter() {
         JwtAuthenticationConverter delegate = new JwtAuthenticationConverter();
         return jwt -> {
+            String tokenType = jwt.getClaimAsString("type");
+            if (!"access".equals(tokenType)) {
+                throw new org.springframework.security.oauth2.server.resource.InvalidBearerTokenException(
+                  "Invalid token type: " + tokenType
+                );
+            }
             AbstractAuthenticationToken converted = delegate.convert(jwt);
             Long userId = Long.valueOf(jwt.getSubject());
             return new UsernamePasswordAuthenticationToken(

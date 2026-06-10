@@ -63,7 +63,10 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 ## 인증 기준
 
 - OAuth 로그인 성공 후 JWT Access Token을 발급합니다.
-- 보호 API는 `Authorization: Bearer {accessToken}` 헤더를 사용합니다.
+- Access Token은 `access_token` HttpOnly 쿠키로 전달됩니다.
+- Refresh Token은 `refresh_token` HttpOnly 쿠키로 전달되며 `/api/v1/auth` 경로에서만 전송됩니다.
+- Access Token이 만료(401)되면 `POST /api/v1/auth/refresh`를 호출해 재발급합니다.
+- 로그아웃 시 `POST /api/v1/auth/logout`을 호출해 서버에서 Refresh Token을 삭제합니다.
 - 사용자별 리소스는 JWT의 사용자 ID와 path의 `userId`가 일치해야 합니다.
 
 ## 이미지 업로드 기준
@@ -77,9 +80,12 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 
 ### 인증
 
-| Method | Path | 설명 |
-| --- | --- | --- |
-| GET | `/oauth2/authorization/{provider}` | OAuth 로그인 시작 |
+| Method | Path                               | 설명              |
+|--------|------------------------------------|-----------------|
+| GET    | `/oauth2/authorization/{provider}` | OAuth 로그인 시작    |
+| POST   | `/api/v1/auth/refresh`             | Access Token 재발급 |
+| POST   | `/api/v1/auth/logout`              | 로그아웃            |
+
 
 ### 카탈로그
 

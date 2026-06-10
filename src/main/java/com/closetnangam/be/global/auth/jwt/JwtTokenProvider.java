@@ -14,21 +14,36 @@ public class JwtTokenProvider {
 
     private final SecretKey secretKey;
     private final long accessTokenExpiration;
+    private final long refreshTokenExpiration;
 
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secret,
-            @Value("${jwt.expiration.access}") long accessTokenExpiration
+            @Value("${jwt.expiration.access}") long accessTokenExpiration,
+            @Value("${jwt.expiration.refresh}") long refreshTokenExpiration
     ) {
         this.secretKey = JwtSecretKeys.hs256SecretKey(secret);
         this.accessTokenExpiration = accessTokenExpiration;
+        this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
     public String createAccessToken(Long userId) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim("type", "access")
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + accessTokenExpiration))
+                .signWith(secretKey, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    public String createRefreshToken(Long userId) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(String.valueOf(userId))
+                .claim("type", "refresh")
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + refreshTokenExpiration))
                 .signWith(secretKey, Jwts.SIG.HS256)
                 .compact();
     }
