@@ -2,16 +2,16 @@
 doc_type: be_database
 source_of_truth: AIBE5_FinalProject_Team4_BE
 last_updated: 2026-06-09
-erd_version: v2.1
+erd_version: v2.2
 ---
 
 # ERD
 
-이 문서는 옷장난감 BE의 확정 ERD v2.1 기준을 정리합니다. DB 구조와 도메인 규칙이 충돌할 때는 이 문서와 [도메인 규칙](../domain/invariants.md)을 함께 확인합니다.
+이 문서는 옷장난감 BE의 확정 ERD v2.2 기준을 정리합니다. DB 구조와 도메인 규칙이 충돌할 때는 이 문서와 [도메인 규칙](../domain/invariants.md)을 함께 확인합니다.
 
 ## ERD 이미지
 
-![ERD v2.1](./assets/erd-v2.1.png)
+![ERD v2.2](./assets/erd-v2.2.png)
 
 ## 테이블 그룹
 
@@ -67,8 +67,8 @@ erd_version: v2.1
 | `product_code` | 상품 품번 |
 | `image_url` | 대표 이미지 URL |
 | `category` | 옷 카테고리 코드 |
+| `gender` | 옷 대상 성별 코드: `MALE`, `FEMALE`, `UNISEX`. 사용자 화면 표시 대상이 아닌 내부 분류/추천용 값 |
 | `item_type` | 카테고리 하위 옷 타입 코드 |
-| `gender` | 옷 대상 성별 코드: `MALE`, `FEMALE`, `UNISEX` |
 | `clothes_info_source` | 옷 정보 출처: `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |
 | `external_source` | 외부 쇼핑몰 또는 직접 입력 출처 |
 | `external_product_id` | 외부 상품 ID |
@@ -140,7 +140,7 @@ erd_version: v2.1
 | `url` | 외부 URL |
 | `sort_order` | 프로필 노출 순서 |
 
-## BE 구현 범위 (ERD v2.1 명칭 정합)
+## BE 구현 범위 (ERD v2.2 명칭 정합)
 
 | 대상 | BE 엔티티 | 비고 |
 | --- | --- | --- |

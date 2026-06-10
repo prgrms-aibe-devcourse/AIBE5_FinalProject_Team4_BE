@@ -1,57 +1,53 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-08
+last_updated: 2026-06-09
 ---
 
 # 기능 인덱스
 
-이 문서는 옷장난감의 MVP 기능을 하나의 기능 ID로 추적하기 위한 기준 문서입니다. 기능 ID는 기획, API, DB, FE 화면, PR 리뷰에서 같은 기능을 가리키는 공통 언어로 사용합니다.
+이 문서는 [요구사항 정의서](./requirements-definition.md)의 세부기능 ID를 API, 데이터, FE 화면과 연결하기 위한 빠른 참조 문서입니다.
 
-구현 진행 상태는 이슈와 PR에서 관리합니다. 이 문서에는 테스트용 API나 개발 편의 기능을 포함하지 않고, 사용자에게 제공되는 서비스 기능과 도메인 기준만 정리합니다.
+기능 범위, 우선순위, 세부 설명의 원본은 [requirements-definition.md](./requirements-definition.md)입니다. 이 문서는 별도의 기능 ID를 새로 정의하지 않으며, 요구사항 정의서의 세부기능 ID를 그대로 사용합니다.
 
-## 기능 목록
+구현 진행 상태는 이슈와 PR에서 관리합니다. 테스트용 API나 개발 편의 기능은 공식 사용자 기능으로 보지 않으며, 필요한 경우 [api-contract.md](../api/api-contract.md) 또는 [implementation-gaps.md](../backend/implementation-gaps.md)에서 경계를 명확히 합니다.
 
-| F-ID | 구분 | 기능 | 설명 | 주요 BE API/데이터                                                             | FE 화면/라우트 |
-| --- | --- | --- | --- |---------------------------------------------------------------------------| --- |
-| AUTH-001 | 회원 | 소셜 로그인 | 카카오, 구글, 네이버 OAuth 로그인 후 JWT 발급 | `USERS`, `SOCIAL_ACCOUNTS`, `/oauth2/**`                                  | 로그인 모달 |
-| USER-001 | 회원 | 기본 정보 입력 | 최초 로그인 후 닉네임, 생년월일, 성별, 지역 입력 | `USERS`                                                                   | 온보딩 |
-| USER-002 | 회원 | 프로필/마이페이지 | 프로필, 스타일, 소셜 계정, 외부 링크, 회원 탈퇴 관리 | `USERS`, `USER_EXTERNAL_LINK`, `USER_STYLES`                              | 마이페이지 |
-| STYLE-001 | 스타일 | 스타일 카탈로그 | 서비스에서 사용하는 스타일 목록 관리 | `STYLES`, `StyleCode`                                                     | 온보딩, 마이페이지, 필터 |
-| STYLE-002 | 스타일 | 사용자 스타일 점수 | 온보딩/마이페이지 선택, 옷장 데이터, 추천 피드백 점수 누적 | `USER_STYLES`                                                             | 온보딩, 마이페이지 |
-| WARD-001 | 옷장 | 사용자별 단일 옷장 | 회원마다 1개의 디지털 옷장 생성 및 조회 | `WARDROBES`, `GET /api/v1/wardrobes/users/{userId}`                       | 옷장 |
-| WARD-002 | 옷장 | 옷장 통계 | 사용자 옷장에 등록된 보유/미보유 옷 통계 조회 | `GET /api/v1/wardrobes/users/{userId}/statistics`                         | 옷장 요약 |
-| CLOTH-001 | 옷 | 보유 옷 등록 | 사용자가 실제 보유한 옷을 옷장에 등록 | `POST /api/v1/users/{userId}/clothes`, `OWNED`                            | 옷 등록 |
-| CLOTH-002 | 옷 | 보유 옷 조회 | 사용자 옷장에 연결된 보유 옷 목록/상세 조회 | `GET /api/v1/users/{userId}/clothes`, `GET /api/v1/clothes/{clothesId}`   | 옷장 |
-| CLOTH-003 | 옷 | 옷 수정 | 사이즈, 계절, 즐겨찾기 등 사용자별 옷장 정보를 수정 | `PATCH /api/v1/clothes/{clothesId}`                                       | 옷 상세/수정 |
-| CLOTH-004 | 옷 | 옷장 연결 삭제 | 사용자 옷장에서 옷 연결만 제거하고 공통 옷 정보는 유지 | `DELETE /api/v1/clothes/{clothesId}`, `WARDROBE_CLOTHES`                  | 옷 상세 |
-| CLOTH-005 | 옷 | 미보유 옷 저장 | 추천/외부 상품을 관심 상품으로 옷장에 저장 | `POST /api/users/{userId}/wishlist-clothes`, `WISHLIST`                   | 추천 상세, 옷장 |
-| CLOTH-006 | 옷 | 미보유 옷 조회 | 미보유 옷 목록 및 즐겨찾기 조회 | `GET /api/users/{userId}/wishlist-clothes`                                | 옷장 미보유 탭 |
-| CLOTH-007 | 옷 | 미보유에서 보유 전환 | 구매한 관심 상품을 보유 옷으로 전환 | `PATCH /api/clothes/{clothesId}/convert-to-owned`                         | 옷 상세 |
-| REG-001 | 옷 등록 | 사진 기반 등록 | 사용자가 옷 사진을 올리고 AI 분석 결과를 바탕으로 옷 등록 | `/api/v1/users/{userId}/clothes/photos/**`, `PHOTO`                       | 옷 등록 |
-| REG-002 | 옷 등록 | 구매내역 기반 등록 | 구매내역 캡처를 분석해 복수 상품 후보(`items[]`)를 만들고 `itemIndex`별 저장·건너뛰기로 순차 등록 | `POST .../purchase-captures`, `.../analyze`, `.../draft`, `.../save`, `.../items/{itemIndex}/skip`, `PURCHASE_HISTORY` | 옷 등록 |
-| REG-003 | 옷 등록 | 외부 쇼핑몰 상품 저장 | 외부 쇼핑몰 상품 정보를 공통 옷 정보로 저장 | `POST /api/v1/external/clothes/naver`, `EXTERNAL_SHOPPING`                | 추천 상세, 외부 검색 |
-| CATALOG-001 | 카탈로그 | 카테고리/타입/색상/스타일 조회 | 옷 등록과 필터에 필요한 기준값 제공 | `GET /api/v1/categories`                                                  | 옷 등록, 필터 |
-| RECO-001 | 추천 | 추천 메인 | 메인 페이지를 추천 중심 화면으로 사용 | 추천 도메인                                                                    | 추천 메인 |
-| RECO-002 | 추천 | 취향 기반 상품 추천 | 사용자 스타일 점수를 기반으로 상품 추천 | `USER_STYLES`, `RECOMMENDATION_FEEDBACKS`, `GET /api/v1/recommendations/{wardrobeId}` | 추천 메인 |
-| RECO-003 | 추천 | 유사 상품 추천 | 선택한 옷과 유사한 상품 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/similar-products`         | 옷 상세, 추천 상세 |
-| RECO-004 | 추천 | 옷장 기반 어울리는 옷 추천 | 옷장에 등록한 옷과 어울리는 상의/하의/아우터/신발 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations`          | 추천 상세 |
-| RECO-005 | 추천 | 날씨/계절/지역 기반 추천 | 사용자 지역과 날씨 정보를 추천에 반영 | `GET /api/weather`                                                        | 추천 메인 |
-| RECO-006 | 추천 | AI MD 추천 | 사용자 성별에 맞는 AI MD가 보유 옷과 외부 상품 후보를 바탕으로 상품 또는 코디 후보를 추천하고, 사용자가 선택한 코디만 저장 | `GET /api/v1/users/{userId}/recommendations/ai-md/personas`, `GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products`, `POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits`, `POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save`, `OUTFITS`, `OUTFIT_ITEMS`, Gemini, 네이버쇼핑 | 추천 상세, 코디북 |
-| RECO-007 | 추천 | 추천 싫어요/제외 | 비선호 상품에 피드백을 남기고 추천에서 제외 | `RECOMMENDATION_FEEDBACKS`                                                | 추천 상세 |
-| RECO-008 | 추천 | 내 옷장 기반 OOTD 추천 | 현재 기온에 맞는 상+하+외투 조합 추천 | `GET /api/v1/ootd/{wardrobeId}`, `WeatherCompatibilityTable`              | 추천 메인 |
-| OUTFIT-001 | 코디북 | 사용자별 단일 코디북 | 회원마다 1개의 코디북 생성 및 관리 | `OUTFIT_BOOKS`, `/api/v1/outfit-books`                                    | 코디북 |
-| OUTFIT-002 | 코디 | 코디 저장/조회 | 추천받거나 직접 구성한 코디를 저장하고 조회 | `OUTFITS`, `OUTFIT_ITEMS`                                                 | 코디북, 코디 상세 |
-| OUTFIT-004 | 코디 | 코디 수정/삭제 | 저장된 코디의 정보와 구성 아이템을 수정하거나 코디를 삭제 | `PUT/DELETE /api/v1/outfit-books/{bookId}/outfits/{outfitId}`             | 코디 상세/수정 |
-| OUTFIT-003 | 코디 | 코디 스타일 | 코디 구성 옷을 기반으로 대표/보조 스타일 관리 | `OUTFIT_STYLES`                                                           | 코디 상세 |
-| FEED-001 | 룩피드 | 피드 게시글 | 코디 기반 게시글 등록, 목록, 상세 조회 | `FEED_POSTS`, `FEED_POST_IMAGES`                                          | 룩피드 |
-| FEED-002 | 룩피드 | 피드 반응 | 좋아요, 댓글/대댓글, 저장, 팔로우 처리 | `FEED_LIKES`, `FEED_COMMENTS`, `FEED_POST_SAVES`, `USER_FOLLOWS`          | 룩피드 |
-| EXT-001 | 외부 연동 | 네이버쇼핑 검색 | 네이버쇼핑 API를 활용한 상품 검색 | `GET /api/naver/search`                                                   | 외부 상품 검색 |
-| EXT-002 | 외부 연동 | 이미지 저장 | 옷 사진, 구매내역 캡처, 피드 이미지 저장 | AWS S3 기준, `/api/v1/images/**`                                            | 이미지 업로드/표시 |
+## 기능 연결표
 
-## 기능 ID 운영 규칙
+| 세부기능 ID | 구분 | 기능 | 설명 | 주요 BE API/데이터 | FE 화면/라우트 |
+| --- | --- | --- | --- | --- | --- |
+| `AUTH-001`~`AUTH-008` | 로그인 | 소셜 로그인/인증 처리 | 카카오, 구글, 네이버 OAuth 로그인, JWT 발급/저장, 로그인 실패, 사용자 ID 검증 | `USERS`, `SOCIAL_ACCOUNTS`, `/oauth2/**`, JWT | 로그인 모달 |
+| `ONBOARD-001`~`ONBOARD-010` | 온보딩 | 최초 사용자 정보/스타일 입력 | 닉네임, 생년월일, 성별, 지역, 스타일 선택, 사용자 공간 생성, 첫 옷 등록 안내 | `USERS`, `USER_STYLES`, `WARDROBES`, `OUTFIT_BOOKS` | 온보딩 |
+| `MYPAGE-001`~`MYPAGE-005` | 마이페이지 | 프로필/계정 관리 | 내 정보 조회/수정, 소셜 계정 확인, 외부 링크, 로그아웃, 회원 탈퇴 | `USERS`, `SOCIAL_ACCOUNTS`, `USER_EXTERNAL_LINK`, `USER_STYLES` | 마이페이지 |
+| `STYLE-001` | 스타일 | 선호 점수 반영 | 온보딩/마이페이지에서 선택한 선호 스타일을 추천에 반영 | `USER_STYLES.preference_weight` | 온보딩, 마이페이지 |
+| `STYLE-002` | 스타일 | 옷장 점수 반영 | 옷장에 등록한 옷의 대표/보조 스타일을 추천에 반영 | `USER_STYLES.wardrobe_weight`, `CLOTHING_STYLES` | 옷장, 추천 |
+| `STYLE-003` | 스타일 | 피드백 점수 반영 | 추천 싫어요와 추천 제외 피드백을 추천에 반영 | `USER_STYLES.feedback_weight`, `RECOMMENDATION_FEEDBACKS` | 추천 상세 |
+| `WARDROBE-001` | 옷장 | 단일 옷장 | 사용자별 하나의 디지털 옷장 제공 | `WARDROBES`, `GET /api/v1/wardrobes/users/{userId}` | 옷장 |
+| `WARDROBE-002` | 옷장 | 보유/미보유 통계 조회 | 보유 옷과 미보유 옷 수를 함께 집계하고 옷 종류별 통계 조회 | `GET /api/v1/wardrobes/users/{userId}/statistics`, `WARDROBE_CLOTHES` | 옷장 요약 |
+| `WARDROBE-003`~`WARDROBE-010` | 옷장 | 보유/미보유 옷 관리 | 보유 목록, 상세, 수정, 삭제, 즐겨찾기, 미보유 목록, 보유 전환 | `CLOTHES`, `WARDROBE_CLOTHES`, `GET /api/v1/users/{userId}/clothes`, `PATCH /api/v1/clothes/{clothesId}`, `DELETE /api/v1/clothes/{clothesId}`, `/api/users/{userId}/wishlist-clothes` | 옷장, 옷 상세 |
+| `WARDROBE-011`~`WARDROBE-016` | 옷 등록 | 구매내역 기반 등록 | 구매내역 캡처 업로드, AI 상품 추출, 결과 편집, 보유 저장 | `/api/v1/users/{userId}/clothes/purchase-captures/**`, `PURCHASE_HISTORY` | 옷 등록 |
+| `WARDROBE-017`~`WARDROBE-030` | 옷 등록 | 사진 기반 등록 | 옷 사진 업로드, AI 판별, 결과 표시/수정, 최종 저장, 성공/실패 알림 | `/api/v1/users/{userId}/clothes/photos/**`, `PHOTO` | 옷 등록 |
+| `CATALOG-001` | 카탈로그 | 공통 카탈로그 | 카테고리, 타입, 색상, 스타일, 외부 쇼핑몰 출처 code와 표시값 제공 | `GET /api/v1/categories`, `StyleCode`, `ColorCode`, `GenderCode` | 옷 등록, 필터 |
+| `RECO-001` | 추천 | OOTD 코디 | 사용자 기준 코디 추천. 날씨, 계절, 체감온도는 보조 조건으로 반영 | `GET /api/v1/ootd/{wardrobeId}`, `WeatherCompatibilityTable` | 추천 메인 |
+| `RECO-002` | 추천 | 취향 분석/스타일 기반 추천 | 사용자 취향, 옷장, 지역, 날씨 등 데이터를 추천 근거로 활용 | `GET /api/v1/recommendations/{wardrobeId}`, `USER_STYLES`, `RECOMMENDATION_FEEDBACKS` | 추천 메인 |
+| `RECO-003` | 추천 | 유사 상품 탐색 | 선택한 상품이나 옷과 유사한 상품을 이미지, 카테고리, 색상, 스타일 기준으로 탐색 | `GET /api/v1/users/{userId}/clothes/{clothesId}/similar-products` | 옷 상세, 추천 상세 |
+| `RECO-005` | 추천 | 어울리는 옷 추천 | 사용자 옷장 데이터를 기준으로 함께 입기 좋은 상의, 하의, 아우터, 신발 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 추천 상세 |
+| `RECO-006` | 추천 | AI MD 추천 | AI가 TPO/드레스코드 코디를 추천하고 이유와 스타일링 설명 제공 | `/api/v1/users/{userId}/recommendations/ai-md/**`, `OUTFITS`, `OUTFIT_ITEMS`, Gemini, 네이버쇼핑 | 추천 상세, 코디북 |
+| `RECO-008`~`RECO-012` | 추천 상세 | 추천 결과 상세/액션 | 추천 상품/코디 상세, 코디 저장, 미보유 저장, 구매 링크 | `OUTFITS`, `OUTFIT_ITEMS`, `POST /api/users/{userId}/wishlist-clothes` | 추천 상세 |
+| `RECO-013`~`RECO-014` | 추천 상세 | 추천 피드백/제외 | 추천 결과에 사용자별 긍정/부정 피드백을 저장하고 추천 정책에 반영 | `RECOMMENDATION_FEEDBACKS`, `USER_STYLES.feedback_weight` | 추천 상세 |
+| `OUTFIT-001`~`OUTFIT-006` | 코디 | 코디 저장/조회/수정/삭제/스타일 | 직접 저장하거나 추천받은 코디를 저장, 조회, 수정, 삭제하고 대표/보조 스타일 관리 | `OUTFITS`, `OUTFIT_ITEMS`, `OUTFIT_STYLES` | 코디북, 코디 상세 |
+| `OUTFITBOOK-001`~`OUTFITBOOK-003` | 코디북 | 코디북 관리 | 사용자별 단일 코디북, 코디 목록 조회, 코디북 상세 | `OUTFIT_BOOKS`, `/api/v1/outfit-books` | 코디북 |
+| `EXT-001`~`EXT-003` | 외부 연동 | 네이버쇼핑 상품 연동 | 외부 상품 검색, 상세 조회, 상품 저장 | `GET /api/naver/search`, `POST /api/v1/external/clothes/naver` | 외부 상품 검색, 추천 상세 |
+| `EXT-004`~`EXT-006` | 외부 연동 | 날씨 보조 정보 | 사용자 지역 기반 현재 날씨와 체감온도 조회. 독립 추천 기능이 아니라 추천 보조 조건 | `GET /api/weather` | 추천 메인 |
+| `EXT-007`~`EXT-008` | 외부 연동 | AI 의류 분석/추천 설명 | 옷 사진 분석, 스타일링 설명 또는 추천 이유 생성 | Gemini API | 옷 등록, 추천 상세 |
+| `SYSTEM-001`~`SYSTEM-010` | 공통 시스템 | 로딩/에러/필터/약관 | 로딩, 404/500/네트워크 오류, 통합 필터, 서비스 소개, 약관 동의 | 공통 오류 응답, 카탈로그 API | 공통 UI |
+| `DATA-001` | 데이터 관리 | 초기 상품 데이터 | 추천 기능 시연을 위한 DB/API 초기 데이터 준비 | 샘플 상품 데이터 | 추천 |
+| `FEED-001`~`FEED-009` | 룩피드 | 피드/반응/빈 상태 | 코디 공유, 상세, 좋아요, 저장, 댓글, 대댓글, 팔로우, 빈 상태 | `FEED_POSTS`, `FEED_POST_IMAGES`, `FEED_LIKES`, `FEED_COMMENTS`, `FEED_POST_SAVES`, `USER_FOLLOWS` | 룩피드 |
 
-- 신규 기능은 기존 구분 prefix를 우선 사용합니다.
-- 한 기능이 여러 API를 사용하더라도 사용자 가치가 하나라면 하나의 F-ID로 묶습니다.
-- 기능 범위가 바뀌면 이 문서를 먼저 수정하거나 같은 PR에서 함께 수정합니다.
-- FE 문서에는 같은 F-ID를 사용해 화면/라우트/컴포넌트 정보를 연결합니다.
+## ID 운영 규칙
+
+- 요구사항 ID와 세부기능 ID의 원본은 [requirements-definition.md](./requirements-definition.md)입니다.
+- 이 문서는 세부기능 ID를 API, 데이터, 화면과 연결하는 인덱스 역할만 합니다.
+- 신규 기능 또는 기능 범위 변경은 요구사항 정의서를 먼저 수정하거나 같은 PR에서 함께 수정합니다.
+- 한 기능이 여러 API를 사용하더라도 사용자 가치와 요구사항 ID가 같으면 같은 세부기능 ID 또는 ID 범위로 묶습니다.
+- FE 문서에는 같은 세부기능 ID를 사용해 화면/라우트/컴포넌트 정보를 연결합니다.
