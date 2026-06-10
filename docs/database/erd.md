@@ -1,7 +1,7 @@
 ---
 doc_type: be_database
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-02
+last_updated: 2026-06-09
 erd_version: v2.1
 ---
 
@@ -68,6 +68,7 @@ erd_version: v2.1
 | `image_url` | 대표 이미지 URL |
 | `category` | 옷 카테고리 코드 |
 | `item_type` | 카테고리 하위 옷 타입 코드 |
+| `gender` | 옷 대상 성별 코드: `MALE`, `FEMALE`, `UNISEX` |
 | `clothes_info_source` | 옷 정보 출처: `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |
 | `external_source` | 외부 쇼핑몰 또는 직접 입력 출처 |
 | `external_product_id` | 외부 상품 ID |
@@ -109,6 +110,8 @@ erd_version: v2.1
 
 | 컬럼 | 의미 |
 | --- | --- |
+| `saved` | 저장하기 여부 |
+| `saved_at` | 저장하기 시점 |
 | `disliked` | 추천 싫어요 여부 |
 | `disliked_at` | 추천 싫어요 시점 |
 | `excluded` | 추천 제외 여부 |
@@ -147,7 +150,7 @@ erd_version: v2.1
 | `SOCIAL_ACCOUNTS` | `SocialAccount` | `created_at` + `last_login_at`만 매핑 |
 | `USER_EXTERNAL_LINKS` | `UserExternalLink` | 엔티티·Repository만. **마이페이지 CRUD API는 후속 (USER-002)** |
 | `FEED_*`, `USER_FOLLOWS` | 미구현 | 엔티티 셸 또는 없음. 룩피드 도메인 후속 |
-| `RECOMMENDATION_FEEDBACKS` | 미구현 | 추천 피드백 도메인 후속 |
+| `RECOMMENDATION_FEEDBACKS` | `RecommendationFeedback` | saved/disliked/excluded 피드백 구현 완료 |
 
 ## 데이터 보존 기준
 

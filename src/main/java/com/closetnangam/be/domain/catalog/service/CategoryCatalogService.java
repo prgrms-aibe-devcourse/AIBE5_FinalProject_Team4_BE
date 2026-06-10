@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.catalog.enums.ClothesColor;
 import com.closetnangam.be.domain.catalog.enums.ClothesItemType;
 import com.closetnangam.be.domain.catalog.enums.ExternalSource;
 import com.closetnangam.be.domain.catalog.enums.StyleCode;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -72,6 +73,12 @@ public class CategoryCatalogService {
                                 "스타일 코드 배열입니다. styles 목록의 code 값을 사용합니다. "
                                         + "최대 " + CatalogLimits.MAX_STYLES + "개.",
                                 "CASUAL"
+                        ),
+                        new GuideFieldResponse(
+                                "gender",
+                                "대상 성별",
+                                "의류 대상 성별 코드입니다. MALE, FEMALE, UNISEX 중 하나를 사용합니다.",
+                                "UNISEX"
                         )
                 ),
                 List.of(
@@ -88,7 +95,8 @@ public class CategoryCatalogService {
                                 "item_type", "SHORT_SLEEVE",
                                 "primaryColor", "WHITE",
                                 "secondaryColors", List.of("NAVY"),
-                                "styles", List.of("CASUAL", "MINIMAL")
+                                "styles", List.of("CASUAL", "MINIMAL"),
+                                "gender", "UNISEX"
                         ),
                         "colorDisplay",
                         Map.of(
@@ -135,6 +143,15 @@ public class CategoryCatalogService {
                 .map(style -> style.name() + " (" + style.getLabel() + ")")
                 .collect(Collectors.joining(", ")));
 
+        guide.append("\n\n[gender]\n");
+        guide.append("의류 대상 성별 코드 1개. 아래 코드만 사용하세요.\n");
+        guide.append(Arrays.stream(ClothesGender.values())
+                .map(gender -> gender.name() + " (" + gender.getLabel() + ")")
+                .collect(Collectors.joining(", ")));
+        guide.append("\n판별 순서: 1) category/itemType/색상/스타일 분류 2) gender 판별");
+        guide.append(" — 이미지에 착용 모델이 보이면 모델 성별을 우선, 없으면 상품명·옷 종류(스커트·원피스→FEMALE 등)로 추정.");
+        guide.append(" 남녀 공용·불확실하면 UNISEX.");
+
         guide.append("\n\n응답 JSON 예시:\n");
         guide.append("""
                 {
@@ -142,7 +159,8 @@ public class CategoryCatalogService {
                   "itemType": "SHORT_SLEEVE",
                   "primaryColor": "WHITE",
                   "secondaryColors": ["NAVY"],
-                  "styles": ["CASUAL", "MINIMAL"]
+                  "styles": ["CASUAL", "MINIMAL"],
+                  "gender": "UNISEX"
                 }
                 """);
 
@@ -172,6 +190,14 @@ public class CategoryCatalogService {
         if (!ClothesItemType.matchesCategory(categoryCode, itemTypeCode)) {
             throw new IllegalArgumentException("item_type이 category와 일치하지 않습니다.");
         }
+    }
+
+    public void validateGenderCode(String genderCode) {
+        ClothesGender.fromCode(genderCode);
+    }
+
+    public ClothesGender resolveGenderOrDefault(String genderCode) {
+        return ClothesGender.fromCodeOrDefault(genderCode);
     }
 
     public void validateColorCode(String colorCode) {

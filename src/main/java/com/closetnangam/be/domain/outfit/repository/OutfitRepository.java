@@ -7,6 +7,8 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
+import java.util.Optional;
+
 public interface OutfitRepository extends JpaRepository<Outfit, Long> {
 
     @Query("""
@@ -14,7 +16,17 @@ public interface OutfitRepository extends JpaRepository<Outfit, Long> {
             from Outfit o
             join fetch o.outfitBook ob
             where ob.id = :bookId
+              and o.deletedAt is null
             order by o.createdAt desc
             """)
     List<Outfit> findAllByOutfitBookId(@Param("bookId") Long bookId);
+
+    @Query("""
+            select o
+            from Outfit o
+            where o.outfitId = :outfitId
+              and o.outfitBook.id = :bookId
+              and o.deletedAt is null
+            """)
+    Optional<Outfit> findActiveByOutfitIdAndOutfitBook_Id(@Param("outfitId") Long outfitId, @Param("bookId") Long bookId);
 }

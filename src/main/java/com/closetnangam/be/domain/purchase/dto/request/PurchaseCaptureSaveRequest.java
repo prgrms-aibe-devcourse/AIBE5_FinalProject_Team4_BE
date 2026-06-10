@@ -17,6 +17,7 @@ public record PurchaseCaptureSaveRequest(
         @NotBlank @Size(max = 100) String productCode,
         @NotBlank @Size(max = 50) String category,
         @NotBlank @Size(max = 50) String itemType,
+        @NotBlank @Size(max = 20) String gender,
         @NotBlank @Size(max = 50) String primaryColor,
         @Size(max = CatalogLimits.MAX_SECONDARY_COLORS) List<@NotBlank String> secondaryColors,
         @NotEmpty @Size(max = CatalogLimits.MAX_STYLES) List<@NotBlank String> styles,

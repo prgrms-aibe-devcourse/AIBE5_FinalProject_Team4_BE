@@ -35,13 +35,14 @@ last_updated: 2026-06-08
 | RECO-001 | 추천 | 추천 메인 | 메인 페이지를 추천 중심 화면으로 사용 | 추천 도메인                                                                    | 추천 메인 |
 | RECO-002 | 추천 | 취향 기반 상품 추천 | 사용자 스타일 점수를 기반으로 상품 추천 | `USER_STYLES`, `RECOMMENDATION_FEEDBACKS`, `GET /api/v1/recommendations/{wardrobeId}` | 추천 메인 |
 | RECO-003 | 추천 | 유사 상품 추천 | 선택한 옷과 유사한 상품 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/similar-products`         | 옷 상세, 추천 상세 |
-| RECO-004 | 추천 | 보유 옷 기준 상품 추천 | 보유 옷과 어울리는 상의/하의/아우터/신발 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations`          | 추천 상세 |
+| RECO-004 | 추천 | 옷장 기반 어울리는 옷 추천 | 옷장에 등록한 옷과 어울리는 상의/하의/아우터/신발 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations`          | 추천 상세 |
 | RECO-005 | 추천 | 날씨/계절/지역 기반 추천 | 사용자 지역과 날씨 정보를 추천에 반영 | `GET /api/weather`                                                        | 추천 메인 |
 | RECO-006 | 추천 | AI MD 추천 | 사용자 성별에 맞는 AI MD가 보유 옷과 외부 상품 후보를 바탕으로 상품 또는 코디 후보를 추천하고, 사용자가 선택한 코디만 저장 | `GET /api/v1/users/{userId}/recommendations/ai-md/personas`, `GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products`, `POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits`, `POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save`, `OUTFITS`, `OUTFIT_ITEMS`, Gemini, 네이버쇼핑 | 추천 상세, 코디북 |
-| RECO-007 | 추천 | 추천 싫어요/제외 | 비선호 상품에 피드백을 남기고 추천에서 제외 | `RECOMMENDATION_FEEDBACKS`                                                | 추천 상세 |
+| RECO-007 | 추천 | 추천 싫어요/제외 | 비선호 상품에 피드백을 남기고 추천에서 제외 | `RECOMMENDATION_FEEDBACKS`, `POST /api/v1/users/{userId}/recommendations/feedback` | 추천 상세 |
 | RECO-008 | 추천 | 내 옷장 기반 OOTD 추천 | 현재 기온에 맞는 상+하+외투 조합 추천 | `GET /api/v1/ootd/{wardrobeId}`, `WeatherCompatibilityTable`              | 추천 메인 |
 | OUTFIT-001 | 코디북 | 사용자별 단일 코디북 | 회원마다 1개의 코디북 생성 및 관리 | `OUTFIT_BOOKS`, `/api/v1/outfit-books`                                    | 코디북 |
 | OUTFIT-002 | 코디 | 코디 저장/조회 | 추천받거나 직접 구성한 코디를 저장하고 조회 | `OUTFITS`, `OUTFIT_ITEMS`                                                 | 코디북, 코디 상세 |
+| OUTFIT-004 | 코디 | 코디 수정/삭제 | 저장된 코디의 정보와 구성 아이템을 수정하거나 코디를 삭제 | `PUT/DELETE /api/v1/outfit-books/{bookId}/outfits/{outfitId}`             | 코디 상세/수정 |
 | OUTFIT-003 | 코디 | 코디 스타일 | 코디 구성 옷을 기반으로 대표/보조 스타일 관리 | `OUTFIT_STYLES`                                                           | 코디 상세 |
 | FEED-001 | 룩피드 | 피드 게시글 | 코디 기반 게시글 등록, 목록, 상세 조회 | `FEED_POSTS`, `FEED_POST_IMAGES`                                          | 룩피드 |
 | FEED-002 | 룩피드 | 피드 반응 | 좋아요, 댓글/대댓글, 저장, 팔로우 처리 | `FEED_LIKES`, `FEED_COMMENTS`, `FEED_POST_SAVES`, `USER_FOLLOWS`          | 룩피드 |

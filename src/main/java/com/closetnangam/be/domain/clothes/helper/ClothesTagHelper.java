@@ -35,11 +35,13 @@ public class ClothesTagHelper {
             String itemType,
             String primaryColor,
             List<String> secondaryColors,
-            List<String> styles
+            List<String> styles,
+            String gender
     ) {
         categoryCatalogService.validateCategoryAndItemType(category, itemType);
         categoryCatalogService.validateClothesColors(primaryColor, secondaryColors);
         categoryCatalogService.validateStyleCodes(styles);
+        categoryCatalogService.validateGenderCode(gender);
     }
 
     public void validateExternalSource(String externalSource) {
