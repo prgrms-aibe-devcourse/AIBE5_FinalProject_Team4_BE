@@ -1,7 +1,7 @@
 ---
 doc_type: be_only
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-03
+last_updated: 2026-06-09
 ---
 
 # 데이터 생명주기
@@ -19,6 +19,7 @@ last_updated: 2026-06-03
 - `WARDROBE_CLOTHES`는 사용자 옷장과 공통 옷 정보의 연결입니다.
 - 사용자 옷장에서 옷을 삭제하면 사용자 연결만 제거하거나 비활성화합니다.
 - 이미지 데이터는 AWS S3 저장 기준이며, 사용자 옷장 삭제와 함께 공통 이미지를 삭제하지 않습니다.
+- `CLOTHES.gender`는 공통 옷 정보의 내부 분류/추천용 code이며, 사용자 화면 노출이나 직접 수정 대상이 아닙니다.
 - 사용자별 피드백, 즐겨찾기, 보유 상태는 사용자별 데이터로 관리합니다.
 
 ## 데이터 생성
@@ -44,6 +45,7 @@ last_updated: 2026-06-03
 | `CLOTHING_COLORS` | 유지 |
 | `CLOTHING_STYLES` | 유지 |
 | 공통 이미지 | 유지 |
+| `CLOTHES.gender` | 공통 옷 정보와 함께 유지 |
 | 사용자별 즐겨찾기/사이즈/계절 | 사용자 연결과 함께 제거 또는 비활성화 |
 
 삭제 API 구현이 `CLOTHES`를 직접 삭제하면 이 문서 기준과 충돌합니다.

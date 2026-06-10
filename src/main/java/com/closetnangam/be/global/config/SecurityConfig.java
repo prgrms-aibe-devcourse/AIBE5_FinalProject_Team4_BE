@@ -1,5 +1,6 @@
 package com.closetnangam.be.global.config;
 
+import com.closetnangam.be.global.auth.jwt.CookieBearerTokenResolver;
 import com.closetnangam.be.global.auth.oauth.OAuth2SuccessHandler;
 import com.closetnangam.be.global.auth.oauth.OAuth2UserService;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class SecurityConfig {
     private final OAuth2UserService oAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter;
+    private final CookieBearerTokenResolver cookieBearerTokenResolver;
 
     /**
      * local 프로파일: API 요청은 Resource Server(JWT 쿠키)로, 소셜 로그인 흐름은 oauth2Login으로 처리합니다.
@@ -65,6 +67,7 @@ public class SecurityConfig {
                         .successHandler(oAuth2SuccessHandler)
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        .bearerTokenResolver(cookieBearerTokenResolver)
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 );
@@ -96,6 +99,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        .bearerTokenResolver(cookieBearerTokenResolver)
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 );
