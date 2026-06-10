@@ -36,4 +36,32 @@ class JwtTokenProviderTest {
         Jwt jwt = decoder.decode(token);
         assertThat(jwt.getSubject()).isEqualTo("42");
     }
+
+    @Test
+    void accessTokenHasTypeAccessClaim() {
+        JwtTokenProvider provider = new JwtTokenProvider(LONG_SECRET, 3_600_000L, 7_000_000L);
+        String token = provider.createAccessToken(1L);
+
+        SecretKey secretKey = JwtSecretKeys.hs256SecretKey(LONG_SECRET);
+        JwtDecoder decoder = NimbusJwtDecoder.withSecretKey(secretKey)
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+
+        Jwt jwt = decoder.decode(token);
+        assertThat(jwt.getClaimAsString("type")).isEqualTo("access");
+    }
+
+    @Test
+    void refreshTokenHasTypeRefreshClaim() {
+        JwtTokenProvider provider = new JwtTokenProvider(LONG_SECRET, 3_600_000L, 7_000_000L);
+        String token = provider.createRefreshToken(1L);
+
+        SecretKey secretKey = JwtSecretKeys.hs256SecretKey(LONG_SECRET);
+        JwtDecoder decoder = NimbusJwtDecoder.withSecretKey(secretKey)
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+
+        Jwt jwt = decoder.decode(token);
+        assertThat(jwt.getClaimAsString("type")).isEqualTo("refresh");
+    }
 }
