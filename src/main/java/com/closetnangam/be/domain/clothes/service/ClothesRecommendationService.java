@@ -7,8 +7,9 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResp
 import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResponse.RecommendedItem;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
-import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.SeasonType;
+import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher;
+import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher.WardrobeExclusionIndex;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
@@ -88,6 +89,7 @@ public class ClothesRecommendationService {
 
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final ClothesRepository clothesRepository;
+    private final WardrobeExclusionMatcher wardrobeExclusionMatcher;
 
     /**
      * 기준 옷({clothesId})와 어울리는 상품을 카테고리별로 추천합니다.
@@ -117,11 +119,9 @@ public class ClothesRecommendationService {
         }
 
         String excludeCategory = anchorClothes.getCategory();
-        Set<Long> ownedClothesIds = wardrobeClothesRepository.findOwnedClothesIdsByUserId(userId, OwnershipStatus.OWNED)
-                .stream()
-                .collect(Collectors.toSet());
+        WardrobeExclusionIndex exclusionIndex = wardrobeExclusionMatcher.buildActiveExclusionIndex(userId);
 
-        List<ScoringCandidate> candidates = loadCandidates(excludeCategory, ownedClothesIds);
+        List<ScoringCandidate> candidates = loadCandidates(excludeCategory, exclusionIndex);
 
         AnchorScoringContext anchorContext = AnchorScoringContext.from(anchor);
         Map<String, List<RecommendedItem>> recommendations = scoredAndGrouped(anchorContext, candidates, limitPerCategory);
@@ -129,7 +129,7 @@ public class ClothesRecommendationService {
         return new ClothesRecommendationResponse(toAnchorItem(anchor, anchorClothes, anchorContext.tagSnapshot()), recommendations);
     }
 
-    private List<ScoringCandidate> loadCandidates(String excludeCategory, Set<Long> ownedClothesIds) {
+    private List<ScoringCandidate> loadCandidates(String excludeCategory, WardrobeExclusionIndex exclusionIndex) {
         /*
          * 카테고리별로 DB를 분리 조회합니다 (요청당 최대 CATEGORY_ORDER.size()-1 회, 각 CANDIDATE_LIMIT_PER_CATEGORY 건).
          *
@@ -152,7 +152,7 @@ public class ClothesRecommendationService {
                             PageRequest.of(0, CANDIDATE_LIMIT_PER_CATEGORY)
                     )
                     .stream()
-                    .filter(clothes -> clothes.getId() != null && !ownedClothesIds.contains(clothes.getId()))
+                    .filter(clothes -> !exclusionIndex.excludes(clothes))
                     .map(clothes -> new ScoringCandidate(
                             clothes,
                             clothes.getRecommendationTagSnapshot(),

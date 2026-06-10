@@ -170,6 +170,36 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             @Param("ownershipStatus") OwnershipStatus ownershipStatus
     );
 
+    @Query("""
+            select distinct wc from WardrobeClothes wc
+            join fetch wc.clothes c
+            join fetch wc.wardrobe w
+            where w.user.id = :userId
+              and wc.deletedAt is null
+              and wc.ownershipStatus in :ownershipStatuses
+            """)
+    List<WardrobeClothes> findAllActiveByUserIdAndOwnershipStatuses(
+            @Param("userId") Long userId,
+            @Param("ownershipStatuses") List<OwnershipStatus> ownershipStatuses
+    );
+
+    @Query("""
+            select case when count(wc) > 0 then true else false end
+            from WardrobeClothes wc
+            join wc.clothes c
+            join wc.wardrobe w
+            where w.user.id = :userId
+              and wc.deletedAt is null
+              and c.externalSource = :externalSource
+              and c.externalProductId = :externalProductId
+              and c.externalProductId <> 'NONE'
+            """)
+    boolean existsActiveByUserIdAndExternalProduct(
+            @Param("userId") Long userId,
+            @Param("externalSource") String externalSource,
+            @Param("externalProductId") String externalProductId
+    );
+
     /**
      * 옷장 통계용: 보유 옷 + 스타일 태그 + Style 을 한 번에 로딩합니다.
      */

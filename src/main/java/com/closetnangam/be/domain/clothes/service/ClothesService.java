@@ -14,6 +14,7 @@ import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
+import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
@@ -34,6 +35,7 @@ public class ClothesService {
     private final ClothesRepository clothesRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final ClothesTagHelper clothesTagHelper;
+    private final WardrobeExclusionMatcher wardrobeExclusionMatcher;
     private final WardrobeService wardrobeService;
 
     public List<ClothesResponse> getOwnedClothes(Long userId) {
@@ -179,6 +181,8 @@ public class ClothesService {
             wardrobeClothes.restoreAsWishlist(clothes.getImageUrl(), null);
             return ClothesResponse.from(clothes, wardrobeClothes);
         }
+
+        wardrobeExclusionMatcher.rejectIfEquivalentAlreadyInWardrobe(userId, clothes);
 
         Wardrobe wardrobe = wardrobeService.getOrCreateWardrobe(userId);
         WardrobeClothes wardrobeClothes = wardrobeClothesRepository.save(WardrobeClothes.builder()

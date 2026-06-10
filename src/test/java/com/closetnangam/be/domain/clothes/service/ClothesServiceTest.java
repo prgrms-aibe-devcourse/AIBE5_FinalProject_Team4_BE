@@ -13,6 +13,7 @@ import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.StyleRole;
 import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
+import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.user.entity.User;
@@ -34,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -50,6 +52,9 @@ class ClothesServiceTest {
     private ClothesTagHelper clothesTagHelper;
 
     @Mock
+    private WardrobeExclusionMatcher wardrobeExclusionMatcher;
+
+    @Mock
     private WardrobeService wardrobeService;
 
     @InjectMocks
@@ -64,6 +69,20 @@ class ClothesServiceTest {
         assertThatThrownBy(() -> clothesService.addExistingClothesToWishlist(1L, 10L))
                 .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining("옷을 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("동일 상품 identity가 이미 옷장에 있으면 기존 CLOTHES 위시리스트 연결을 거부한다")
+    void addExistingClothesToWishlist_rejectsEquivalentProductAlreadyInWardrobe() {
+        Clothes external = createClothes(10L, ClothesInfoSource.EXTERNAL_SHOPPING);
+        given(clothesRepository.findById(10L)).willReturn(Optional.of(external));
+        doThrow(new IllegalStateException("이미 옷장에 등록된 상품입니다."))
+                .when(wardrobeExclusionMatcher)
+                .rejectIfEquivalentAlreadyInWardrobe(1L, external);
+
+        assertThatThrownBy(() -> clothesService.addExistingClothesToWishlist(1L, 10L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("이미 옷장에 등록된 상품");
     }
 
     @Test
