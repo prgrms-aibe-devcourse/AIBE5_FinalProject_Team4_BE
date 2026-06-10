@@ -6,6 +6,9 @@ import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
 import com.closetnangam.be.domain.recommendation.dto.response.RecommendResponse;
+import com.closetnangam.be.domain.recommendation.entity.RecommendationFeedback;
+import com.closetnangam.be.domain.recommendation.enums.FeedbackType;
+import com.closetnangam.be.domain.recommendation.repository.RecommendationFeedbackRepository;
 import com.closetnangam.be.domain.recommendation.scoring.WeatherCompatibilityTable;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.entity.UserStyle;
@@ -36,7 +39,7 @@ public class StyleProductRecommender {
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final WardrobeRepository wardrobeRepository;
     private final UserStyleRepository userStyleRepository;
-
+    private final RecommendationFeedbackRepository recommendationFeedbackRepository;
 
     public List<RecommendResponse> recommendByStyle(Long currentUserId, Long wardrobeId, double currentTemp) {
         Wardrobe wardrobe = wardrobeRepository.findById(wardrobeId)
@@ -58,6 +61,12 @@ public class StyleProductRecommender {
                 .map(WardrobeClothes::getClothes)
                 .filter(Objects::nonNull)
                 .map(Clothes::getId)
+                .forEach(excludedSet::add);
+
+        // 추천 제외(EXCLUDE) 피드백 옷 제외
+        recommendationFeedbackRepository.findAllByUserId(currentUserId).stream()
+                .filter(RecommendationFeedback::isExcluded)
+                .map(feedback -> feedback.getClothes().getId())
                 .forEach(excludedSet::add);
 
         // [3] 후보군 로드

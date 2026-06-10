@@ -211,6 +211,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | --- | --- | --- |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/similar-products` | 유사 상품 추천 조회 |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 옷장 기반 어울리는 옷 추천 조회 (`limitPerCategory` query, 아래 [옷장 기반 어울리는 옷 추천](#옷장-기반-어울리는-옷-추천-get-recommendations) 참고) |
+| POST | `/api/v1/users/{userId}/recommendations/feedback` | 추천 상품 피드백 제출 (저장/싫어요/추천 제외) |
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
 | GET | `/api/v1/ootd/{wardrobeId}?currentTemp={temp}` | 내 옷장 기반 OOTD 추천 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 사용자 성별에 맞는 AI MD 목록 조회 |
@@ -366,6 +367,31 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 
 > **Note**: `outer` 필드는 기온에 따라 외투가 필요 없는 경우(HOT, WARM) `null`로 반환됩니다.
 
+#### 추천 피드백 제출
+
+**POST** `/api/v1/users/{userId}/recommendations/feedback`
+
+- **요청 Body**
+```json
+{
+  "clothesId": 123,
+  "feedbackType": "SAVED"
+}
+```
+
+- **피드백 타입 (`feedbackType`)**
+    - `SAVED`: 저장하기 (긍정 - 가중치 미반영)
+    - `DISLIKE`: 싫어요 (부정 - 가중치 마이너스 반영)
+    - `EXCLUDE`: 추천 제외 (부정 + 후보 제외 - 가중치 마이너스 반영)
+
+- **응답 (성공)**
+```json
+{
+  "success": true,
+  "data": null,
+  "message": null
+}
+```
 #### AI MD 목록 응답 (AiMdPersonaResponse)
 
 ```json

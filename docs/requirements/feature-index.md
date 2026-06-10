@@ -34,7 +34,7 @@ last_updated: 2026-06-09
 | `RECO-005` | 추천 | 어울리는 옷 추천 | 사용자 옷장 데이터를 기준으로 함께 입기 좋은 상의, 하의, 아우터, 신발 추천 | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 추천 상세 |
 | `RECO-006` | 추천 | AI MD 추천 | AI가 TPO/드레스코드 코디를 추천하고 이유와 스타일링 설명 제공 | `/api/v1/users/{userId}/recommendations/ai-md/**`, `OUTFITS`, `OUTFIT_ITEMS`, Gemini, 네이버쇼핑 | 추천 상세, 코디북 |
 | `RECO-008`~`RECO-012` | 추천 상세 | 추천 결과 상세/액션 | 추천 상품/코디 상세, 코디 저장, 미보유 저장, 구매 링크 | `OUTFITS`, `OUTFIT_ITEMS`, `POST /api/users/{userId}/wishlist-clothes` | 추천 상세 |
-| `RECO-013`~`RECO-014` | 추천 상세 | 추천 피드백/제외 | 추천 결과에 사용자별 긍정/부정 피드백을 저장하고 추천 정책에 반영 | `RECOMMENDATION_FEEDBACKS`, `USER_STYLES.feedback_weight` | 추천 상세 |
+| `RECO-013`~`RECO-014` | 추천 상세 | 추천 피드백/제외 | 추천 결과에 사용자별 긍정/부정 피드백을 저장하고 추천 정책에 반영 | `POST /api/v1/users/{userId}/recommendations/feedback`, `RECOMMENDATION_FEEDBACKS`, `USER_STYLES.feedback_weight` | 추천 상세 |
 | `OUTFIT-001`~`OUTFIT-006` | 코디 | 코디 저장/조회/수정/삭제/스타일 | 직접 저장하거나 추천받은 코디를 저장, 조회, 수정, 삭제하고 대표/보조 스타일 관리 | `OUTFITS`, `OUTFIT_ITEMS`, `OUTFIT_STYLES` | 코디북, 코디 상세 |
 | `OUTFITBOOK-001`~`OUTFITBOOK-003` | 코디북 | 코디북 관리 | 사용자별 단일 코디북, 코디 목록 조회, 코디북 상세 | `OUTFIT_BOOKS`, `/api/v1/outfit-books` | 코디북 |
 | `EXT-001`~`EXT-003` | 외부 연동 | 네이버쇼핑 상품 연동 | 외부 상품 검색, 상세 조회, 상품 저장 | `GET /api/naver/search`, `POST /api/v1/external/clothes/naver` | 외부 상품 검색, 추천 상세 |
