@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-09
+last_updated: 2026-06-10
 ---
 
 # 도메인 규칙
@@ -21,6 +21,9 @@ last_updated: 2026-06-09
 - `WARDROBE_CLOTHES`는 사용자 옷장과 공통 옷 정보를 연결하는 사용자별 정보입니다.
 - `USERS.gender`는 사용자 프로필 성별이고, `CLOTHES.gender`는 옷 대상 성별입니다. 두 값은 서로 다른 도메인 의미를 가지며 같은 필드처럼 취급하지 않습니다.
 - `CLOTHES.gender`는 사용자 화면 표시나 사용자가 직접 수정하는 값이 아니라, 옷 분류/추천과 저장 요청에 사용하는 내부 code입니다.
+- `CLOTHES.season`은 옷 자체의 대상 계절이며, 사용자별 옷장 정보가 아니라 공통 옷 정보입니다.
+- 옷마다 계절은 1개만 부여할 수 있으며, 옷 등록 시 선택합니다.
+- 생성된 옷의 계절은 변경하지 않습니다. 옷 수정은 사용자별 사이즈, 즐겨찾기 등 옷장 연결 정보 중심으로 봅니다.
 - 보유/미보유 상태는 `WARDROBE_CLOTHES.ownership_status`로 관리합니다.
 - 옷장에서 옷을 삭제해도 `CLOTHES` 공통 정보는 삭제하지 않습니다.
 - 옷장 삭제는 사용자와 옷의 연결을 제거하거나 비활성화하는 동작으로 봅니다.
