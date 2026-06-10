@@ -126,7 +126,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | --- | --- | --- |
 | `category` | Y | 대분류 code (`TOP`, `BOTTOM`, `OUTER`, `SHOES`) |
 | `itemType` | Y | 소분류 code. 선택한 `category` 하위 값 |
-| `season` | Y | 옷 자체의 대상 계절 code (`SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON`). 옷 등록 시 1개 선택하며 생성 후 변경하지 않음 |
+| `season` | N | 옷 자체의 대상 계절 code (`SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON`). 생략 시 `ALL_SEASON`으로 저장하며, 최종 저장 후 변경하지 않음 |
 | `gender` | Y | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 사용자 화면 표시 대상 아님 |
 | `primaryColor` | Y | 대표 색상 code |
 | `secondaryColors` | N | 보조 색상 code 배열 |
@@ -261,7 +261,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | `category`, `itemType` | 대·소분류 code |
 | `primaryColor`, `primaryColorDisplay`, `secondaryColors` | 색상 |
 | `styleCodes` | 스타일 code 배열 |
-| `season` | `CLOTHES.season` code. 옷장 등록·수정 요청에서 설정하며 `WARDROBE_CLOTHES`에는 저장하지 않음 |
+| `season` | `CLOTHES.season` code. 옷 등록 시 확정하며 `WARDROBE_CLOTHES`에는 저장하지 않음 |
 | `gender` | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 사용자 화면 표시 대상 아님 |
 | `compatibilityScore` | 어울림 점수 (0~100, 내림차순 정렬) |
 

@@ -36,7 +36,7 @@ last_updated: 2026-06-10
 | --- | --- | --- | --- |
 | 옷장 통계 범위 | `/statistics` API가 `OWNED` 상태의 보유 옷만 계산하고 `totalOwnedCount`를 반환 | 옷장 전체 요약은 `OWNED`와 `WISHLIST`를 함께 고려 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | `USER_STYLES.wardrobe_weight` 산정 범위 | `/statistics` API 호출 시 보유 옷 기준 스타일 가중치를 계산해 `USER_STYLES.wardrobe_weight`에 동기화 | `wardrobe_weight`는 사용자의 옷장에 등록된 옷 스타일 기반 점수라는 기준을 따름 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
-| `CLOTHES.season` 저장 위치와 수정 범위 | 현재 `season`은 `WARDROBE_CLOTHES`에 저장되고 옷 수정/보유 전환 요청에서 변경 가능. AI 분석 초안 DTO에는 `season`이 없고, 날씨 기반 `SeasonType`/`TemperatureRange` enum이 계절 판단에 사용됨 | `season`은 `CLOTHES` 공통 정보이며 옷 등록 시 1개 선택하고 생성 후 변경하지 않음 | [requirements-definition.md](../requirements/requirements-definition.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [invariants.md](../domain/invariants.md), [api-contract.md](../api/api-contract.md) |
+| `CLOTHES.season` 수정 범위와 계절 기준 | 현재 `season`은 `CLOTHES`에 저장되지만 옷 수정 요청에서 변경 가능. `GET /api/v1/categories` 일반 응답은 계절 목록을 별도 필드로 제공하지 않고, 추천/날씨 계산에는 `SeasonType`/`TemperatureRange` enum이 남아 있음 | `season`은 `CLOTHES` 공통 정보이며 옷 등록 시 1개 선택하고 생성 후 변경하지 않음 | [requirements-definition.md](../requirements/requirements-definition.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [invariants.md](../domain/invariants.md), [api-contract.md](../api/api-contract.md) |
 | 추천 동점 처리 | 옷장 기반 어울리는 옷 추천 API가 점수 내림차순으로만 정렬하고 동점 그룹 랜덤 처리는 하지 않음 | 같은 점수 그룹 안에서는 랜덤 노출 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | 이미지 저장 방식 | 현재 이미지 업로드/조회 구현은 로컬 파일 저장소와 `/api/v1/images/**` 조회 endpoint를 사용 | 운영 기준은 AWS S3 저장과 이미지 URL 관리 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md) |
 | 추천 응답 형식 | `RECO-002` 추천 응답의 `price`는 "0" 고정, `score`는 0~1 문자열, `reason`은 기술적 매칭 결과 반환 | 실제 가격, 백분율 점수, 사용자 친화적 자연어 추천 이유 제공 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) |
@@ -49,7 +49,7 @@ last_updated: 2026-06-10
 | --- | --- | --- | --- | --- |
 | `WARDROBE-002` | `GET /api/v1/wardrobes/users/{userId}/statistics` | `WardrobeStatisticsService`, `WardrobeStatisticsResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | 보유 옷 기준 통계만 반환. 옷장 전체 요약은 미보유 API 조합 또는 BE 계약 확정 필요 |
 | `STYLE-002` | `USER_STYLES.wardrobe_weight` | `WardrobeStatisticsService`, `UserStyle.syncWardrobeWeight`, `WardrobeStatisticsResponse.userStylePayloads` | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [erd.md](../database/erd.md) | 통계 API 호출 시 보유 옷 기준 스타일 가중치를 저장. 옷장 전체 등록 기준 반영 여부 확인 필요 |
-| `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` | 옷 계절 저장/수정 기준 | `Clothes`, `WardrobeClothes`, `ClothesService`, `PhotoClothesRegistrationService`, `PurchaseCaptureRegistrationService`, `ClothesUpdateRequest` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [api-contract.md](../api/api-contract.md) | 공식 기준은 `CLOTHES.season` 등록 시 확정. 현재 코드는 `WARDROBE_CLOTHES.season` 저장/수정 구조 |
+| `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` | 옷 계절 수정 기준 | `Clothes`, `ClothesService`, `ClothesUpdateRequest`, `CategoryCatalogService`, `SeasonType`, `TemperatureRange` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [api-contract.md](../api/api-contract.md) | `CLOTHES.season` 저장과 AI 분석 필드 반영은 완료. 옷 수정 요청의 `season` 변경 가능성과 카탈로그 일반 응답/계절 호환 계산 기준 확인 필요 |
 | `RECO-005` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 그룹 랜덤 노출 기준 반영 여부 확인 필요 |
 | `DEPLOY-004` | 이미지 저장과 조회 | `LocalImageStorageService`, `ImageController`, `StorageProperties` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md) | 현재 로컬 저장소 기반. 운영 기준인 AWS S3 전환 여부 확인 필요 |
 | `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | `price` placeholder("0"), 0~1 점수 형식, 기술적 추천 이유 제공. 기준 문서와 응답 형식 차이 존재 |
@@ -100,40 +100,39 @@ src/main/java/com/closetnangam/be/domain/wardrobe/dto/response/WardrobeStatistic
 
 현재까지의 기준 문서 표현은 옷장 등록 기준에 가깝습니다. 담당자와 논의하여 현재 코드 기준을 공식 기준으로 확정한다면 [domain/invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [database/erd.md](../database/erd.md), [api-contract.md](../api/api-contract.md)를 같은 PR에서 함께 수정합니다.
 
-### `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` 옷 계절 저장 위치와 수정 기준
+### `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` 옷 계절 수정 기준
 
 ERD v2.3과 공식 기준 문서에서 `season`은 `CLOTHES.season`에 저장하는 공통 옷 정보입니다. 옷마다 계절은 1개만 부여하며, 옷 등록 시 선택한 뒤 생성된 옷의 계절은 변경하지 않습니다.
 
-현재 BE 코드는 `season`을 사용자별 옷장 연결 정보인 `WARDROBE_CLOTHES`에 저장합니다.
+최신 `develop` 기준으로 아래 항목은 공식 기준에 맞게 반영되어 있습니다.
 
 ```text
+src/main/java/com/closetnangam/be/domain/clothes/entity/Clothes.java
+- private ClothesSeason season
+
 src/main/java/com/closetnangam/be/domain/clothes/entity/WardrobeClothes.java
-- private String season
-- updateWardrobeDetails(String size, String season, String userImageUrl)
-- convertToOwned(String size, String season, String userImageUrl)
-```
+- season 필드 없음
 
-현재 옷 생성/사진 저장/구매내역 저장/미보유 저장 요청도 `season`을 받지만, 최종 저장 위치는 `WARDROBE_CLOTHES.season`입니다. 또한 옷 수정과 미보유 옷 보유 전환에서도 `season`을 변경할 수 있습니다.
-
-```text
-src/main/java/com/closetnangam/be/domain/clothes/dto/request/ClothesCreateRequest.java
-src/main/java/com/closetnangam/be/domain/clothes/dto/request/PhotoClothesSaveRequest.java
-src/main/java/com/closetnangam/be/domain/purchase/dto/request/PurchaseCaptureSaveRequest.java
-src/main/java/com/closetnangam/be/domain/clothes/dto/request/WishlistClothesCreateRequest.java
-src/main/java/com/closetnangam/be/domain/clothes/dto/request/ClothesUpdateRequest.java
-src/main/java/com/closetnangam/be/domain/clothes/dto/request/ClothesConvertToOwnedRequest.java
-```
-
-반면 AI 분석 초안과 Gemini 분석 결과 DTO에는 아직 `season` 필드가 없습니다.
-
-```text
 src/main/java/com/closetnangam/be/domain/clothes/dto/response/PhotoClothesDraftResponse.java
 src/main/java/com/closetnangam/be/domain/purchase/dto/response/PurchaseCaptureDraftResponse.java
 src/main/java/com/closetnangam/be/global/external/gemini/dto/GeminiClothingClassificationResult.java
 src/main/java/com/closetnangam/be/global/external/gemini/dto/GeminiPurchaseCaptureExtractionResult.java
+- season 필드 포함
 ```
 
-또한 현재 코드에는 날씨/온도 범위를 계절성 매칭에 사용하는 `SeasonType`, `TemperatureRange` enum이 남아 있습니다.
+다만 현재 옷 수정 요청은 여전히 `season`을 받을 수 있고, 서비스에서 `CLOTHES.season`을 갱신합니다.
+
+```text
+src/main/java/com/closetnangam/be/domain/clothes/dto/request/ClothesUpdateRequest.java
+- String season
+
+src/main/java/com/closetnangam/be/domain/clothes/service/ClothesService.java
+- clothes.update(..., ClothesSeason.fromCodeOrDefault(request.season()), ...)
+```
+
+또한 `GET /api/v1/categories` 일반 응답은 계절 code 목록을 별도 필드로 제공하지 않고, 사용 가이드 `fields`/`example`에도 `season`을 포함하지 않습니다. AI 분류용 텍스트 가이드에는 `ClothesSeason` 목록이 포함되어 있습니다.
+
+현재 코드에는 날씨/온도 범위를 계절성 매칭에 사용하는 `SeasonType`, `TemperatureRange` enum도 남아 있습니다.
 
 ```text
 src/main/java/com/closetnangam/be/global/external/weather/Enum/SeasonType.java
@@ -144,14 +143,11 @@ src/main/java/com/closetnangam/be/domain/clothes/enums/TemperatureRange.java
 
 따라서 현재 구현은 아래 기준과 차이가 있습니다.
 
-- `CLOTHES` 엔티티에 `season` 필드가 없습니다.
-- `WARDROBE_CLOTHES` 엔티티가 `season`을 소유합니다.
-- 생성된 옷의 계절을 옷 수정/보유 전환 요청에서 변경할 수 있습니다.
-- 사진/구매내역 AI 분석 초안 응답에 `season`이 포함되지 않습니다.
+- 생성된 옷의 계절을 옷 수정 요청에서 변경할 수 있습니다.
 - `GET /api/v1/categories` 응답은 계절 code 목록을 별도 필드로 제공하지 않습니다.
-- 날씨 기반 `SeasonType`/`TemperatureRange` enum은 사용하지 않는 기준으로 정리하고, 옷 테이블의 `CLOTHES.season` code 기준으로 대체해야 합니다.
+- 추천/날씨 계절 호환 계산에는 `CLOTHES.season` code와 별개로 `SeasonType`/`TemperatureRange` enum이 사용됩니다.
 
-공식 기준을 유지한다면 구현 PR에서 `season` 저장 위치를 `CLOTHES`로 이동하고, 생성 후 수정 요청에서 `season`을 변경하지 않도록 API/DTO/서비스 책임을 정리해야 합니다. 이때 날씨/온도 기반 `SeasonType`, `TemperatureRange` enum은 제거하거나 `CLOTHES.season` code 기준으로 대체합니다. 반대로 현재 코드 기준을 공식 기준으로 확정한다면 [erd.md](../database/erd.md), [invariants.md](../domain/invariants.md), [catalog.md](../domain/catalog.md), [garment-registration.md](../features/garment-registration.md), [api-contract.md](../api/api-contract.md)를 같은 PR에서 수정합니다.
+공식 기준을 유지한다면 구현 PR에서 생성 후 수정 요청이 `season`을 변경하지 않도록 API/DTO/서비스 책임을 정리해야 합니다. 이때 카탈로그 일반 응답에서 계절 code를 내려줄지, 문서 기준 code만 사용할지 확정하고, 추천/날씨 계절 호환 계산도 `CLOTHES.season` code 기준으로 정리합니다. 반대로 현재 코드 기준을 공식 기준으로 확정한다면 [erd.md](../database/erd.md), [invariants.md](../domain/invariants.md), [catalog.md](../domain/catalog.md), [garment-registration.md](../features/garment-registration.md), [api-contract.md](../api/api-contract.md)를 같은 PR에서 수정합니다.
 
 ### `RECO-005` 추천 동점 처리
 
@@ -270,7 +266,7 @@ API 문서 검토 시 공식 서비스 API 여부는 [api-contract.md](../api/ap
 
 | 우선순위 | 대상 | 이유 |
 | --- | --- | --- |
-| 1 | `CLOTHES.season` 저장 위치와 수정 범위 | ERD v2.3, 옷 등록/수정 API, 추천 계절 계산 기준에 직접 영향 |
+| 1 | `CLOTHES.season` 수정 범위와 계절 기준 | ERD v2.3, 옷 등록/수정 API, 추천 계절 계산 기준에 직접 영향 |
 | 2 | `WARDROBE-002` 통계 범위 | FE 옷장 요약과 API 응답 필드 해석에 직접 영향 |
 | 3 | `USER_STYLES.wardrobe_weight` 산정 범위 | 사용자 취향 점수와 추천 개인화 기준에 영향 |
 | 4 | `RECO-005` 동점 랜덤 노출 | 현재 제공 추천 API의 노출 순서와 추천 정책 기준에 영향 |
