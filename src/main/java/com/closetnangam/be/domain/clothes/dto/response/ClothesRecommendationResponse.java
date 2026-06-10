@@ -37,7 +37,8 @@ public record ClothesRecommendationResponse(
             List<String> secondaryColors,
             List<String> styleCodes,
             String season,
-            int compatibilityScore
+            int compatibilityScore,
+            String gender
     ) {}
 
     /** 색상 코드 + 한글명 + hex */

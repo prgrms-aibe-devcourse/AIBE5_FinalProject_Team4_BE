@@ -65,6 +65,9 @@ public class ClothingAiPhoto extends BaseEntity {
     @Column(name = "draft_item_type", length = 50)
     private String draftItemType;
 
+    @Column(name = "draft_gender", length = 20)
+    private String draftGender;
+
     @Column(name = "draft_color", length = 50)
     private String draftPrimaryColor;
 
@@ -110,6 +113,7 @@ public class ClothingAiPhoto extends BaseEntity {
             String draftBrandName,
             String draftCategory,
             String draftItemType,
+            String draftGender,
             String draftPrimaryColor,
             String draftSecondaryColorsJson,
             String draftStylesJson,
@@ -121,6 +125,7 @@ public class ClothingAiPhoto extends BaseEntity {
         this.draftBrandName = draftBrandName;
         this.draftCategory = draftCategory;
         this.draftItemType = draftItemType;
+        this.draftGender = draftGender;
         this.draftPrimaryColor = draftPrimaryColor;
         this.draftSecondaryColorsJson = draftSecondaryColorsJson;
         this.draftStylesJson = draftStylesJson;

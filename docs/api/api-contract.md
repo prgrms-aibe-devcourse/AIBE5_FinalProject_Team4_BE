@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-08
+last_updated: 2026-06-09
 ---
 
 # API 계약
@@ -116,7 +116,50 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | PATCH | `/api/v1/clothes/{clothesId}/favorite` | 옷 즐겨찾기 변경 |
 | PATCH | `/api/v1/clothes/{clothesId}` | 옷 정보 수정 |
 | DELETE | `/api/v1/clothes/{clothesId}` | 사용자 옷장에서 옷 연결 삭제 |
-| GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 보유 옷 기준 추천 조회 |
+| GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 옷장 기반 어울리는 옷 추천 조회 (`limitPerCategory` query, 아래 [옷장 기반 어울리는 옷 추천](#옷장-기반-어울리는-옷-추천-get-recommendations) 참고) |
+
+#### 옷 저장/수정 공통 분류 필드
+
+아래 필드는 보유 옷 등록(`POST /api/v1/users/{userId}/clothes`), 옷 수정(`PATCH /api/v1/clothes/{clothesId}`), 사진 저장, 구매내역 저장, 미보유 저장 요청에 공통으로 포함됩니다.
+
+| 필드 | 필수 | 설명 |
+| --- | --- | --- |
+| `category` | Y | 대분류 code (`TOP`, `BOTTOM`, `OUTER`, `SHOES`) |
+| `itemType` | Y | 소분류 code. 선택한 `category` 하위 값 |
+| `gender` | Y | 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`) |
+| `primaryColor` | Y | 대표 색상 code |
+| `secondaryColors` | N | 보조 색상 code 배열 |
+| `styles` | Y | 스타일 code 배열 (최소 1개) |
+
+허용 code 목록은 [카탈로그 사용 가이드](../domain/catalog.md)를 따릅니다. AI 분석 초안(`draft`)에도 `gender`가 포함되며, 저장 요청 시 `@NotBlank` validation이 적용됩니다.
+
+#### 옷 조회 응답 (`ClothesResponse`)
+
+옷 목록/상세/저장 성공 응답에는 분류 필드와 함께 `gender`가 포함됩니다. 값은 `MALE`, `FEMALE`, `UNISEX` enum code입니다.
+
+```json
+{
+  "success": true,
+  "data": {
+    "clothesId": 1,
+    "wardrobeClothesId": 10,
+    "name": "화이트 반팔 티셔츠",
+    "category": "TOP",
+    "itemType": "SHORT_SLEEVE",
+    "gender": "UNISEX",
+    "primaryColor": "WHITE",
+    "secondaryColors": [],
+    "styles": [
+      { "styleCode": "CASUAL", "styleRole": "PRIMARY" }
+    ],
+    "ownershipStatus": "OWNED",
+    "clothesInfoSource": "PHOTO"
+  },
+  "message": null
+}
+```
+
+> **Note**: 응답 예시는 주요 필드만 발췌했습니다. 실제 응답에는 옷장/외부 연동 필드가 추가로 포함됩니다.
 
 ### 미보유 옷
 
@@ -146,13 +189,13 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/save` | 구매내역 기반 옷 저장 (`itemIndex` 선택, 생략 시 0) |
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/items/{itemIndex}/skip` | 구매내역 캡처 상품 건너뛰기 |
 
-draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 포함합니다.
+단일 상품 draft/analyze 응답은 `name`, `category`, `itemType`, `gender` 등 flat 필드와 `items[0]` 모두에 분류 값을 포함합니다. 복수 상품 시 flat 분류 필드는 `null`이며 `items[]`(`itemIndex`, `gender`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 사용합니다.
 
 #### 구매내역 저장 요청 (`PurchaseCaptureSaveRequest`)
 
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
-| `name`, `brandName`, `productCode`, `category`, `itemType`, `primaryColor`, `styles`, `externalSource`, `size`, `favorite`, `isVerified` | Y | 옷 공통·옷장 정보 |
+| `name`, `brandName`, `productCode`, `category`, `itemType`, `gender`, `primaryColor`, `styles`, `externalSource`, `size`, `favorite`, `isVerified` | Y | 옷 공통·옷장 정보 |
 | `secondaryColors`, `season` | N | 보조 색상, 계절 |
 | `itemIndex` | N | 생략 시 0. 복수 상품일 때 저장 대상 인덱스 |
 | `imageUrl` | N | 상품별 이미지 URL. 생략 시 draft `items[].imageUrl` 또는 캡처 `previewUrl`로 fallback |
@@ -173,13 +216,96 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 | Method | Path | 설명 |
 | --- | --- | --- |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/similar-products` | 유사 상품 추천 조회 |
-| GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 보유 옷 기준 추천 조회 |
+| GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 옷장 기반 어울리는 옷 추천 조회 (`limitPerCategory` query, 아래 [옷장 기반 어울리는 옷 추천](#옷장-기반-어울리는-옷-추천-get-recommendations) 참고) |
+| POST | `/api/v1/users/{userId}/recommendations/feedback` | 추천 상품 피드백 제출 (저장/싫어요/추천 제외) |
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
 | GET | `/api/v1/ootd/{wardrobeId}?currentTemp={temp}` | 내 옷장 기반 OOTD 추천 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 사용자 성별에 맞는 AI MD 목록 조회 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/products` | 선택한 AI MD 기준 외부 상품 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save` | 선택한 AI MD 코디 후보 저장 |
+
+#### 옷장 기반 어울리는 옷 추천 (`GET .../recommendations`)
+
+옷장에 등록한 보유 옷 1벌을 기준으로 **같은 카테고리를 제외한 외부 쇼핑 DB 후보**를 점수화해 카테고리별로 반환합니다. 옷장에 이미 등록된 `clothesId`는 후보에서 제외됩니다.
+
+| Query | 필수 | 설명 |
+| --- | --- | --- |
+| `limitPerCategory` | N | 카테고리당 최대 추천 수. 기본 `5`, 허용 범위 `1`~`10` |
+
+JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해당 사용자의 보유 옷(`OWNED`)이어야 합니다.
+
+**응답 (`ClothesRecommendationResponse`)**
+
+| 필드 | 설명 |
+| --- | --- |
+| `anchor` | 기준 옷 요약 (`clothesId`, `name`, `imageUrl`, `userImageUrl`, `category`, `itemType`, `primaryColor`, `primaryColorDisplay`) |
+| `recommendations` | 카테고리 code → 추천 목록. key 예: `TOP`, `BOTTOM`, `OUTER`, `SHOES` (기준 옷과 **동일 카테고리 key는 포함되지 않음**) |
+
+**추천 항목 (`RecommendedItem`)**
+
+| 필드 | 설명 |
+| --- | --- |
+| `clothesId` | 외부 `CLOTHES` ID |
+| `wardrobeClothesId` | 옷장 연결 ID. 외부 후보는 보통 `null` |
+| `name`, `imageUrl`, `userImageUrl` | 상품명·이미지 |
+| `category`, `itemType` | 대·소분류 code |
+| `primaryColor`, `primaryColorDisplay`, `secondaryColors` | 색상 |
+| `styleCodes` | 스타일 code 배열 |
+| `season` | 시즌 code 또는 `null` |
+| `gender` | 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`) |
+| `compatibilityScore` | 어울림 점수 (0~100, 내림차순 정렬) |
+
+```json
+{
+  "success": true,
+  "data": {
+    "anchor": {
+      "clothesId": 101,
+      "name": "화이트 반팔 티셔츠",
+      "imageUrl": "https://...",
+      "userImageUrl": "https://...",
+      "category": "TOP",
+      "itemType": "SHORT_SLEEVE",
+      "primaryColor": "WHITE",
+      "primaryColorDisplay": {
+        "code": "WHITE",
+        "label": "화이트",
+        "hex": "#FFFFFF"
+      }
+    },
+    "recommendations": {
+      "BOTTOM": [
+        {
+          "clothesId": 502,
+          "wardrobeClothesId": null,
+          "name": "와이드 슬랙스",
+          "imageUrl": "https://...",
+          "userImageUrl": null,
+          "category": "BOTTOM",
+          "itemType": "SLACKS",
+          "primaryColor": "BLACK",
+          "primaryColorDisplay": {
+            "code": "BLACK",
+            "label": "블랙",
+            "hex": "#000000"
+          },
+          "secondaryColors": [],
+          "styleCodes": ["MINIMAL"],
+          "season": "ALL_SEASON",
+          "compatibilityScore": 87,
+          "gender": "UNISEX"
+        }
+      ],
+      "OUTER": [],
+      "SHOES": []
+    }
+  },
+  "message": null
+}
+```
+
+> **Note**: 점수는 색상(35%)·스타일(30%)·itemType(20%)·시즌(15%) 가중 합산입니다. 동점 후보는 BE에서 랜덤 순서가 될 수 있습니다. FE는 사용자 프로필 성별에 맞지 않는 `gender` 후보를 클라이언트에서 추가 필터링할 수 있습니다.
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 
@@ -247,6 +373,31 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 
 > **Note**: `outer` 필드는 기온에 따라 외투가 필요 없는 경우(HOT, WARM) `null`로 반환됩니다.
 
+#### 추천 피드백 제출
+
+**POST** `/api/v1/users/{userId}/recommendations/feedback`
+
+- **요청 Body**
+```json
+{
+  "clothesId": 123,
+  "feedbackType": "SAVED"
+}
+```
+
+- **피드백 타입 (`feedbackType`)**
+    - `SAVED`: 저장하기 (긍정 - 가중치 미반영)
+    - `DISLIKE`: 싫어요 (부정 - 가중치 마이너스 반영)
+    - `EXCLUDE`: 추천 제외 (부정 + 후보 제외 - 가중치 마이너스 반영)
+
+- **응답 (성공)**
+```json
+{
+  "success": true,
+  "data": null,
+  "message": null
+}
+```
 #### AI MD 목록 응답 (AiMdPersonaResponse)
 
 ```json
@@ -378,6 +529,33 @@ draft/analyze/save 응답은 복수 상품 시 `items[]`(`itemIndex`, `imageUrl`
 | GET | `/api/v1/outfit-books` | 코디북 목록 조회 |
 | GET | `/api/v1/outfit-books/{bookId}` | 코디북 상세 조회 |
 | POST | `/api/v1/outfit-books/{bookId}/outfits` | 코디 저장 |
+| PUT | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 수정 |
+| DELETE | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 삭제 |
+
+#### 코디 저장/수정 요청 (`OutfitCreateRequest`, `OutfitUpdateRequest`)
+
+```json
+{
+  "title": "코디 제목",
+  "description": "코디 설명",
+  "thumbnailUrl": "https://...",
+  "situation": "DAILY",
+  "season": "ALL_SEASON",
+  "favorite": false,
+  "items": [
+    {
+      "clothesId": 1,
+      "itemRole": "TOP",
+      "layerOrder": 0
+    }
+  ]
+}
+```
+
+> **Note**: 수정(`PUT`) 요청에서 `items`를 생략하면 기존 구성 아이템이 유지됩니다.
+> - `items` 생략(null): 기존 구성 아이템 유지, 메타데이터만 수정
+> - `items: []` (빈 배열): 기존 구성 아이템 전체 삭제
+> - `items: [...]` (목록): 기존 구성 전체 교체
 
 #### 코디북 조회 응답 (OutfitBookResponse)
 
