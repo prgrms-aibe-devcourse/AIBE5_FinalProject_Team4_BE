@@ -120,16 +120,16 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | --- | --- | --- |
 | `category` | Y | 대분류 code (`TOP`, `BOTTOM`, `OUTER`, `SHOES`) |
 | `itemType` | Y | 소분류 code. 선택한 `category` 하위 값 |
-| `gender` | Y | 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`) |
+| `gender` | Y | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 사용자 화면 표시 대상 아님 |
 | `primaryColor` | Y | 대표 색상 code |
 | `secondaryColors` | N | 보조 색상 code 배열 |
 | `styles` | Y | 스타일 code 배열 (최소 1개) |
 
-허용 code 목록은 [카탈로그 사용 가이드](../domain/catalog.md)를 따릅니다. AI 분석 초안(`draft`)에도 `gender`가 포함되며, 저장 요청 시 `@NotBlank` validation이 적용됩니다.
+허용 code 목록은 [카탈로그 사용 가이드](../domain/catalog.md)를 따릅니다. AI 분석 초안(`draft`)에도 `gender`가 포함되며, 저장 요청 시 `@NotBlank` validation이 적용됩니다. `gender`는 사용자에게 노출하지 않고 옷 분류/추천과 저장 요청에 사용하는 내부 code입니다.
 
 #### 옷 조회 응답 (`ClothesResponse`)
 
-옷 목록/상세/저장 성공 응답에는 분류 필드와 함께 `gender`가 포함됩니다. 값은 `MALE`, `FEMALE`, `UNISEX` enum code입니다.
+옷 목록/상세/저장 성공 응답에는 분류 필드와 함께 `gender`가 포함됩니다. 값은 `MALE`, `FEMALE`, `UNISEX` enum code입니다. FE는 이 값을 사용자 화면에 표시하지 않고 내부 분류/추천 처리 기준으로만 사용합니다.
 
 ```json
 {
@@ -183,7 +183,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/save` | 구매내역 기반 옷 저장 (`itemIndex` 선택, 생략 시 0) |
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/items/{itemIndex}/skip` | 구매내역 캡처 상품 건너뛰기 |
 
-단일 상품 draft/analyze 응답은 `name`, `category`, `itemType`, `gender` 등 flat 필드와 `items[0]` 모두에 분류 값을 포함합니다. 복수 상품 시 flat 분류 필드는 `null`이며 `items[]`(`itemIndex`, `gender`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 사용합니다.
+단일 상품 draft/analyze 응답은 `name`, `category`, `itemType`, `gender` 등 flat 필드와 `items[0]` 모두에 분류 값을 포함합니다. 복수 상품 시 flat 분류 필드는 `null`이며 `items[]`(`itemIndex`, `gender`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 사용합니다. `gender`는 사용자에게 노출하지 않는 내부 code입니다.
 
 #### 구매내역 저장 요청 (`PurchaseCaptureSaveRequest`)
 
@@ -247,7 +247,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | `primaryColor`, `primaryColorDisplay`, `secondaryColors` | 색상 |
 | `styleCodes` | 스타일 code 배열 |
 | `season` | 시즌 code 또는 `null` |
-| `gender` | 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`) |
+| `gender` | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 사용자 화면 표시 대상 아님 |
 | `compatibilityScore` | 어울림 점수 (0~100, 내림차순 정렬) |
 
 ```json
@@ -299,7 +299,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 점수는 색상(35%)·스타일(30%)·itemType(20%)·시즌(15%) 가중 합산입니다. 동점 후보는 BE에서 랜덤 순서가 될 수 있습니다. FE는 사용자 프로필 성별에 맞지 않는 `gender` 후보를 클라이언트에서 추가 필터링할 수 있습니다.
+> **Note**: 점수는 색상(35%)·스타일(30%)·itemType(20%)·시즌(15%) 가중 합산입니다. 동점 후보는 BE에서 랜덤 순서가 될 수 있습니다. FE는 사용자 프로필 성별에 맞지 않는 `gender` 후보를 내부적으로 제외할 수 있지만, 해당 값을 사용자 화면에 표시하지 않습니다.
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 
