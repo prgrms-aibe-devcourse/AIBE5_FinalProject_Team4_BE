@@ -35,6 +35,16 @@ class ComplementaryRecommendationProductFilterTest {
                 product("3개 남성용 투명 레드 안경, 실내/실외", "패션잡화", "안경/선글라스"),
                 "3개 남성용 투명 레드 안경, 실내/실외"
         )).isFalse();
+
+        assertThat(ComplementaryRecommendationProductFilter.isWearableCandidate(
+                product("성인용 EVA 우비 일회용", "생활/주방", "생활용품"),
+                "성인용 EVA 우비 일회용"
+        )).isFalse();
+
+        assertThat(ComplementaryRecommendationProductFilter.isWearableCandidate(
+                product("남성 레인코트 트렌치", "패션의류", "남성의류"),
+                "남성 레인코트 트렌치"
+        )).isTrue();
     }
 
     @Test

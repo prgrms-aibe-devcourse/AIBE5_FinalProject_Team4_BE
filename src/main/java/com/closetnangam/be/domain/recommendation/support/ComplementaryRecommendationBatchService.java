@@ -89,7 +89,7 @@ public class ComplementaryRecommendationBatchService {
 
         byte[] jsonlBytes = jsonlBuildResult.jsonlBytes();
         String displayName = "reco-004-batch-" + Instant.now().toEpochMilli();
-        String inputFileName = geminiBatchService.uploadJsonl(jsonlBytes, displayName);
+        String inputFileName = geminiBatchService.uploadJsonlAndWaitForActive(jsonlBytes, displayName);
         String jobName = geminiBatchService.createBatchJob(model, inputFileName, displayName);
 
         ComplementaryRecommendationBatchState state = new ComplementaryRecommendationBatchState(

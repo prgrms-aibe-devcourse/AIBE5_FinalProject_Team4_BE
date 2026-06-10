@@ -34,7 +34,8 @@ public final class ComplementaryRecommendationGeminiPrompts {
                   "primaryColor": "WHITE",
                   "secondaryColors": ["NAVY"],
                   "styles": ["CASUAL"],
-                  "gender": "UNISEX"
+                  "gender": "UNISEX",
+                  "season": "ALL_SEASON"
                 }
                 """.formatted(
                 defaultText(productTitle),

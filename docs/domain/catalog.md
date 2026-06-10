@@ -22,6 +22,7 @@ last_updated: 2026-06-10
 | `itemType` | `CLOTHES.item_type` | 소분류: 반팔, 데님, 패딩 등 |
 | `season` | `CLOTHES.season` | 옷 자체의 대상 계절 code |
 | `gender` | `CLOTHES.gender` | 옷 분류/추천용 대상 성별 code |
+| `season` | `CLOTHES.season` | 마스터 착용 시즌 code. 옷장 등록·수정 API와 AI draft에서 설정. [ERD](../database/erd.md) 참고 |
 | `primaryColor` | `CLOTHING_COLORS.color_code` | 대표 색상 1개 |
 | `secondaryColors` | `CLOTHING_COLORS.color_code` | 보조 색상 목록 |
 | `styles` | `STYLES`, `CLOTHING_STYLES` | 스타일 코드 목록 |

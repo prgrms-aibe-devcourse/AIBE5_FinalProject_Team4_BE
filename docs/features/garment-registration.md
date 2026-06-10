@@ -196,6 +196,9 @@ last_updated: 2026-06-10
 - 사용자별 리소스는 인증 사용자와 요청 `userId` 일치를 확인합니다.
 - `CLOTHES`에는 계절을 포함한 공통 옷 정보를 저장하고, `WARDROBE_CLOTHES`에는 사용자별 상태를 저장합니다.
 - `season`은 `CLOTHES.season` 기준으로 저장하며 생성 후 변경하지 않습니다. 현재 코드가 `WARDROBE_CLOTHES.season`을 수정하거나 저장하면 [implementation-gaps.md](../backend/implementation-gaps.md)에서 정합성을 확인합니다.
+- 추천 상품을 `POST .../wishlist-clothes/{clothesId}`로 연결할 때는 `EXTERNAL_SHOPPING` 공용 마스터만 허용합니다.
+- 공용 외부 상품을 보유 옷으로 전환할 때는 `CLOTHES` 마스터를 변경하지 않고 사용자 전용 `PURCHASE_HISTORY` 행을 복제해 연결합니다.
+- 추천·위시리스트 연결 시 사용자 활성 보유/미보유 옷과 `externalProductId` 또는 브랜드·상품명·카테고리·타입·대표색상 identity가 같으면 원본 외부 상품도 중복으로 처리합니다.
 - 옷 삭제 시 공통 옷 정보는 삭제하지 않습니다.
 - 카탈로그 값 validation은 AI 분석 성공 처리 전·저장 전 모두 수행합니다. 유효하지 않은 code는 `SUCCESS` 초안으로 저장하지 않습니다.
 - 외부 출처는 가능한 경우 `external_source`, `external_product_id`, `external_product_url`에 저장합니다.

@@ -88,6 +88,25 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
     );
 
     /**
+     * 사용자·옷 기준 옷장 연결 1건 조회. {@code deletedAt} 필터 없음 — 활성·소프트 삭제 모두 반환 가능.
+     *
+     * <p>위시리스트 재등록 등 “과거 연결 복원” 용도 전용.
+     * 일반 조회는 {@link #findByClothesIdAndUserId}를 사용하세요.</p>
+     */
+    @Query("""
+            select wc from WardrobeClothes wc
+            join fetch wc.clothes c
+            join fetch wc.wardrobe w
+            join fetch w.user
+            where c.id = :clothesId
+              and w.user.id = :userId
+            """)
+    Optional<WardrobeClothes> findByClothesIdAndUserIdIgnoringSoftDelete(
+            @Param("clothesId") Long clothesId,
+            @Param("userId") Long userId
+    );
+
+    /**
      * 저장된 코디 구성 옷을 응답으로 복원할 때, 사용자 옷장에 실제로 연결된 보유 옷 정보를 함께 채우기 위한 조회.
      *
      * 외부 쇼핑 상품처럼 사용자 옷장에 연결되지 않은 Clothes는 이 결과에 포함되지 않는다.
@@ -149,6 +168,36 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
     List<Long> findOwnedClothesIdsByUserId(
             @Param("userId") Long userId,
             @Param("ownershipStatus") OwnershipStatus ownershipStatus
+    );
+
+    @Query("""
+            select distinct wc from WardrobeClothes wc
+            join fetch wc.clothes c
+            join fetch wc.wardrobe w
+            where w.user.id = :userId
+              and wc.deletedAt is null
+              and wc.ownershipStatus in :ownershipStatuses
+            """)
+    List<WardrobeClothes> findAllActiveByUserIdAndOwnershipStatuses(
+            @Param("userId") Long userId,
+            @Param("ownershipStatuses") List<OwnershipStatus> ownershipStatuses
+    );
+
+    @Query("""
+            select case when count(wc) > 0 then true else false end
+            from WardrobeClothes wc
+            join wc.clothes c
+            join wc.wardrobe w
+            where w.user.id = :userId
+              and wc.deletedAt is null
+              and c.externalSource = :externalSource
+              and c.externalProductId = :externalProductId
+              and c.externalProductId <> 'NONE'
+            """)
+    boolean existsActiveByUserIdAndExternalProduct(
+            @Param("userId") Long userId,
+            @Param("externalSource") String externalSource,
+            @Param("externalProductId") String externalProductId
     );
 
     /**

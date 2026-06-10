@@ -524,7 +524,10 @@ public class AiMdRecommendationService {
                                     toItemTypeLabel(clothes.getItemType()),
                                     primaryColorLabel(clothes),
                                     styleNames(clothes),
-                                    defaultIfBlank(item.getSeason(), "UNKNOWN")
+                                    defaultIfBlank(
+                                            clothes.getSeason() != null ? clothes.getSeason().name() : null,
+                                            "UNKNOWN"
+                                    )
                             );
                 })
                 .collect(Collectors.joining("\n"));
@@ -560,7 +563,8 @@ public class AiMdRecommendationService {
 
     private String resolveSeason(List<WardrobeClothes> ownedItems) {
         return ownedItems.stream()
-                .map(WardrobeClothes::getSeason)
+                .map(WardrobeClothes::getClothes)
+                .map(clothes -> clothes.getSeason() != null ? clothes.getSeason().name() : null)
                 .filter(StringUtils::hasText)
                 .findFirst()
                 .orElse("ALL_SEASON");

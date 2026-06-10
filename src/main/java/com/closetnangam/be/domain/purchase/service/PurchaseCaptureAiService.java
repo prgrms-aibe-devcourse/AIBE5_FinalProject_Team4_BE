@@ -176,6 +176,7 @@ public class PurchaseCaptureAiService {
                 item.secondaryColors(),
                 item.styles(),
                 item.gender(),
+                item.season(),
                 item.optionText(),
                 normalizeSuggestedExternalSource(item.suggestedExternalSource()),
                 item.imageUrl(),

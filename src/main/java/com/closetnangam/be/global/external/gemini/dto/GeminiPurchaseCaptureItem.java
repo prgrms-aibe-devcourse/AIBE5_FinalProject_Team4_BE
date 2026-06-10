@@ -15,6 +15,7 @@ public record GeminiPurchaseCaptureItem(
         @JsonAlias("secondary_colors") List<String> secondaryColors,
         List<String> styles,
         String gender,
+        String season,
         @JsonAlias("option_text") String optionText,
         @JsonAlias("suggested_external_source") String suggestedExternalSource,
         @JsonAlias("image_url") String imageUrl,

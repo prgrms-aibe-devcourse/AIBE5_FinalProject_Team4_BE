@@ -12,6 +12,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -48,6 +49,12 @@ public class ClothesTagHelper {
         categoryCatalogService.validateExternalSource(externalSource);
     }
 
+    public void validateSeasonIfPresent(String seasonCode) {
+        if (StringUtils.hasText(seasonCode)) {
+            categoryCatalogService.validateSeasonCode(seasonCode);
+        }
+    }
+
     public void applyColorTags(Clothes clothes, String primaryColor, List<String> secondaryColors) {
         buildColorTags(clothes, primaryColor, secondaryColors).forEach(clothes::addColorTag);
     }
@@ -64,6 +71,15 @@ public class ClothesTagHelper {
 
     public void applyStyleTags(Clothes clothes, List<String> styleCodes) {
         buildStyleTags(clothes, styleCodes).forEach(clothes::addStyleTag);
+    }
+
+    public void copyTagsFrom(Clothes source, Clothes target) {
+        source.getSortedColorTags().forEach(color -> target.addColorTag(
+                ClothingColor.create(target, color.getColorCode(), color.getColorRole(), color.getSortOrder())
+        ));
+        source.getSortedStyleTags().forEach(styleTag -> target.addStyleTag(
+                ClothesStyleTag.create(target, styleTag.getStyle(), styleTag.getStyleRole(), styleTag.getSortOrder())
+        ));
     }
 
     public void replaceStyleTags(Clothes clothes, List<String> styleCodes) {

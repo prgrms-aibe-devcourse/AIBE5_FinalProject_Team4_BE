@@ -9,6 +9,7 @@ import com.closetnangam.be.domain.catalog.enums.ClothesItemType;
 import com.closetnangam.be.domain.catalog.enums.ExternalSource;
 import com.closetnangam.be.domain.catalog.enums.StyleCode;
 import com.closetnangam.be.domain.clothes.enums.ClothesGender;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -152,6 +153,14 @@ public class CategoryCatalogService {
         guide.append(" — 이미지에 착용 모델이 보이면 모델 성별을 우선, 없으면 상품명·옷 종류(스커트·원피스→FEMALE 등)로 추정.");
         guide.append(" 남녀 공용·불확실하면 UNISEX.");
 
+        guide.append("\n\n[season]\n");
+        guide.append("착용 시즌 코드 1개. 아래 코드만 사용하세요.\n");
+        guide.append(Arrays.stream(ClothesSeason.values())
+                .map(season -> season.name() + " (" + season.getLabel() + ")")
+                .collect(Collectors.joining(", ")));
+        guide.append("\n판별: 두께·소재·소매 길이·아우터 보온성(패딩·코트 등)으로 추정.");
+        guide.append(" 봄·가을 겹치면 SPRING 또는 FALL, 명확한 사계절 기본템이면 ALL_SEASON.");
+
         guide.append("\n\n응답 JSON 예시:\n");
         guide.append("""
                 {
@@ -160,7 +169,8 @@ public class CategoryCatalogService {
                   "primaryColor": "WHITE",
                   "secondaryColors": ["NAVY"],
                   "styles": ["CASUAL", "MINIMAL"],
-                  "gender": "UNISEX"
+                  "gender": "UNISEX",
+                  "season": "SUMMER"
                 }
                 """);
 
@@ -198,6 +208,14 @@ public class CategoryCatalogService {
 
     public ClothesGender resolveGenderOrDefault(String genderCode) {
         return ClothesGender.fromCodeOrDefault(genderCode);
+    }
+
+    public void validateSeasonCode(String seasonCode) {
+        ClothesSeason.fromCode(seasonCode);
+    }
+
+    public ClothesSeason resolveSeasonOrDefault(String seasonCode) {
+        return ClothesSeason.fromCodeOrDefault(seasonCode);
     }
 
     public void validateColorCode(String colorCode) {

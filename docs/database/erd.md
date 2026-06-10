@@ -69,6 +69,7 @@ erd_version: v2.3
 | `category` | 옷 카테고리 코드 |
 | `season` | 옷 자체의 대상 계절 코드. 옷 등록 시 1개 선택하며 생성 후 변경하지 않음 |
 | `gender` | 옷 대상 성별 코드: `MALE`, `FEMALE`, `UNISEX`. 사용자 화면 표시 대상이 아닌 내부 분류/추천용 값 |
+| `season` | 마스터 옷 착용 시즌 code: `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON`. 옷장 등록·수정·AI draft 저장 및 어울리는 옷 추천 **기준/후보** 시즌 점수/필터에 사용 |
 | `item_type` | 카테고리 하위 옷 타입 코드 |
 | `clothes_info_source` | 옷 정보 출처: `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |
 | `external_source` | 외부 쇼핑몰 또는 직접 입력 출처 |
