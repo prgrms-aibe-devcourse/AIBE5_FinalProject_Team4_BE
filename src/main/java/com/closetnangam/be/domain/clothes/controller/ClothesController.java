@@ -128,14 +128,14 @@ public class ClothesController {
                     - 스타일(30%): 기준 PRIMARY 스타일이 후보 PRIMARY·SECONDARY에 포함되면 1.0, 아니면 0.2
                     - itemType(20%): 소분류 cohesion group + 대표 조합 페어
                     - 시즌(15%): 동일 1.0 / 한쪽 미입력 0.7 / 불일치 0.3
-                    - limitPerCategory: 카테고리당 최대 추천 수 (기본 5, 최대 10)
+                    - limitPerCategory: 카테고리당 최대 추천 수 (기본 5, 최대 50)
                     """
     )
     @GetMapping("/users/{userId}/clothes/{clothesId}/recommendations")
     public ResponseEntity<ApiResponse<ClothesRecommendationResponse>> getRecommendations(
             @PathVariable @Min(1) Long userId,
             @PathVariable @Min(1) Long clothesId,
-            @RequestParam(defaultValue = "5") @Min(1) @Max(10) int limitPerCategory
+            @RequestParam(defaultValue = "5") @Min(1) @Max(50) int limitPerCategory
     ) {
         SecurityUtils.verifyUserIdMatch(userId);
         return ResponseEntity.ok(ApiResponse.ok(

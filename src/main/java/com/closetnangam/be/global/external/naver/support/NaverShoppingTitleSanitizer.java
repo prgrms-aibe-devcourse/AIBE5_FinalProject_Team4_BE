@@ -14,6 +14,10 @@ public final class NaverShoppingTitleSanitizer {
 
     private static final Pattern HTML_TAG = Pattern.compile("<[^>]*>");
     private static final Pattern TRAILING_ALNUM_SKU = Pattern.compile("\\s+[A-Z]{1,4}\\d{6,12}$");
+    private static final Pattern TRAILING_MIXED_ALNUM_SKU = Pattern.compile(
+            "\\s+(?=.*\\d)[A-Z0-9]{5,}$",
+            Pattern.CASE_INSENSITIVE
+    );
     private static final Pattern TRAILING_HYPHEN_SKU = Pattern.compile("\\s+[A-Z0-9]{2,}(?:-[A-Z0-9]+)+$", Pattern.CASE_INSENSITIVE);
     private static final Pattern TRAILING_LONG_NUMERIC = Pattern.compile("\\s+\\d{7,}$");
     private static final Pattern TRAILING_SEASON_CODE = Pattern.compile("\\s+(?:SS|FW|AW|HS)\\d{2}$", Pattern.CASE_INSENSITIVE);
@@ -26,6 +30,7 @@ public final class NaverShoppingTitleSanitizer {
     private static final List<Pattern> TRAILING_PATTERNS = List.of(
             TRAILING_LONG_NUMERIC,
             TRAILING_ALNUM_SKU,
+            TRAILING_MIXED_ALNUM_SKU,
             TRAILING_HYPHEN_SKU,
             TRAILING_LATIN_MODEL_TOKENS,
             TRAILING_SEASON_CODE,
@@ -120,6 +125,9 @@ public final class NaverShoppingTitleSanitizer {
             return true;
         }
         if (TRAILING_ALNUM_SKU.matcher(" " + token).matches()) {
+            return true;
+        }
+        if (TRAILING_MIXED_ALNUM_SKU.matcher(" " + token).matches()) {
             return true;
         }
         return token.matches("\\d{7,}");

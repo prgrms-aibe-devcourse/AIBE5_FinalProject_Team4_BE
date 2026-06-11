@@ -30,6 +30,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -76,8 +79,21 @@ public class ComplementaryRecommendationBatchService {
     @Value("${app.recommendation.complementary.batch.state-dir:build/reco-004-batch}")
     private String stateDir;
 
+    @Value("${app.recommendation.complementary.batch.collection-mode:random}")
+    private String collectionMode;
+
+    @Value("${app.recommendation.complementary.batch.gap-fill-per-bucket:200}")
+    private int gapFillPerBucket;
+
     public ComplementaryRecommendationBatchState submitBatch(String model, int maxProducts) {
-        List<NaverShoppingProductResponse> products = collectProducts(maxProducts);
+        GapCollectResult collectResult = isGapFillMode()
+                ? collectGapFillProducts(gapFillPerBucket)
+                : new GapCollectResult(
+                        collectProductsRandom(maxProducts),
+                        Map.of(),
+                        ComplementaryRecommendationBatchState.MODE_RANDOM
+                );
+        List<NaverShoppingProductResponse> products = collectResult.products();
         if (products.isEmpty()) {
             throw new IllegalStateException("Batch에 넣을 신규 상품이 없습니다.");
         }
@@ -92,14 +108,22 @@ public class ComplementaryRecommendationBatchService {
         String inputFileName = geminiBatchService.uploadJsonlAndWaitForActive(jsonlBytes, displayName);
         String jobName = geminiBatchService.createBatchJob(model, inputFileName, displayName);
 
+        Map<String, String> productBuckets = filterProductBuckets(
+                collectResult.productBuckets(),
+                jsonlBuildResult.includedProducts()
+        );
+
         ComplementaryRecommendationBatchState state = new ComplementaryRecommendationBatchState(
                 jobName,
                 model,
                 Instant.now(),
-                jsonlBuildResult.includedProducts()
+                jsonlBuildResult.includedProducts(),
+                collectResult.mode(),
+                productBuckets
         );
         saveState(state);
-        log.info("[RECO-004 Batch] 제출 완료. job={}, collected={}, submitted={}, imageSkipped={}",
+        log.info("[RECO-004 Batch] 제출 완료. mode={}, job={}, collected={}, submitted={}, imageSkipped={}",
+                collectResult.mode(),
                 jobName,
                 products.size(),
                 jsonlBuildResult.includedProducts().size(),
@@ -175,6 +199,11 @@ public class ComplementaryRecommendationBatchService {
                     continue;
                 }
 
+                if (!matchesGapFillBucket(state, productId, resolved.get())) {
+                    skipped++;
+                    continue;
+                }
+
                 Optional<Long> clothesId = externalClothesService.importClassifiedComplementaryCandidate(
                         product,
                         resolved.get()
@@ -218,7 +247,7 @@ public class ComplementaryRecommendationBatchService {
         return status;
     }
 
-    private List<NaverShoppingProductResponse> collectProducts(int maxProducts) {
+    private List<NaverShoppingProductResponse> collectProductsRandom(int maxProducts) {
         List<NaverShoppingProductResponse> collected = new ArrayList<>();
         ThreadLocalRandom random = ThreadLocalRandom.current();
 
@@ -265,6 +294,141 @@ public class ComplementaryRecommendationBatchService {
             log.info("[RECO-004 Batch] 가격비교 상품 수집 완료. count={}", collected.size());
         }
         return collected;
+    }
+
+    private GapCollectResult collectGapFillProducts(int perBucket) {
+        List<NaverShoppingProductResponse> collected = new ArrayList<>();
+        Map<String, String> productBuckets = new LinkedHashMap<>();
+        Set<String> seenProductIds = new HashSet<>();
+
+        for (ComplementaryRecommendationGapBucket bucket : ComplementaryRecommendationGapBucket.fillOrder()) {
+            int bucketCount = 0;
+            int keywordIndex = 0;
+            int page = 0;
+            int attempts = 0;
+
+            while (bucketCount < perBucket && attempts < MAX_COLLECT_ATTEMPTS) {
+                List<String> keywords = bucket.keywords();
+                String keyword = keywords.get(keywordIndex % keywords.size());
+                int start = 1 + (page % 10) * NAVER_PAGE_SIZE;
+                String sort = SORT_OPTIONS.get(page % SORT_OPTIONS.size());
+
+                List<NaverShoppingProductResponse> products = naverApiService.searchShoppingProducts(
+                        keyword,
+                        NAVER_PAGE_SIZE,
+                        start,
+                        sort,
+                        NAVER_EXCLUDE
+                );
+
+                for (NaverShoppingProductResponse product : products) {
+                    if (tryCollectCandidate(product, seenProductIds, collected, productBuckets, bucket.id())) {
+                        bucketCount++;
+                        if (bucketCount >= perBucket) {
+                            break;
+                        }
+                    }
+                }
+
+                page++;
+                if (page % keywords.size() == 0) {
+                    keywordIndex++;
+                }
+                attempts++;
+            }
+
+            if (bucketCount < perBucket) {
+                log.warn("[RECO-004 Batch] gap-fill 버킷 목표 미달. bucket={}, target={}, collected={}",
+                        bucket.label(), perBucket, bucketCount);
+            } else {
+                log.info("[RECO-004 Batch] gap-fill 버킷 수집 완료. bucket={}, count={}", bucket.label(), bucketCount);
+            }
+        }
+
+        log.info("[RECO-004 Batch] gap-fill 전체 수집. buckets={}, perBucket={}, total={}",
+                ComplementaryRecommendationGapBucket.fillOrder().size(),
+                perBucket,
+                collected.size());
+        return new GapCollectResult(collected, productBuckets, ComplementaryRecommendationBatchState.MODE_GAP_FILL);
+    }
+
+    private boolean tryCollectCandidate(
+            NaverShoppingProductResponse product,
+            Set<String> seenProductIds,
+            List<NaverShoppingProductResponse> collected,
+            Map<String, String> productBuckets,
+            String bucketId
+    ) {
+        if (!StringUtils.hasText(product.productId())) {
+            return false;
+        }
+        if (!isPriceComparisonProduct(product)) {
+            return false;
+        }
+
+        String productId = product.productId().trim();
+        if (seenProductIds.contains(productId)) {
+            return false;
+        }
+        if (clothesRepository.findByExternalProductId(productId).isPresent()) {
+            return false;
+        }
+
+        String cleanTitle = sanitizeTitle(product);
+        if (!ComplementaryRecommendationProductFilter.isWearableCandidate(product, cleanTitle)) {
+            return false;
+        }
+
+        seenProductIds.add(productId);
+        collected.add(product);
+        productBuckets.put(productId, bucketId);
+        return true;
+    }
+
+    private static Map<String, String> filterProductBuckets(
+            Map<String, String> productBuckets,
+            List<NaverShoppingProductResponse> includedProducts
+    ) {
+        if (productBuckets == null || productBuckets.isEmpty()) {
+            return Map.of();
+        }
+        Set<String> includedIds = new LinkedHashSet<>();
+        for (NaverShoppingProductResponse product : includedProducts) {
+            if (StringUtils.hasText(product.productId())) {
+                includedIds.add(product.productId().trim());
+            }
+        }
+        Map<String, String> filtered = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : productBuckets.entrySet()) {
+            if (includedIds.contains(entry.getKey())) {
+                filtered.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return filtered;
+    }
+
+    private boolean matchesGapFillBucket(
+            ComplementaryRecommendationBatchState state,
+            String productId,
+            ComplementaryRecommendationClassificationService.ResolvedClassification resolved
+    ) {
+        if (!state.isGapFill()) {
+            return true;
+        }
+        return ComplementaryRecommendationGapBucket.findById(state.productBucketsOrEmpty().get(productId))
+                .map(bucket -> bucket.accepts(resolved))
+                .orElse(false);
+    }
+
+    private boolean isGapFillMode() {
+        return ComplementaryRecommendationBatchState.MODE_GAP_FILL.equalsIgnoreCase(collectionMode);
+    }
+
+    private record GapCollectResult(
+            List<NaverShoppingProductResponse> products,
+            Map<String, String> productBuckets,
+            String mode
+    ) {
     }
 
     private static boolean isPriceComparisonProduct(NaverShoppingProductResponse product) {
