@@ -1,6 +1,6 @@
 package com.closetnangam.be.domain.clothes.scoring;
 
-import com.closetnangam.be.domain.clothes.enums.TemperatureRange;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 
 public class WeatherCompatibilityTable {
 
@@ -8,16 +8,15 @@ public class WeatherCompatibilityTable {
      * 기온과 아이템 타입에 따른 적합도 점수(0.0 ~ 1.0)를 반환합니다.
      */
     public static double getWeatherScore(double temp, String itemType) {
-        TemperatureRange range = TemperatureRange.from(temp);
+        ClothesSeason season = ClothesSeason.fromTemperature(temp);
         if (itemType == null) return 0.5;
         String type = itemType.toUpperCase();
 
-        return switch (range) {
-            case HOT -> scoreForHot(type);
-            case WARM -> scoreForWarm(type);
-            case MILD -> scoreForMild(type);
-            case CHILLY -> scoreForChilly(type);
-            case COLD -> scoreForCold(type);
+        return switch (season) {
+            case SUMMER -> scoreForHot(type);
+            case SPRING, FALL -> scoreForMild(type); // 봄/가을 통합
+            case WINTER -> scoreForCold(type);
+            default -> 0.5;
         };
     }
 

@@ -2,7 +2,7 @@ package com.closetnangam.be.domain.recommendation.service;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
-import com.closetnangam.be.domain.clothes.enums.TemperatureRange;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.clothes.scoring.WeatherCompatibilityTable;
 import com.closetnangam.be.domain.recommendation.dto.response.OotdResponse;
@@ -41,7 +41,7 @@ public class OotdRecommendationService {
             throw new org.springframework.security.access.AccessDeniedException("본인의 옷장만 추천받을 수 있습니다.");
         }
 
-        TemperatureRange tempRange = TemperatureRange.from(currentTemp);
+        ClothesSeason currentSeason = ClothesSeason.fromTemperature(currentTemp);
         List<WardrobeClothes> ownedClothes = wardrobeClothesRepository.findAllByWardrobeId(wardrobeId)
                 .stream()
                 .filter(wc -> wc.getOwnershipStatus() == OwnershipStatus.OWNED)
@@ -55,17 +55,17 @@ public class OotdRecommendationService {
         List<ScoredItem> bottoms = filterAndScore(ownedClothes, "BOTTOM", currentTemp, styleWeights);
         List<ScoredItem> outers = filterAndScore(ownedClothes, "OUTER", currentTemp, styleWeights);
 
-        if (tops.isEmpty() || bottoms.isEmpty() || (tempRange.requiresOuter() && outers.isEmpty())) {
+        if (tops.isEmpty() || bottoms.isEmpty() || (currentSeason == ClothesSeason.WINTER && outers.isEmpty())) {
             return OotdResponse.builder()
                     .combinations(List.of())
-                    .weatherLabel(buildWeatherLabel(tempRange, currentTemp))
+                    .weatherLabel(buildWeatherLabel(currentSeason, currentTemp))
                     .currentTemp(currentTemp)
                     .build();
         }
 
         List<OotdResponse.OotdCombinationResponse> combinations = new ArrayList<>();
 
-        if (tempRange.requiresOuter()) {
+        if (currentSeason == ClothesSeason.WINTER) {
             for (ScoredItem top : tops) {
                 for (ScoredItem bottom : bottoms) {
                     for (ScoredItem outer : outers) {
@@ -97,26 +97,31 @@ public class OotdRecommendationService {
 
         return OotdResponse.builder()
                 .combinations(top10)
-                .weatherLabel(buildWeatherLabel(tempRange, currentTemp))
+                .weatherLabel(buildWeatherLabel(currentSeason, currentTemp))
                 .currentTemp(currentTemp)
                 .build();
     }
 
-    private String buildWeatherLabel(TemperatureRange range, double temp) {
-        return switch (range) {
-            case HOT    -> "오늘 %.0f°C — 반팔·반바지 추천".formatted(temp);
-            case WARM   -> "오늘 %.0f°C — 얇은 셔츠·면바지 추천".formatted(temp);
-            case MILD   -> "오늘 %.0f°C — 가디건·자켓 추천".formatted(temp);
-            case CHILLY -> "오늘 %.0f°C — 두꺼운 니트·코트 추천".formatted(temp);
-            case COLD   -> "오늘 %.0f°C — 패딩·방한 필수".formatted(temp);
+    private String buildWeatherLabel(ClothesSeason season, double temp) {
+        return switch (season) {
+            case SUMMER    -> "오늘 %.0f°C — 반팔·반바지 추천".formatted(temp);
+            case SPRING    -> "오늘 %.0f°C — 얇은 셔츠·면바지 추천".formatted(temp);
+            case FALL      -> "오늘 %.0f°C — 가디건·자켓 추천".formatted(temp);
+            case WINTER    -> "오늘 %.0f°C — 패딩·방한 필수".formatted(temp);
+            default        -> "오늘 %.0f°C — 사계절 코디 추천".formatted(temp);
         };
     }
 
     private List<ScoredItem> filterAndScore(List<WardrobeClothes> items, String targetCategory, double temp, Map<String, Integer> styleWeights) {
+        ClothesSeason currentSeason = ClothesSeason.fromTemperature(temp);
         return items.stream()
                 .filter(wc -> wc.getClothes().getCategory().equals(targetCategory))
                 .map(wc -> {
                     double weatherScore = WeatherCompatibilityTable.getWeatherScore(temp, wc.getClothes().getItemType());
+                    
+                    // 계절 일치 가점 (0.0 ~ 0.5)
+                    double seasonMatchScore = currentSeason.isCompatibleWith(wc.getClothes().getSeason()) ? 0.5 : 0.0;
+                    
                     double favoriteWeight = wc.getFavorite() ? 1.5 : 1.0;
                     double styleScore = 0.0;
                     // 의상의 스타일 태그들 중 유저 선호 스타일과 일치하는 최대 combined_weight 반영
@@ -130,7 +135,7 @@ public class OotdRecommendationService {
                         }
                     }
 
-                    double totalItemScore = (weatherScore * favoriteWeight) + styleScore;
+                    double totalItemScore = (weatherScore * favoriteWeight) + styleScore + seasonMatchScore;
                     return new ScoredItem(wc, totalItemScore);
                 })
                 .sorted(Comparator.comparingDouble(ScoredItem::score).reversed())

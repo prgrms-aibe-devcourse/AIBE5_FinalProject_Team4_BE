@@ -34,6 +34,21 @@ public enum ClothesSeason {
         }
     }
 
+    public static ClothesSeason fromTemperature(double temp) {
+        if (temp < 5.0) return WINTER;
+        if (temp < 20.0) return FALL;
+        if (temp < 28.0) return SPRING;
+        return SUMMER;
+    }
+
+    public boolean isCompatibleWith(ClothesSeason other) {
+        if (this == ALL_SEASON || other == ALL_SEASON) return true;
+        if (this == other) return true;
+        // 봄-가을은 서로 호환된다고 가정 (보통 춘추복)
+        if ((this == SPRING && other == FALL) || (this == FALL && other == SPRING)) return true;
+        return false;
+    }
+
     private static ClothesSeason fromNormalized(String normalized) {
         if ("AUTUMN".equals(normalized)) {
             return FALL;
