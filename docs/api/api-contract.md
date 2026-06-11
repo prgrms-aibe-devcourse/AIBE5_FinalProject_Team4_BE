@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-10
+last_updated: 2026-06-11
 ---
 
 # API 계약
@@ -424,7 +424,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "gender": "MALE",
       "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
       "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
-      "speechStyle": "가볍고 친구같은 말투",
+      "speechStyle": "장난스럽고 친구같은 반말",
       "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
     }
   ],
@@ -446,7 +446,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "gender": "MALE",
       "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
       "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
-      "speechStyle": "가볍고 친구같은 말투",
+      "speechStyle": "장난스럽고 친구같은 반말",
       "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
     },
     "query": "남성 블랙 스트릿 코디 아이템",
@@ -490,7 +490,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "gender": "MALE",
       "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
       "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
-      "speechStyle": "가볍고 친구같은 말투",
+      "speechStyle": "장난스럽고 친구같은 반말",
       "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
     },
     "outfits": [
@@ -501,7 +501,23 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
         "season": "ALL_SEASON",
         "reason": "MD 말투가 반영된 코디 추천 이유",
         "stylingTip": "스타일링 팁",
-        "ownedItems": [],
+        "ownedItems": [
+          {
+            "wardrobeClothesId": 1,
+            "name": "보유 상의",
+            "category": "TOP"
+          },
+          {
+            "wardrobeClothesId": 2,
+            "name": "보유 하의",
+            "category": "BOTTOM"
+          },
+          {
+            "wardrobeClothesId": 3,
+            "name": "보유 신발",
+            "category": "SHOES"
+          }
+        ],
         "externalProducts": []
       }
     ]
@@ -510,7 +526,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 보유 옷을 최소 1개 포함해야 합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
+> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 보유 옷을 최소 1개 포함해야 하며, 보유 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부 상품은 필수가 아니므로 보유 옷만으로 필수 세 카테고리가 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
 
 #### AI MD 추천 코디 저장 요청/응답
 
@@ -522,10 +538,12 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
   "season": "ALL_SEASON",
   "reason": "MD 말투가 반영된 코디 추천 이유",
   "stylingTip": "스타일링 팁",
-  "wardrobeClothesIds": [1],
+  "wardrobeClothesIds": [1, 2, 3],
   "externalProducts": []
 }
 ```
+
+위 예시의 `wardrobeClothesIds`는 각각 `TOP`, `BOTTOM`, `SHOES`인 보유 옷을 의미합니다. 저장 요청도 추천 후보와 동일하게 사용자 보유 옷을 최소 1개 포함하고, `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부 상품 없이 보유 옷만으로 완성할 수 있으며, 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
 
 저장 성공 시에는 선택된 코디 1개가 `OUTFITS`, `OUTFIT_ITEMS`에 저장되고, 응답은 저장된 `outfit`과 구성 옷 목록을 포함합니다. 저장된 구성 옷은 코디북 조회 응답의 `outfits[].items`에서도 다시 조회할 수 있습니다.
 
