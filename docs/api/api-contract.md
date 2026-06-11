@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-09
+last_updated: 2026-06-11
 ---
 
 # API 계약
@@ -118,24 +118,29 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | DELETE | `/api/v1/clothes/{clothesId}` | 사용자 옷장에서 옷 연결 삭제 |
 | GET | `/api/v1/users/{userId}/clothes/{clothesId}/recommendations` | 옷장 기반 어울리는 옷 추천 조회 (`limitPerCategory` query, 아래 [옷장 기반 어울리는 옷 추천](#옷장-기반-어울리는-옷-추천-get-recommendations) 참고) |
 
-#### 옷 저장/수정 공통 분류 필드
+#### 옷 등록/저장 공통 분류 필드
 
-아래 필드는 보유 옷 등록(`POST /api/v1/users/{userId}/clothes`), 옷 수정(`PATCH /api/v1/clothes/{clothesId}`), 사진 저장, 구매내역 저장, 미보유 저장 요청에 공통으로 포함됩니다.
+아래 필드는 보유 옷 등록(`POST /api/v1/users/{userId}/clothes`), 사진 저장, 구매내역 저장, 미보유 저장 요청에 공통으로 포함됩니다.
 
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
 | `category` | Y | 대분류 code (`TOP`, `BOTTOM`, `OUTER`, `SHOES`) |
 | `itemType` | Y | 소분류 code. 선택한 `category` 하위 값 |
+| `season` | N | 옷 자체의 대상 계절 code (`SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON`). 생략 시 `ALL_SEASON`으로 저장하며, 최종 저장 후 변경하지 않음 |
 | `gender` | Y | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 사용자 화면 표시 대상 아님 |
 | `primaryColor` | Y | 대표 색상 code |
 | `secondaryColors` | N | 보조 색상 code 배열 |
 | `styles` | Y | 스타일 code 배열 (최소 1개) |
 
-허용 code 목록은 [카탈로그 사용 가이드](../domain/catalog.md)를 따릅니다. AI 분석 초안(`draft`)에도 `gender`가 포함되며, 저장 요청 시 `@NotBlank` validation이 적용됩니다. `gender`는 사용자에게 노출하지 않고 옷 분류/추천과 저장 요청에 사용하는 내부 code입니다.
+허용 code 목록은 [카탈로그 사용 가이드](../domain/catalog.md)를 따릅니다. 저장 요청 시 validation이 적용됩니다. `gender`는 사용자에게 노출하지 않고 옷 분류/추천과 저장 요청에 사용하는 내부 code입니다.
+
+#### 옷 수정 기준
+
+옷 수정(`PATCH /api/v1/clothes/{clothesId}`)은 생성된 공통 옷의 계절을 변경하는 용도로 사용하지 않습니다. 생성 후 `season`을 변경해야 하는 상황은 공식 기준과 충돌하므로 담당자 확인 후 별도 기준 변경으로 처리합니다.
 
 #### 옷 조회 응답 (`ClothesResponse`)
 
-옷 목록/상세/저장 성공 응답에는 분류 필드와 함께 `gender`가 포함됩니다. 값은 `MALE`, `FEMALE`, `UNISEX` enum code입니다. FE는 이 값을 사용자 화면에 표시하지 않고 내부 분류/추천 처리 기준으로만 사용합니다.
+옷 목록/상세/저장 성공 응답에는 분류 필드와 함께 `season`, `gender`가 포함됩니다. `season`은 `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON` code이고, `gender`는 `MALE`, `FEMALE`, `UNISEX` enum code입니다. FE는 `gender`를 사용자 화면에 표시하지 않고 내부 분류/추천 처리 기준으로만 사용합니다.
 
 ```json
 {
@@ -146,6 +151,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
     "name": "화이트 반팔 티셔츠",
     "category": "TOP",
     "itemType": "SHORT_SLEEVE",
+    "season": "SUMMER",
     "gender": "UNISEX",
     "primaryColor": "WHITE",
     "secondaryColors": [],
@@ -191,14 +197,14 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/save` | 구매내역 기반 옷 저장 (`itemIndex` 선택, 생략 시 0) |
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/items/{itemIndex}/skip` | 구매내역 캡처 상품 건너뛰기 |
 
-단일 상품 draft/analyze 응답은 `name`, `category`, `itemType`, `gender` 등 flat 필드와 `items[0]` 모두에 분류 값을 포함합니다. 복수 상품 시 flat 분류 필드는 `null`이며 `items[]`(`itemIndex`, `gender`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 사용합니다. `gender`는 사용자에게 노출하지 않는 내부 code입니다.
+단일 상품 draft/analyze 응답은 `name`, `category`, `itemType`, `season`, `gender` 등 flat 필드와 `items[0]` 모두에 분류 값을 포함합니다. 복수 상품 시 flat 분류 필드는 `null`이며 `items[]`(`itemIndex`, `season`, `gender`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 사용합니다. `season`은 옷 등록 시 확정되는 공통 옷 정보이고, `gender`는 사용자에게 노출하지 않는 내부 code입니다.
 
 #### 구매내역 저장 요청 (`PurchaseCaptureSaveRequest`)
 
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
 | `name`, `brandName`, `productCode`, `category`, `itemType`, `gender`, `primaryColor`, `styles`, `externalSource`, `size`, `favorite`, `isVerified` | Y | 옷 공통·옷장 정보 |
-| `secondaryColors`, `season` | N | 보조 색상, `CLOTHES.season` code (생략 시 `ALL_SEASON`) |
+| `secondaryColors`, `season` | N | 보조 색상, 옷 계절 code. `season` 생략 시 `ALL_SEASON` |
 | `itemIndex` | N | 생략 시 0. 복수 상품일 때 저장 대상 인덱스 |
 | `imageUrl` | N | 상품별 이미지 URL. 생략 시 draft `items[].imageUrl` 또는 캡처 `previewUrl`로 fallback |
 
@@ -255,7 +261,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | `category`, `itemType` | 대·소분류 code |
 | `primaryColor`, `primaryColorDisplay`, `secondaryColors` | 색상 |
 | `styleCodes` | 스타일 code 배열 |
-| `season` | `CLOTHES.season` code. 옷장 등록·수정 요청에서 설정하며 `WARDROBE_CLOTHES`에는 저장하지 않음 |
+| `season` | `CLOTHES.season` code. 옷 등록 시 확정하며 `WARDROBE_CLOTHES`에는 저장하지 않음 |
 | `gender` | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 사용자 화면 표시 대상 아님 |
 | `compatibilityScore` | 어울림 점수 (0~100, 내림차순 정렬) |
 
@@ -413,7 +419,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "gender": "MALE",
       "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
       "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
-      "speechStyle": "가볍고 친구같은 말투",
+      "speechStyle": "장난스럽고 친구같은 반말",
       "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
     }
   ],
@@ -435,7 +441,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "gender": "MALE",
       "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
       "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
-      "speechStyle": "가볍고 친구같은 말투",
+      "speechStyle": "장난스럽고 친구같은 반말",
       "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
     },
     "query": "남성 블랙 스트릿 코디 아이템",
@@ -479,7 +485,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "gender": "MALE",
       "styleCodes": ["STREET", "CASUAL", "GORPCORE", "CHIC"],
       "styleNames": ["스트릿", "캐주얼", "고프코어", "시크"],
-      "speechStyle": "가볍고 친구같은 말투",
+      "speechStyle": "장난스럽고 친구같은 반말",
       "description": "힘 빼고 멋내는 스트릿/캐주얼 코디를 잘 잡는 남자 MD"
     },
     "outfits": [
@@ -490,7 +496,23 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
         "season": "ALL_SEASON",
         "reason": "MD 말투가 반영된 코디 추천 이유",
         "stylingTip": "스타일링 팁",
-        "ownedItems": [],
+        "ownedItems": [
+          {
+            "wardrobeClothesId": 1,
+            "name": "보유 상의",
+            "category": "TOP"
+          },
+          {
+            "wardrobeClothesId": 2,
+            "name": "보유 하의",
+            "category": "BOTTOM"
+          },
+          {
+            "wardrobeClothesId": 3,
+            "name": "보유 신발",
+            "category": "SHOES"
+          }
+        ],
         "externalProducts": []
       }
     ]
@@ -499,7 +521,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 보유 옷을 최소 1개 포함해야 합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
+> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 보유 옷을 최소 1개 포함해야 하며, 보유 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부 상품은 필수가 아니므로 보유 옷만으로 필수 세 카테고리가 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
 
 #### AI MD 추천 코디 저장 요청/응답
 
@@ -511,10 +533,12 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
   "season": "ALL_SEASON",
   "reason": "MD 말투가 반영된 코디 추천 이유",
   "stylingTip": "스타일링 팁",
-  "wardrobeClothesIds": [1],
+  "wardrobeClothesIds": [1, 2, 3],
   "externalProducts": []
 }
 ```
+
+위 예시의 `wardrobeClothesIds`는 각각 `TOP`, `BOTTOM`, `SHOES`인 보유 옷을 의미합니다. 저장 요청도 추천 후보와 동일하게 사용자 보유 옷을 최소 1개 포함하고, `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부 상품 없이 보유 옷만으로 완성할 수 있으며, 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
 
 저장 성공 시에는 선택된 코디 1개가 `OUTFITS`, `OUTFIT_ITEMS`에 저장되고, 응답은 저장된 `outfit`과 구성 옷 목록을 포함합니다. 저장된 구성 옷은 코디북 조회 응답의 `outfits[].items`에서도 다시 조회할 수 있습니다.
 
@@ -604,7 +628,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: `items[].clothes`가 사용자 옷장에 연결된 보유 옷이면 `wardrobeClothesId`, `wardrobeId`, `userId`, `size` 등이 함께 채워집니다. `season`은 `CLOTHES` 마스터 값입니다. AI MD가 섞은 외부 상품처럼 옷장 연결이 없는 옷은 해당 필드가 `null`입니다.
+> **Note**: `items[].clothes`가 사용자 옷장에 연결된 보유 옷이면 `wardrobeClothesId`, `wardrobeId`, `userId`, `size` 등 사용자 옷장 연결 정보가 함께 채워집니다. `season`은 `CLOTHES.season` 기준의 공통 옷 정보입니다. AI MD가 섞은 외부 상품처럼 옷장 연결이 없는 옷은 옷장 연결 필드가 `null`입니다.
 
 ### 이미지
 

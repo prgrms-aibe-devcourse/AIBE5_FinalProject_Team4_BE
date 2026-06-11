@@ -46,10 +46,12 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -62,6 +64,14 @@ public class AiMdRecommendationService {
     private static final int OUTFIT_COUNT = 4;
     private static final int PRODUCT_RECOMMENDATION_COUNT = 10;
     private static final int MAX_WARDROBE_ITEMS_FOR_PROMPT = 24;
+    private static final int OUTFIT_PRODUCTS_PER_CATEGORY = 10;
+    private static final Set<String> REQUIRED_OUTFIT_CATEGORIES = Set.of("TOP", "BOTTOM", "SHOES");
+    private static final Map<String, String> OUTFIT_CATEGORY_SEARCH_KEYWORDS = Map.of(
+            "TOP", "티셔츠",
+            "BOTTOM", "팬츠",
+            "OUTER", "자켓",
+            "SHOES", "스니커즈"
+    );
 
     private final UserRepository userRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
@@ -84,8 +94,7 @@ public class AiMdRecommendationService {
         User user = findUser(userId);
         AiMdPersona persona = resolvePersonaForUser(user, mdId);
         List<WardrobeClothes> wardrobeItems = findOwnedWardrobeItems(userId);
-        String searchQuery = buildProductSearchQuery(persona, wardrobeItems);
-        List<NaverShoppingProductResponse> externalProducts = naverApiService.searchShoppingProducts(searchQuery);
+        List<NaverShoppingProductResponse> externalProducts = searchOutfitProductsByCategory(persona);
 
         AiMdGeminiOutfitResult aiResult = geminiService.generateJsonFromText(
                 buildOutfitPrompt(persona, wardrobeItems, externalProducts),
@@ -98,7 +107,11 @@ public class AiMdRecommendationService {
                 .filter(product -> StringUtils.hasText(product.productId()))
                 .collect(Collectors.toMap(NaverShoppingProductResponse::productId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
 
-        List<AiMdGeminiOutfitResult.OutfitCandidate> savableOutfits = savableOutfits(aiResult, wardrobeById);
+        List<AiMdGeminiOutfitResult.OutfitCandidate> savableOutfits = savableOutfits(
+                aiResult,
+                wardrobeById,
+                productById
+        );
         if (savableOutfits.size() < OUTFIT_COUNT) {
             throw new IllegalStateException("AI MD가 저장 가능한 코디 4개를 구성하지 못했습니다.");
         }
@@ -137,6 +150,9 @@ public class AiMdRecommendationService {
                 : request.externalProducts().stream()
                         .filter(Objects::nonNull)
                         .toList();
+        if (!hasCompleteOutfitComposition(ownedItems, externalProducts)) {
+            throw new IllegalArgumentException("저장할 코디에는 상의, 하의, 신발이 각각 최소 1개 포함되어야 합니다.");
+        }
         return saveOutfitRecommendation(
                 persona,
                 outfitBook,
@@ -217,7 +233,7 @@ public class AiMdRecommendationService {
         Outfit outfit = outfitRepository.save(Outfit.builder()
                 .outfitBook(outfitBook)
                 .title(defaultIfBlank(title, persona.displayName() + " MD 추천 코디"))
-                .description(defaultIfBlank(description, defaultIfBlank(reason, persona.description())))
+                .description(defaultIfBlank(description, defaultIfBlank(reason, defaultOutfitReason(persona))))
                 .thumbnailUrl(resolveThumbnailUrl(ownedItems, externalProducts))
                 .situation(defaultIfBlank(situation, "DAILY"))
                 .season(defaultIfBlank(season, resolveSeason(ownedItems)))
@@ -236,7 +252,7 @@ public class AiMdRecommendationService {
 
         return new SavedOutfitRecommendation(
                 OutfitResponse.from(outfit),
-                defaultIfBlank(reason, persona.description()),
+                defaultIfBlank(reason, defaultOutfitReason(persona)),
                 defaultIfBlank(stylingTip, persona.speechStyle()),
                 ownedItems.stream()
                         .map(item -> ClothesResponse.from(item.getClothes(), item))
@@ -270,7 +286,7 @@ public class AiMdRecommendationService {
                 defaultIfBlank(candidate.description(), candidate.reason()),
                 defaultIfBlank(candidate.situation(), "DAILY"),
                 defaultIfBlank(candidate.season(), resolveSeason(ownedItems)),
-                defaultIfBlank(candidate.reason(), persona.description()),
+                defaultIfBlank(candidate.reason(), defaultOutfitReason(persona)),
                 defaultIfBlank(candidate.stylingTip(), persona.speechStyle()),
                 ownedItems.stream()
                         .map(item -> ClothesResponse.from(item.getClothes(), item))
@@ -370,19 +386,117 @@ public class AiMdRecommendationService {
 
     private List<AiMdGeminiOutfitResult.OutfitCandidate> savableOutfits(
             AiMdGeminiOutfitResult aiResult,
-            Map<Long, WardrobeClothes> wardrobeById
+            Map<Long, WardrobeClothes> wardrobeById,
+            Map<String, NaverShoppingProductResponse> productById
     ) {
         if (aiResult == null || aiResult.outfits() == null) {
             return List.of();
         }
         /*
          * Gemini가 반환한 wardrobeClothesId는 외부 입력이므로 raw id 존재 여부만 믿지 않는다.
-         * 실제 현재 사용자 옷장에 매핑되는 보유 옷이 1개 이상 남는 후보만 저장 가능 후보로 확정한다.
+         * 실제 현재 사용자 옷장에 매핑되는 보유 옷이 1개 이상 남고,
+         * 보유 옷과 외부 상품을 합쳐 상의·하의·신발이 모두 구성된 후보만 반환 대상으로 확정한다.
          */
         return aiResult.outfits().stream()
-                .filter(outfit -> outfit.wardrobeClothesIds().stream().anyMatch(wardrobeById::containsKey))
+                .filter(outfit -> {
+                    List<WardrobeClothes> ownedItems = outfit.wardrobeClothesIds().stream()
+                            .map(wardrobeById::get)
+                            .filter(Objects::nonNull)
+                            .toList();
+                    if (ownedItems.isEmpty()) {
+                        return false;
+                    }
+                    List<NaverShoppingProductResponse> externalProducts = outfit.externalProductIds().stream()
+                            .map(productById::get)
+                            .filter(Objects::nonNull)
+                            .toList();
+                    return hasCompleteOutfitComposition(ownedItems, externalProducts);
+                })
                 .limit(OUTFIT_COUNT)
                 .toList();
+    }
+
+    /**
+     * 일반 검색 한 번으로는 후보가 상의에 치우칠 수 있으므로 코디 구성 카테고리별로 상품을 조회합니다.
+     * 네이버 검색 결과 중 실제 판별 카테고리가 검색 목적과 일치하는 상품만 Gemini 후보로 전달합니다.
+     */
+    private List<NaverShoppingProductResponse> searchOutfitProductsByCategory(AiMdPersona persona) {
+        String genderKeyword = persona.gender() == User.Gender.MALE ? "남성" : "여성";
+        String styleKeyword = persona.styleNames().get(0);
+        Map<String, NaverShoppingProductResponse> productsById = new LinkedHashMap<>();
+
+        for (Map.Entry<String, String> categoryEntry : OUTFIT_CATEGORY_SEARCH_KEYWORDS.entrySet()) {
+            String expectedCategory = categoryEntry.getKey();
+            String query = Stream.of(genderKeyword, styleKeyword, categoryEntry.getValue())
+                    .filter(StringUtils::hasText)
+                    .collect(Collectors.joining(" "));
+
+            naverApiService.searchShoppingProducts(query, OUTFIT_PRODUCTS_PER_CATEGORY, 1, "sim").stream()
+                    .filter(product -> expectedCategory.equals(resolveExternalProductCategory(product)))
+                    .filter(product -> StringUtils.hasText(product.productId()))
+                    .forEach(product -> productsById.putIfAbsent(product.productId(), product));
+        }
+        return List.copyOf(productsById.values());
+    }
+
+    /**
+     * 추천 조회와 저장 요청 모두 동일한 완성형 코디 규칙을 적용합니다.
+     * 아우터는 선택 사항이지만 상의·하의·신발은 각각 최소 한 개가 필요합니다.
+     */
+    private boolean hasCompleteOutfitComposition(
+            List<WardrobeClothes> ownedItems,
+            List<NaverShoppingProductResponse> externalProducts
+    ) {
+        Set<String> categories = new HashSet<>();
+        ownedItems.stream()
+                .map(WardrobeClothes::getClothes)
+                .map(Clothes::getCategory)
+                .filter(StringUtils::hasText)
+                .map(category -> category.trim().toUpperCase())
+                .forEach(categories::add);
+        externalProducts.stream()
+                .map(this::resolveExternalProductCategory)
+                .filter(StringUtils::hasText)
+                .forEach(categories::add);
+        return categories.containsAll(REQUIRED_OUTFIT_CATEGORIES);
+    }
+
+    /**
+     * 네이버의 카테고리와 상품명을 함께 사용해 코디 구성 카테고리를 판별합니다.
+     * 신발·하의·아우터를 상의보다 먼저 확인해 복합 상품명에서 상의로 잘못 분류되는 경우를 줄입니다.
+     */
+    private String resolveExternalProductCategory(NaverShoppingProductResponse product) {
+        if (product == null) {
+            return null;
+        }
+        String text = Stream.of(
+                        product.category1(),
+                        product.category2(),
+                        product.category3(),
+                        product.category4(),
+                        product.title()
+                )
+                .filter(StringUtils::hasText)
+                .map(value -> value.toLowerCase().replaceAll("\\s+", ""))
+                .collect(Collectors.joining(" "));
+
+        if (containsAny(text, "신발", "구두", "슈즈", "스니커", "운동화", "로퍼", "더비", "부츠", "샌들", "슬리퍼", "힐", "플랫")) {
+            return "SHOES";
+        }
+        if (containsAny(text, "바지", "팬츠", "슬랙스", "데님", "청바지", "스커트", "치마", "쇼츠", "반바지", "카고", "조거")) {
+            return "BOTTOM";
+        }
+        if (containsAny(text, "패딩", "코트", "자켓", "재킷", "점퍼", "바람막이", "집업", "블루종", "블레이저", "무스탕", "베스트", "조끼", "야상", "아우터")) {
+            return "OUTER";
+        }
+        if (containsAny(text, "셔츠", "티셔츠", "맨투맨", "후드", "니트", "스웨터", "가디건", "블라우스", "민소매", "카라", "폴로", "탑", "긴팔", "반팔")) {
+            return "TOP";
+        }
+        return null;
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        return Stream.of(keywords).anyMatch(text::contains);
     }
 
     private List<AiMdGeminiProductResult.ProductCandidate> safeProductCandidates(AiMdGeminiProductResult aiResult) {
@@ -413,14 +527,15 @@ public class AiMdRecommendationService {
             List<NaverShoppingProductResponse> externalProducts
     ) {
         return """
-                당신은 옷장난감 서비스의 AI MD입니다.
-                사용자 성별에 맞는 MD 페르소나로, 사용자의 보유 옷과 외부 상품 후보를 섞어 저장 가능한 코디를 정확히 4개 구성하세요.
+                당신은 옷장난감 서비스에서 고객의 옷장을 직접 살펴보고 코디를 제안하는 전문 패션 MD입니다.
+                아래 MD의 취향과 화법을 자신의 정체성으로 유지하면서, 사용자의 보유 옷과 외부 상품 후보를 섞어 저장 가능한 완성형 코디를 정확히 4개 구성하세요.
 
                 [MD]
                 이름: %s
                 스타일: %s
                 말투: %s
                 설명: %s
+                추천 사유 화법: %s
 
                 [보유 옷]
                 %s
@@ -431,10 +546,24 @@ public class AiMdRecommendationService {
                 규칙:
                 - outfits 배열 길이는 반드시 4입니다.
                 - 각 코디는 wardrobeClothesIds를 최소 1개 이상 포함해야 합니다.
+                - 각 코디는 보유 옷과 외부 상품을 합쳐 TOP(상의), BOTTOM(하의), SHOES(신발)를 각각 최소 1개 포함해야 합니다.
+                - OUTER(아우터)는 계절과 스타일에 맞을 때 추가하고, TOP은 이너와 레이어드 상의처럼 여러 개 선택할 수 있습니다.
+                - 상의만 여러 개 조합한 결과는 코디로 인정하지 않습니다. 반드시 하의와 신발까지 완성합니다.
                 - wardrobeClothesIds는 보유 옷 목록의 wardrobeClothesId만 사용합니다.
                 - externalProductIds는 외부 상품 후보의 productId만 사용합니다.
                 - 외부 상품은 필요할 때만 섞되, 코디 저장이 가능하도록 선택한 productId를 명확히 넣습니다.
-                - title, description, reason, stylingTip은 MD 말투를 반영합니다.
+                - reason은 사용자가 "왜 이 코디가 나에게 어울리는지" 바로 이해할 수 있도록 2~3개의 짧은 문장으로 작성하며, 전체 분량은 한글 기준 약 180~260자로 제한합니다.
+                - reason에는 선택한 보유 옷과 외부 상품을 빠짐없이 한 번씩 언급합니다. 상품명이 길면 브랜드나 핵심 상품명으로 자연스럽게 줄여 씁니다.
+                - 상의·하의·아우터·신발 등 각 아이템이 코디에서 맡는 역할을 색상, 핏, 소재, 실루엣 중 확인 가능한 특징과 연결해 짧게 설명합니다.
+                - 아이템별 설명을 따로 나열하지 말고, "상의가 중심을 잡고 하의가 균형을 맞추며 신발이 마무리한다"처럼 코디 전체의 조합 이유로 자연스럽게 이어 씁니다.
+                - reason은 %s MD가 사용자에게 직접 코디를 제안하는 말투로 작성하며, 페르소나의 스타일 취향과 추천 사유 화법을 일관되게 반영합니다.
+                - reason에서 "AI", "인공지능", "모델", "데이터", "분석 결과", "알고리즘", "사용자님" 같은 기계적이거나 부자연스러운 표현을 사용하지 않습니다.
+                - 사용자의 키, 체중, 체형, 신체 비율은 제공되지 않았으므로 "길어 보인다", "날씬해 보인다", "덩치가 좋아 보인다", "비율이 좋아진다"처럼 외형 변화를 단정하지 않습니다.
+                - 상품명에 체형을 지칭하는 표현이 포함되어 있어도 추천 사유에는 옮겨 쓰지 않습니다.
+                - 확인할 수 없는 직업, 일정, 취향을 추측하거나 모든 코디에 같은 상투적인 문장을 반복하지 않습니다.
+                - description은 코디의 전체적인 분위기를 한 문장으로 요약하고, reason과 같은 내용을 그대로 반복하지 않습니다.
+                - stylingTip은 소매를 걷는 방법, 신발·가방 선택, 핏 조절처럼 사용자가 바로 적용할 수 있는 팁을 한 문장으로 작성합니다.
+                - title, description, reason, stylingTip에서 자신을 AI라고 소개하지 않고 실제 %s MD처럼 말합니다.
                 - situation은 DAILY, DATE, WORK, TRAVEL 중 하나를 권장합니다.
                 - season은 SPRING, SUMMER, FALL, WINTER 또는 ALL_SEASON 중 하나를 권장합니다.
                 - JSON 외 문장은 쓰지 않습니다.
@@ -459,9 +588,31 @@ public class AiMdRecommendationService {
                 persona.styleNames(),
                 persona.speechStyle(),
                 persona.description(),
+                persona.recommendationVoiceGuide(),
                 summarizeWardrobeItems(wardrobeItems),
-                summarizeProducts(externalProducts)
+                summarizeProducts(externalProducts),
+                persona.displayName(),
+                persona.displayName()
         );
+    }
+
+    /**
+     * Gemini가 추천 사유를 비워 반환한 예외 상황에서도 기계적인 공통 문구 대신
+     * 선택한 MD의 정체성이 드러나는 최소한의 사용자 메시지를 제공합니다.
+     */
+    private String defaultOutfitReason(AiMdPersona persona) {
+        return switch (persona) {
+            case TAE_SIK -> "네 옷장에서 핏과 분위기가 자연스럽게 이어지는 조합으로 골랐어. "
+                    + "힘은 별로 안 줬는데 옷 좀 입었다는 소리는 듣겠는데?";
+            case JUN_SIK -> "가지고 계신 옷의 실루엣이 단정하게 이어지도록 구성했습니다. "
+                    + "과한 장식 없이도 도시적인 인상이 완성되는 조합입니다.";
+            case SE_SOON -> "옷장에 있는 아이템의 색과 실루엣이 차분하게 연결되도록 정리했어요. "
+                    + "유행을 크게 타지 않으면서 깔끔하게 입기 좋은 조합입니다.";
+            case GA_HYUN -> "가지고 계신 옷의 시크한 분위기는 살리고, 실루엣에 포인트가 생기도록 골랐어요. "
+                    + "과하게 꾸미지 않아도 도회적인 무드가 분명한 조합이에요.";
+            case SEONG_MI -> "옷장에 있는 아이템을 편하게 활용하면서도 흐트러져 보이지 않게 맞춰봤어요. "
+                    + "자주 손이 가면서 은근히 센스 있어 보이는 조합이에요.";
+        };
     }
 
     private String buildProductPrompt(
@@ -538,9 +689,10 @@ public class AiMdRecommendationService {
             return "- 없음";
         }
         return products.stream()
-                .map(product -> "- productId=%s, title=%s, brand=%s, mall=%s, price=%s, category=%s/%s/%s"
+                .map(product -> "- productId=%s, outfitCategory=%s, title=%s, brand=%s, mall=%s, price=%s, naverCategory=%s/%s/%s"
                         .formatted(
                                 product.productId(),
+                                defaultIfBlank(resolveExternalProductCategory(product), "UNKNOWN"),
                                 product.title(),
                                 defaultIfBlank(product.brand(), "UNKNOWN"),
                                 defaultIfBlank(product.mallName(), "UNKNOWN"),
