@@ -173,14 +173,11 @@ public class OutfitService {
             throw new AccessDeniedException("본인의 코디만 조회할 수 있습니다.");
         }
 
-        List<OutfitItemResponse> items = outfitItemRepository.findAllByOutfitId(outfitId)
-                .stream()
-                .map(item -> {
-                    WardrobeClothes wardrobeClothes = wardrobeClothesRepository
-                            .findActiveByUserIdAndClothesId(userId, item.getClothes().getId())
-                            .orElse(null);
-                    return OutfitItemResponse.from(item, wardrobeClothes);
-                })
+        List<OutfitItem> outfitItems = outfitItemRepository.findAllByOutfitId(outfitId);
+        Map<Long, WardrobeClothes> wardrobeClothesByClothesId = findWardrobeClothesByClothesId(userId, outfitItems);
+
+        List<OutfitItemResponse> items = outfitItems.stream()
+                .map(item -> OutfitItemResponse.from(item, wardrobeClothesByClothesId.get(item.getClothes().getId())))
                 .toList();
 
         return OutfitResponse.from(outfit, items);
