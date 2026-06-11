@@ -62,8 +62,6 @@ last_updated: 2026-06-10
 
 `/api/categories` 경로도 현재 구현에 남아 있지만, 신규 연동은 `/api/v1/categories`를 우선 사용합니다.
 
-`season` code는 이 문서의 [계절](#계절) 섹션을 기준으로 사용합니다. 현재 카탈로그 API 응답이 계절 목록을 별도로 내려주지 않는 경우 FE는 문서 기준 code를 사용하고, API 응답 확장이 필요하면 [implementation-gaps.md](../backend/implementation-gaps.md)에서 정합성을 확인합니다.
-
 ## 응답 구조
 
 `GET /api/v1/categories`는 공통 `ApiResponse<T>` 안에 카탈로그 데이터를 담아 반환합니다.
@@ -90,7 +88,6 @@ last_updated: 2026-06-10
         "clothesRegistration": {
           "category": "TOP",
           "item_type": "SHORT_SLEEVE",
-          "season": "SUMMER",
           "gender": "UNISEX",
           "primaryColor": "WHITE",
           "secondaryColors": ["NAVY"],
