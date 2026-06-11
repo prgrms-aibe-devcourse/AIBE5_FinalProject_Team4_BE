@@ -21,6 +21,7 @@ import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -163,6 +164,26 @@ public class OutfitService {
                 })
                 .toList();
         return outfitItemRepository.saveAll(items);
+    }
+    public OutfitResponse getOutfit(Long bookId, Long outfitId, Long userId) {
+        Outfit outfit = outfitRepository.findActiveByOutfitIdAndOutfitBook_Id(outfitId, bookId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 코디입니다."));
+
+        if (!outfit.getOutfitBook().getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("본인의 코디만 조회할 수 있습니다.");
+        }
+
+        List<OutfitItemResponse> items = outfitItemRepository.findAllByOutfitId(outfitId)
+                .stream()
+                .map(item -> {
+                    WardrobeClothes wardrobeClothes = wardrobeClothesRepository
+                            .findByWardrobe_User_IdAndClothes_Id(userId, item.getClothes().getId())
+                            .orElse(null);
+                    return OutfitItemResponse.from(item, wardrobeClothes);
+                })
+                .toList();
+
+        return OutfitResponse.from(outfit, items);
     }
 
     public OutfitBookResponse getBookByUserId(Long userId) {

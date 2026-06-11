@@ -270,4 +270,5 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             @Param("primaryColor") String primaryColor,
             @Param("ownershipStatus") OwnershipStatus ownershipStatus
     );
+    Optional<WardrobeClothes> findByWardrobe_User_IdAndClothes_Id(Long userId, Long clothesId);
 }

@@ -84,4 +84,13 @@ public class OutfitController {
         outfitService.deleteOutfit(bookId, outfitId, userId);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
+    @Operation(summary = "코디 조회", description = "코디 ID로 특정 코디를 조회합니다.")
+    @GetMapping("/{bookId}/outfits/{outfitId}")
+    public ResponseEntity<ApiResponse<OutfitResponse>> getOutfit(
+            @PathVariable Long bookId,
+            @PathVariable Long outfitId
+    ) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.ok(outfitService.getOutfit(bookId, outfitId, userId)));
+    }
 }

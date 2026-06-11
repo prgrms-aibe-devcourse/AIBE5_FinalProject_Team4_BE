@@ -31,4 +31,7 @@ public interface OutfitItemRepository extends JpaRepository<OutfitItem, Long> {
     List<OutfitItem> findAllByOutfit_OutfitId(Long outfitId);
 
     void deleteAllByOutfit_OutfitId(Long outfitId);
+
+    @Query("SELECT oi FROM OutfitItem oi WHERE oi.outfit.outfitId = :outfitId")
+    List<OutfitItem> findAllByOutfitId(@Param("outfitId") Long outfitId);
 }
