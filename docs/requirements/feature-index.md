@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-09
+last_updated: 2026-06-10
 ---
 
 # 기능 인덱스
@@ -24,10 +24,10 @@ last_updated: 2026-06-09
 | `STYLE-003` | 스타일 | 피드백 점수 반영 | 추천 싫어요와 추천 제외 피드백을 추천에 반영 | `USER_STYLES.feedback_weight`, `RECOMMENDATION_FEEDBACKS` | 추천 상세 |
 | `WARDROBE-001` | 옷장 | 단일 옷장 | 사용자별 하나의 디지털 옷장 제공 | `WARDROBES`, `GET /api/v1/wardrobes/users/{userId}` | 옷장 |
 | `WARDROBE-002` | 옷장 | 보유/미보유 통계 조회 | 보유 옷과 미보유 옷 수를 함께 집계하고 옷 종류별 통계 조회 | `GET /api/v1/wardrobes/users/{userId}/statistics`, `WARDROBE_CLOTHES` | 옷장 요약 |
-| `WARDROBE-003`~`WARDROBE-010` | 옷장 | 보유/미보유 옷 관리 | 보유 목록, 상세, 수정, 삭제, 즐겨찾기, 미보유 목록, 보유 전환 | `CLOTHES`, `WARDROBE_CLOTHES`, `GET /api/v1/users/{userId}/clothes`, `PATCH /api/v1/clothes/{clothesId}`, `DELETE /api/v1/clothes/{clothesId}`, `/api/users/{userId}/wishlist-clothes` | 옷장, 옷 상세 |
-| `WARDROBE-011`~`WARDROBE-016` | 옷 등록 | 구매내역 기반 등록 | 구매내역 캡처 업로드, AI 상품 추출, 결과 편집, 보유 저장 | `/api/v1/users/{userId}/clothes/purchase-captures/**`, `PURCHASE_HISTORY` | 옷 등록 |
-| `WARDROBE-017`~`WARDROBE-030` | 옷 등록 | 사진 기반 등록 | 옷 사진 업로드, AI 판별, 결과 표시/수정, 최종 저장, 성공/실패 알림 | `/api/v1/users/{userId}/clothes/photos/**`, `PHOTO` | 옷 등록 |
-| `CATALOG-001` | 카탈로그 | 공통 카탈로그 | 카테고리, 타입, 색상, 스타일, 외부 쇼핑몰 출처 code와 표시값 제공 | `GET /api/v1/categories`, `StyleCode`, `ColorCode`, `GenderCode` | 옷 등록, 필터 |
+| `WARDROBE-003`~`WARDROBE-010` | 옷장 | 보유/미보유 옷 관리 | 보유 목록, 상세, 수정, 삭제, 즐겨찾기, 미보유 목록, 보유 전환. 옷 수정은 생성된 공통 옷의 계절을 변경하지 않음 | `CLOTHES`, `WARDROBE_CLOTHES`, `GET /api/v1/users/{userId}/clothes`, `PATCH /api/v1/clothes/{clothesId}`, `DELETE /api/v1/clothes/{clothesId}`, `/api/users/{userId}/wishlist-clothes` | 옷장, 옷 상세 |
+| `WARDROBE-011`~`WARDROBE-016` | 옷 등록 | 구매내역 기반 등록 | 구매내역 캡처 업로드, AI 상품 추출, 결과 편집, 계절 선택, 보유 저장 | `/api/v1/users/{userId}/clothes/purchase-captures/**`, `PURCHASE_HISTORY` | 옷 등록 |
+| `WARDROBE-017`~`WARDROBE-030` | 옷 등록 | 사진 기반 등록 | 옷 사진 업로드, AI 판별, 결과 표시/수정, 계절 선택, 최종 저장, 성공/실패 알림 | `/api/v1/users/{userId}/clothes/photos/**`, `PHOTO` | 옷 등록 |
+| `CATALOG-001` | 카탈로그 | 공통 카탈로그 | 카테고리, 타입, 색상, 스타일, 외부 쇼핑몰 출처 code와 표시값 제공. 계절 code 기준은 카탈로그 문서에서 관리 | `GET /api/v1/categories`, `StyleCode`, `ColorCode`, `GenderCode` | 옷 등록, 필터 |
 | `RECO-001` | 추천 | OOTD 코디 | 사용자 기준 코디 추천. 날씨, 계절, 체감온도는 보조 조건으로 반영 | `GET /api/v1/ootd/{wardrobeId}`, `WeatherCompatibilityTable` | 추천 메인 |
 | `RECO-002` | 추천 | 취향 분석/스타일 기반 추천 | 사용자 취향, 옷장, 지역, 날씨 등 데이터를 추천 근거로 활용 | `GET /api/v1/recommendations/{wardrobeId}`, `USER_STYLES`, `RECOMMENDATION_FEEDBACKS` | 추천 메인 |
 | `RECO-003` | 추천 | 유사 상품 탐색 | 선택한 상품이나 옷과 유사한 상품을 이미지, 카테고리, 색상, 스타일 기준으로 탐색 | `GET /api/v1/users/{userId}/clothes/{clothesId}/similar-products` | 옷 상세, 추천 상세 |

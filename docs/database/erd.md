@@ -1,17 +1,17 @@
 ---
 doc_type: be_database
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-09
-erd_version: v2.2
+last_updated: 2026-06-10
+erd_version: v2.3
 ---
 
 # ERD
 
-이 문서는 옷장난감 BE의 확정 ERD v2.2 기준을 정리합니다. DB 구조와 도메인 규칙이 충돌할 때는 이 문서와 [도메인 규칙](../domain/invariants.md)을 함께 확인합니다.
+이 문서는 옷장난감 BE의 확정 ERD v2.3 기준을 정리합니다. DB 구조와 도메인 규칙이 충돌할 때는 이 문서와 [도메인 규칙](../domain/invariants.md)을 함께 확인합니다.
 
 ## ERD 이미지
 
-![ERD v2.2](./assets/erd-v2.2.png)
+![ERD v2.3](./assets/erd-v2.3.png)
 
 ## 테이블 그룹
 
@@ -68,7 +68,7 @@ erd_version: v2.2
 | `image_url` | 대표 이미지 URL |
 | `category` | 옷 카테고리 코드 |
 | `gender` | 옷 대상 성별 코드: `MALE`, `FEMALE`, `UNISEX`. 사용자 화면 표시 대상이 아닌 내부 분류/추천용 값 |
-| `season` | 마스터 옷 착용 시즌 code: `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON`. 옷장 등록·수정·AI draft 저장 및 어울리는 옷 추천 **기준/후보** 시즌 점수/필터에 사용 |
+| `season` | 옷 자체의 대상 계절 code: `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON`. 옷 등록 시 1개 선택하며 생성 후 변경하지 않음 |
 | `item_type` | 카테고리 하위 옷 타입 코드 |
 | `clothes_info_source` | 옷 정보 출처: `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |
 | `external_source` | 외부 쇼핑몰 또는 직접 입력 출처 |
@@ -142,7 +142,7 @@ erd_version: v2.2
 | `url` | 외부 URL |
 | `sort_order` | 프로필 노출 순서 |
 
-## BE 구현 범위 (ERD v2.2 명칭 정합)
+## BE 구현 범위 (ERD v2.3 명칭 정합)
 
 | 대상 | BE 엔티티 | 비고 |
 | --- | --- | --- |
@@ -157,4 +157,6 @@ erd_version: v2.2
 - `CLOTHES`는 공통 옷 정보이므로 사용자 옷장 삭제와 함께 삭제하지 않습니다.
 - 사용자가 옷장에서 옷을 삭제하면 `WARDROBE_CLOTHES` 연결만 제거하거나 비활성화합니다.
 - 공통 옷 정보와 대표 이미지는 추천 품질 향상을 위한 서비스 데이터로 유지합니다.
+- 옷의 계절은 `CLOTHES.season`에 저장하는 공통 옷 정보입니다.
+- 옷마다 계절은 1개만 부여하며, 옷 등록 시 선택한 뒤 생성된 옷의 계절은 변경하지 않습니다.
 - 사용자별 사이즈, 즐겨찾기, 보유 상태는 공통 옷 정보가 아니라 `WARDROBE_CLOTHES`에 저장합니다.

@@ -1,7 +1,7 @@
 ---
 doc_type: shared_with_be_details
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-09
+last_updated: 2026-06-10
 ---
 
 # 옷 등록 플로우 가이드
@@ -27,12 +27,14 @@ last_updated: 2026-06-09
 
 | 데이터 | 저장 위치 | 설명 |
 | --- | --- | --- |
-| 상품명, 브랜드, 품번, 이미지, 카테고리, 타입, 대상 성별 code, 착용 시즌 | `CLOTHES` | 옷 자체의 공통 정보. 대상 성별·시즌 code는 API로 설정하며 사용자 화면에 노출하지 않음 |
+| 상품명, 브랜드, 품번, 이미지, 카테고리, 타입, 계절, 대상 성별 code | `CLOTHES` | 옷 자체의 공통 정보. 계절은 등록 시 1개 선택하고 생성 후 변경하지 않으며, 대상 성별 code는 사용자 화면에 노출하지 않음 |
 | 옷 정보 출처 | `CLOTHES.clothes_info_source` | `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |
 | 보유/미보유 | `WARDROBE_CLOTHES.ownership_status` | `OWNED`, `WISHLIST` |
 | 사용자별 사이즈, 즐겨찾기 | `WARDROBE_CLOTHES` | 사용자 옷장 기준 정보 |
 | 대표/보조 색상 | `CLOTHING_COLORS` | 색상 code와 role |
 | 대표/보조 스타일 | `CLOTHING_STYLES` | 스타일 code와 role |
+
+`season`은 사용자별 옷장 정보가 아니라 `CLOTHES.season`에 저장하는 공통 옷 정보입니다. 사진 기반 등록, 구매내역 기반 등록, 외부 쇼핑몰 상품 저장 모두 저장 시점에 계절을 1개 확정하며, 생성된 옷의 계절은 이후 옷 수정 플로우에서 변경하지 않습니다.
 
 ## 사진 기반 등록
 
@@ -79,7 +81,7 @@ last_updated: 2026-06-09
 ```text
 1. 사용자가 구매내역 캡처 이미지 업로드
 2. BE가 이미지를 저장
-3. AI가 상품명, 브랜드, 카테고리, 타입, 색상, 스타일, 외부 출처 후보 분석
+3. AI가 상품명, 브랜드, 카테고리, 타입, 계절, 색상, 스타일, 외부 출처 후보 분석
 4. 분석 초안 조회
 5. 사용자가 초안 확인/수정
 6. 최종 저장
@@ -95,7 +97,7 @@ last_updated: 2026-06-09
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/save` | 구매내역 기반 옷 저장 (상품별 순차 저장) |
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/items/{itemIndex}/skip` | 복수 상품 캡처에서 특정 상품 건너뛰기 |
 
-한 캡처에 여러 상품이 있으면 `itemIndex`별로 저장·건너뛰기를 반복합니다. 모든 상품이 `SAVED` 또는 `SKIPPED`가 되면 캡처가 완료됩니다. draft/analyze 응답의 `items[]`에는 `itemIndex`, `gender`, `imageUrl`, `status`가 포함되고, `pendingItemCount`·`captureCompleted`로 진행 상태를 확인합니다.
+한 캡처에 여러 상품이 있으면 `itemIndex`별로 저장·건너뛰기를 반복합니다. 모든 상품이 `SAVED` 또는 `SKIPPED`가 되면 캡처가 완료됩니다. draft/analyze 응답의 `items[]`에는 `itemIndex`, `season`, `gender`, `imageUrl`, `status`가 포함되고, `pendingItemCount`·`captureCompleted`로 진행 상태를 확인합니다.
 
 저장 요청 예시 (단일 상품 — `itemIndex` 생략 시 0번 상품):
 
@@ -127,7 +129,7 @@ last_updated: 2026-06-09
 
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
-| `items` | `PurchaseCaptureItemDraft[]` | 상품별 초안. `itemIndex`, `status`(`PENDING`/`SAVED`/`SKIPPED`), `gender`, `imageUrl` 포함 |
+| `items` | `PurchaseCaptureItemDraft[]` | 상품별 초안. `itemIndex`, `status`(`PENDING`/`SAVED`/`SKIPPED`), `season`, `gender`, `imageUrl` 포함 |
 | `pendingItemCount` | number | 아직 저장·건너뛰기하지 않은 상품 수 |
 | `captureCompleted` | boolean | 모든 상품이 `SAVED` 또는 `SKIPPED`이면 true |
 
@@ -181,8 +183,8 @@ last_updated: 2026-06-09
 ## FE 확인 포인트
 
 - 업로드 중, 분석 중, 분석 실패, 초안 확인, 저장 완료 상태를 구분합니다.
-- 분석 결과는 사용자가 수정할 수 있어야 합니다.
-- 카테고리, 아이템 타입, 색상, 스타일은 화면 입력/표시와 저장 요청에 사용하며 [카탈로그 사용 가이드](../domain/catalog.md)의 code 값을 사용합니다.
+- 분석 결과는 최종 저장 전까지 사용자가 수정할 수 있어야 합니다. 단, `season`은 저장 시점에 확정되는 공통 옷 정보이므로 생성 후 옷 수정 대상에 포함하지 않습니다.
+- 카테고리, 아이템 타입, 계절, 색상, 스타일은 화면 입력/표시와 저장 요청에 사용하며 [카탈로그 사용 가이드](../domain/catalog.md)의 code 값을 사용합니다.
 - 대상 성별(`gender`)은 사용자 화면에 표시하거나 사용자가 직접 수정하는 값이 아니라, 내부 분류/추천용 code로 저장 요청에 포함합니다.
 - 사진·구매내역 등록 draft/analyze의 `gender` 기본값은 사용자 프로필 성별이며, FE는 별도 표시 없이 저장 요청에 포함합니다.
 - 구매내역 캡처 분석에서 일부 값이 불확실할 수 있으므로 수동 보정 UI가 필요합니다.
@@ -192,7 +194,8 @@ last_updated: 2026-06-09
 ## BE 확인 포인트
 
 - 사용자별 리소스는 인증 사용자와 요청 `userId` 일치를 확인합니다.
-- `CLOTHES`에는 공통 옷 정보를 저장하고, `WARDROBE_CLOTHES`에는 사용자별 상태를 저장합니다.
+- `CLOTHES`에는 계절을 포함한 공통 옷 정보를 저장하고, `WARDROBE_CLOTHES`에는 사용자별 상태를 저장합니다.
+- `season`은 `CLOTHES.season` 기준으로 저장하며 생성 후 변경하지 않습니다. 현재 코드가 옷 수정 요청에서 `CLOTHES.season`을 변경할 수 있으면 [implementation-gaps.md](../backend/implementation-gaps.md)에서 정합성을 확인합니다.
 - 추천 상품을 `POST .../wishlist-clothes/{clothesId}`로 연결할 때는 `EXTERNAL_SHOPPING` 공용 마스터만 허용합니다.
 - 공용 외부 상품을 보유 옷으로 전환할 때는 `CLOTHES` 마스터를 변경하지 않고 사용자 전용 `PURCHASE_HISTORY` 행을 복제해 연결합니다.
 - 추천·위시리스트 연결 시 사용자 활성 보유/미보유 옷과 `externalProductId` 또는 브랜드·상품명·카테고리·타입·대표색상 identity가 같으면 원본 외부 상품도 중복으로 처리합니다.
