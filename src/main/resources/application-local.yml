@@ -60,6 +60,8 @@ jwt:
 
 gemini:
   api-key: ${GEMINI_API_KEY}
+  # local 프로필에서도 기본 설정의 fallback 목록을 명시해 주 모델 과부하 시 추천 API를 계속 시도합니다.
+  fallback-models: gemini-2.5-flash,gemini-2.0-flash
 
 weather:
   api:
