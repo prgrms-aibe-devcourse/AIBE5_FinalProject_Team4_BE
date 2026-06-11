@@ -55,7 +55,7 @@ public class OotdRecommendationService {
         List<ScoredItem> bottoms = filterAndScore(ownedClothes, "BOTTOM", currentTemp, styleWeights);
         List<ScoredItem> outers = filterAndScore(ownedClothes, "OUTER", currentTemp, styleWeights);
 
-        if (tops.isEmpty() || bottoms.isEmpty() || (currentSeason == ClothesSeason.WINTER && outers.isEmpty())) {
+        if (tops.isEmpty() || bottoms.isEmpty() || (currentSeason.requiresOuter() && outers.isEmpty())) {
             return OotdResponse.builder()
                     .combinations(List.of())
                     .weatherLabel(buildWeatherLabel(currentSeason, currentTemp))
@@ -65,7 +65,7 @@ public class OotdRecommendationService {
 
         List<OotdResponse.OotdCombinationResponse> combinations = new ArrayList<>();
 
-        if (currentSeason == ClothesSeason.WINTER) {
+        if (currentSeason.requiresOuter()) {
             for (ScoredItem top : tops) {
                 for (ScoredItem bottom : bottoms) {
                     for (ScoredItem outer : outers) {
@@ -118,10 +118,9 @@ public class OotdRecommendationService {
                 .filter(wc -> wc.getClothes().getCategory().equals(targetCategory))
                 .map(wc -> {
                     double weatherScore = WeatherCompatibilityTable.getWeatherScore(temp, wc.getClothes().getItemType());
-                    
+
                     // 계절 일치 가점 (0.0 ~ 0.5)
                     double seasonMatchScore = currentSeason.isCompatibleWith(wc.getClothes().getSeason()) ? 0.5 : 0.0;
-                    
                     double favoriteWeight = wc.getFavorite() ? 1.5 : 1.0;
                     double styleScore = 0.0;
                     // 의상의 스타일 태그들 중 유저 선호 스타일과 일치하는 최대 combined_weight 반영

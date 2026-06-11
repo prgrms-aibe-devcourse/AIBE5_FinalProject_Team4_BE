@@ -49,6 +49,10 @@ public enum ClothesSeason {
         return false;
     }
 
+    public boolean requiresOuter() {
+        return this == WINTER || this == FALL;
+    }
+
     private static ClothesSeason fromNormalized(String normalized) {
         if ("AUTUMN".equals(normalized)) {
             return FALL;

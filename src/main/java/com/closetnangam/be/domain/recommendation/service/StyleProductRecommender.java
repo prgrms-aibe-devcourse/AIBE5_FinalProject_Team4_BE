@@ -130,7 +130,6 @@ public class StyleProductRecommender {
 
         // 2. 날씨 점수 (40%)
         double weatherScore = WeatherCompatibilityTable.getWeatherScore(currentTemp, clothes.getItemType());
-        
         // 3. 계절 일치 점수 (추가)
         ClothesSeason currentSeason = ClothesSeason.fromTemperature(currentTemp);
         double seasonMatchScore = currentSeason.isCompatibleWith(clothes.getSeason()) ? 1.0 : 0.0;
