@@ -1,7 +1,7 @@
 package com.closetnangam.be.domain.clothes.scoring;
 
 import com.closetnangam.be.domain.catalog.enums.ClothesItemType;
-import com.closetnangam.be.domain.clothes.enums.SeasonType;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 
 import java.util.Collections;
 import java.util.EnumSet;
@@ -187,19 +187,19 @@ public final class ItemTypeCompatibilityTable {
 
     /**
      * itemType cohesion group으로 계절 성향을 추정합니다.
-     * WINTER만 있으면 COLD, SUMMER만 있으면 HOT, 그 외는 empty.
+     * WINTER만 있으면 WINTER, SUMMER만 있으면 SUMMER, 그 외는 ALL_SEASON.
      */
-    public static Optional<SeasonType> inferSeasonTypeFromItemType(String itemType) {
+    public static ClothesSeason inferSeasonFromItemType(String itemType) {
         Set<CohesionGroup> groups = GROUPS.getOrDefault(itemType, Collections.emptySet());
         boolean winter = groups.contains(CohesionGroup.WINTER);
         boolean summer = groups.contains(CohesionGroup.SUMMER);
         if (winter && !summer) {
-            return Optional.of(SeasonType.COLD);
+            return ClothesSeason.WINTER;
         }
         if (summer && !winter) {
-            return Optional.of(SeasonType.HOT);
+            return ClothesSeason.SUMMER;
         }
-        return Optional.empty();
+        return ClothesSeason.ALL_SEASON;
     }
 
     private static Double lookupExplicit(String a, String b) {
