@@ -86,6 +86,11 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | POST   | `/api/v1/auth/refresh`             | Access Token 재발급 |
 | POST   | `/api/v1/auth/logout`              | 로그아웃            |
 
+### 사용자
+| Method | Path | 설명 |
+| --- | --- | --- |
+| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 userId 반환 (미인증 시 401) |
+| GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
 
 ### 카탈로그
 
