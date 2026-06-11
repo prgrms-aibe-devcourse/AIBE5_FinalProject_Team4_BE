@@ -239,7 +239,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 
 | Query | 필수 | 설명 |
 | --- | --- | --- |
-| `limitPerCategory` | N | 카테고리당 최대 추천 수. 기본 `5`, 허용 범위 `1`~`10` |
+| `limitPerCategory` | N | 카테고리당 최대 추천 수. 기본 `5`, 허용 범위 `1`~`50` |
 
 JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해당 사용자의 보유 옷(`OWNED`)이어야 합니다.
 
