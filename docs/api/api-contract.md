@@ -583,7 +583,34 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 > - `items` 생략(null): 기존 구성 아이템 유지, 메타데이터만 수정
 > - `items: []` (빈 배열): 기존 구성 아이템 전체 삭제
 > - `items: [...]` (목록): 기존 구성 전체 교체
+> - 
+#### GET /api/v1/outfit-books/{bookId}/outfits/{outfitId} — 코디 조회
 
+```json
+{
+  "success": true,
+  "data": {
+    "outfitId": 1,
+    "outfitBookId": 1,
+    "title": "봄 데일리 코디",
+    "description": "가볍게 입기 좋은 봄 코디",
+    "thumbnailUrl": "",
+    "situation": "일상",
+    "season": "SPRING",
+    "favorite": false,
+    "items": [
+      {
+        "outfitItemId": 1,
+        "itemRole": "TOP",
+        "layerOrder": 1,
+        "clothes": { ... }
+      }
+    ],
+    "createdAt": "2026-06-11T11:00:00",
+    "updatedAt": "2026-06-11T11:00:00"
+  }
+}
+```
 #### 코디북 조회 응답 (OutfitBookResponse)
 
 ```json

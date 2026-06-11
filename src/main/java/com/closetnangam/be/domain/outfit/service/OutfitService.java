@@ -177,7 +177,7 @@ public class OutfitService {
                 .stream()
                 .map(item -> {
                     WardrobeClothes wardrobeClothes = wardrobeClothesRepository
-                            .findByWardrobe_User_IdAndClothes_Id(userId, item.getClothes().getId())
+                            .findActiveByUserIdAndClothesId(userId, item.getClothes().getId())
                             .orElse(null);
                     return OutfitItemResponse.from(item, wardrobeClothes);
                 })

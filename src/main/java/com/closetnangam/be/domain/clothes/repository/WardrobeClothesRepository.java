@@ -271,4 +271,16 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             @Param("ownershipStatus") OwnershipStatus ownershipStatus
     );
     Optional<WardrobeClothes> findByWardrobe_User_IdAndClothes_Id(Long userId, Long clothesId);
+
+    @Query("""
+    SELECT wc FROM WardrobeClothes wc
+    WHERE wc.wardrobe.user.id = :userId
+    AND wc.clothes.id = :clothesId
+    AND wc.deletedAt IS NULL
+    ORDER BY wc.id DESC
+    """)
+    Optional<WardrobeClothes> findActiveByUserIdAndClothesId(
+            @Param("userId") Long userId,
+            @Param("clothesId") Long clothesId
+    );
 }
