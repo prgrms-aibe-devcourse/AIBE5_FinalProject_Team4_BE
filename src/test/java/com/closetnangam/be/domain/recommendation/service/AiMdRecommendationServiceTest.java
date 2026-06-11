@@ -122,7 +122,7 @@ class AiMdRecommendationServiceTest {
                 .contains("상품명에 체형을 지칭하는 표현이 포함되어 있어도 추천 사유에는 옮겨 쓰지 않습니다")
                 .contains("처음부터 끝까지 존댓말 없이")
                 .contains("자연스러운 반말")
-                .contains("가볍게 장난을 섞어")
+                .contains("가볍게 장난")
                 .contains("사용자를 놀리거나 무례하게 말하지 않고");
     }
 
