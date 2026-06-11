@@ -1,7 +1,7 @@
 ---
 doc_type: be_doc_index
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-09
+last_updated: 2026-06-10
 ---
 
 # 프로젝트 문서
@@ -27,11 +27,11 @@ last_updated: 2026-06-09
 | [requirements/requirements-definition.md](./requirements/requirements-definition.md) | 공통 | 요구사항 ID, 세부기능 ID, 기능 요구, 정책/제약 기준 |
 | [requirements/feature-index.md](./requirements/feature-index.md) | 공통 | 요구사항 정의서의 세부기능 ID와 API/화면/도메인 연결 기준 |
 | [domain/glossary.md](./domain/glossary.md) | 공통 | 프로젝트에서 사용하는 도메인 용어와 enum 기준 |
-| [domain/catalog.md](./domain/catalog.md) | 공통 | 카테고리, 타입, 색상, 스타일, 외부 출처 code 사용 기준 |
+| [domain/catalog.md](./domain/catalog.md) | 공통 | 카테고리, 타입, 계절, 색상, 스타일, 외부 출처 code 사용 기준 |
 | [domain/invariants.md](./domain/invariants.md) | 공통 | 구현 중 유지해야 하는 핵심 도메인 규칙 |
 | [features/recommendation-policy.md](./features/recommendation-policy.md) | 공통 | 추천 점수, 피드백, 추천 제외, 동점 처리 기준 |
 | [features/garment-registration.md](./features/garment-registration.md) | 공통 + BE 상세 | 옷 등록 흐름과 BE 저장/API 기준 |
-| [database/erd.md](./database/erd.md) | BE | 확정 ERD v2.2, 테이블 역할, 관계 기준 |
+| [database/erd.md](./database/erd.md) | BE | 확정 ERD v2.3, 테이블 역할, 관계 기준 |
 | [database/data-lifecycle.md](./database/data-lifecycle.md) | BE | 데이터 생성, 삭제, 보존 기준 |
 | [api/api-contract.md](./api/api-contract.md) | BE | API 경로, 응답 형식, 오류 처리, 엔드포인트 기준 |
 | [architecture/package-structure.md](./architecture/package-structure.md) | BE | BE 패키지 구조와 책임 경계 |
