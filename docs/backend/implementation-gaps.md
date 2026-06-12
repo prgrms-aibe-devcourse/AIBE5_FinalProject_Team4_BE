@@ -1,7 +1,7 @@
 ---
 doc_type: be_implementation_gaps
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-11
+last_updated: 2026-06-12
 ---
 
 # BE 구현 정합성 현황
@@ -40,7 +40,7 @@ last_updated: 2026-06-11
 | 추천 동점 처리 | 옷장 기반 어울리는 옷 추천 API가 점수 내림차순으로만 정렬하고 동점 그룹 랜덤 처리는 하지 않음 | 같은 점수 그룹 안에서는 랜덤 노출 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | 이미지 저장 방식 | 현재 이미지 업로드/조회 구현은 로컬 파일 저장소와 `/api/v1/images/**` 조회 endpoint를 사용 | 운영 기준은 AWS S3 저장과 이미지 URL 관리 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md) |
 | 추천 응답 형식 | `RECO-002` 추천 응답의 `price`는 "0" 고정, `score`는 0~1 문자열, `reason`은 기술적 매칭 결과 반환 | 실제 가격, 백분율 점수, 사용자 친화적 자연어 추천 이유 제공 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) |
-| AI MD 추천 검증 범위 | `RECO-006` API는 완성형 코디(`TOP`, `BOTTOM`, `SHOES`)를 검증하고 일부 Gemini 응답 변형 테스트가 존재하지만, 외부 상품 포함 저장과 저장 실패 경로 테스트가 부족 | 외부 상품 혼합 코디 저장, 4개 미만 응답, 저장 실패/롤백 경로를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
+| AI MD 추천 검증 범위 | `RECO-006` API는 완성형 코디 검증과 스타일 가중 상품 후보 구성을 구현했지만, 외부 상품 포함 저장·저장 실패 및 다중 네이버 검색 조합 경로 테스트가 부족 | 외부 상품 혼합 코디 저장, 4개 미만 응답, 저장 실패/롤백, 다중 검색 결과 병합 경로를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | 개발/임시 API 경계 | local mock token API가 코드에 존재 | 공식 서비스 API는 [api-contract.md](../api/api-contract.md)의 엔드포인트 인덱스를 기준으로 판단 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) |
 
 ## 요구사항 ID 연결표
@@ -53,7 +53,7 @@ last_updated: 2026-06-11
 | `RECO-005` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 그룹 랜덤 노출 기준 반영 여부 확인 필요 |
 | `DEPLOY-004` | 이미지 저장과 조회 | `LocalImageStorageService`, `ImageController`, `StorageProperties` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md) | 현재 로컬 저장소 기반. 운영 기준인 AWS S3 전환 여부 확인 필요 |
 | `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | `price` placeholder("0"), 0~1 점수 형식, 기술적 추천 이유 제공. 기준 문서와 응답 형식 차이 존재 |
-| `RECO-006` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 상품 추천, 완성형 코디 추천/저장 구현. null/누락 목록, 실제 옷장 매핑, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 상품 포함 저장과 저장 실패 경로 테스트 보강 필요 |
+| `RECO-006` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 다중 상품 검색, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
 | 개발/임시 API | `GET /api/v1/auth/mock-token` | `MockAuthController` | [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) | 공식 사용자 기능으로 보지 않음. local 개발 경계 확인 필요 |
 
 ## BE 코드와 공식 기준 확인 필요
@@ -245,6 +245,10 @@ src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendati
 - 저장 가능한 후보가 4개를 초과하면 앞에서부터 4개만 확정
 - 코디 프롬프트가 필수 구성, 전체 아이템 추천 사유, MD별 말투를 요구하는지 검증
 - 추천 사유 fallback과 각 persona의 내부 화법 지침이 서로 구분되는지 검증
+- 사용자 스타일 `combinedWeight`와 MD 친화도가 상품 검색 가중치에 반영되는지 검증
+- 상품명이 같고 `productId`가 다른 후보를 동일 상품으로 판별하는지 검증
+- 상품 추천 프롬프트가 스타일 빈도와 브랜드·카테고리 다양성을 요구하는지 검증
+- 상품 추천 1차 선별에서 같은 브랜드 최대 2개, 같은 카테고리 최대 4개 제한 검증
 
 다만 이 기능은 Gemini와 네이버쇼핑 응답을 조합하는 흐름이라, 아래 경로는 추가 서비스 단위 테스트로 고정할 필요가 있습니다.
 
@@ -252,6 +256,8 @@ src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendati
 - 외부 상품을 1개 이상 포함한 코디 후보 선택 저장
 - Gemini가 4개 미만 코디를 반환했을 때 실패 처리
 - Gemini가 존재하지 않는 `productId`를 반환했을 때 필터링/검증 처리
+- 여러 네이버 검색 페이지의 결과를 합치고 동일 상품을 제거하는 전체 서비스 경로
+- 재추천 요청에서 검색 조합이 달라지면서도 고가중치 스타일 빈도가 유지되는 통계적 경로
 - 저장 요청에서 TOP, BOTTOM, SHOES 중 하나가 누락됐을 때 `400 Bad Request`를 반환하는 컨트롤러 경로
 - 선택 코디 저장 중 외부 상품 생성, `OUTFITS`, `OUTFIT_ITEMS` 저장 실패 시 롤백 처리
 
