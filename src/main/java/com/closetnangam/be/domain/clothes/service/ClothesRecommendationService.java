@@ -7,7 +7,7 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResp
 import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResponse.RecommendedItem;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
-import com.closetnangam.be.domain.clothes.enums.SeasonType;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher;
 import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher.WardrobeExclusionIndex;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
@@ -330,44 +330,26 @@ public class ClothesRecommendationService {
      * </ul>
      */
     private double computeSeasonScore(String anchorSeason, String candidateSeason) {
-        if (!StringUtils.hasText(anchorSeason) || !StringUtils.hasText(candidateSeason)) {
-            return SCORE_SEASON_UNKNOWN;
-        }
-        return anchorSeason.equals(candidateSeason) ? 1.0 : SCORE_SEASON_MISMATCH;
+        ClothesSeason anchor = ClothesSeason.fromCode(anchorSeason);
+        ClothesSeason candidate = ClothesSeason.fromCode(candidateSeason);
+
+        if (anchor.isCompatibleWith(candidate)) return 1.0;
+        return SCORE_SEASON_MISMATCH;
     }
 
     /**
-     * 여름(HOT) ↔ 겨울(COLD) 조합은 추천 후보에서 제외합니다.
-     * ALL/ALL_SEASON·미입력·봄가을(MILD) 등은 기존 점수 로직만 적용합니다.
+     * 여름 ↔ 겨울 조합은 추천 후보에서 제외합니다.
      */
     private boolean isSummerWinterSeasonClash(String anchorSeason, String candidateSeason, String candidateItemType) {
-        Optional<SeasonType> anchorType = resolveSeasonType(anchorSeason);
-        Optional<SeasonType> candidateType = resolveSeasonType(candidateSeason)
-                .or(() -> ItemTypeCompatibilityTable.inferSeasonTypeFromItemType(candidateItemType));
+        ClothesSeason anchor = ClothesSeason.fromCode(anchorSeason);
+        ClothesSeason candidate = ClothesSeason.fromCode(candidateSeason);
 
-        if (anchorType.isEmpty() || candidateType.isEmpty()) {
-            return false;
-        }
-        return (anchorType.get() == SeasonType.HOT && candidateType.get() == SeasonType.COLD)
-                || (anchorType.get() == SeasonType.COLD && candidateType.get() == SeasonType.HOT);
-    }
-
-    private static Optional<SeasonType> resolveSeasonType(String season) {
-        if (!StringUtils.hasText(season)) {
-            return Optional.empty();
-        }
-        String normalized = season.trim().toUpperCase(Locale.ROOT);
-        if ("ALL".equals(normalized) || "ALL_SEASON".equals(normalized)) {
-            return Optional.empty();
+        if (candidate == ClothesSeason.ALL_SEASON) {
+            candidate = ItemTypeCompatibilityTable.inferSeasonFromItemType(candidateItemType);
         }
 
-        List<SeasonType> matched = Arrays.stream(SeasonType.values())
-                .filter(type -> type.matches(season))
-                .toList();
-        if (matched.size() != 1) {
-            return Optional.empty();
-        }
-        return Optional.of(matched.get(0));
+        return (anchor == ClothesSeason.SUMMER && candidate == ClothesSeason.WINTER)
+                || (anchor == ClothesSeason.WINTER && candidate == ClothesSeason.SUMMER);
     }
 
     // ── 변환 헬퍼 ─────────────────────────────────────────────────────────

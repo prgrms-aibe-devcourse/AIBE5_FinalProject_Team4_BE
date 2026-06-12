@@ -2,14 +2,15 @@ package com.closetnangam.be.domain.recommendation.service;
 
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
+import com.closetnangam.be.domain.clothes.scoring.WeatherCompatibilityTable;
 import com.closetnangam.be.domain.recommendation.dto.response.RecommendResponse;
 import com.closetnangam.be.domain.recommendation.entity.RecommendationFeedback;
 import com.closetnangam.be.domain.recommendation.enums.FeedbackType;
 import com.closetnangam.be.domain.recommendation.repository.RecommendationFeedbackRepository;
-import com.closetnangam.be.domain.recommendation.scoring.WeatherCompatibilityTable;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.entity.UserStyle;
 import com.closetnangam.be.domain.user.repository.UserStyleRepository;
@@ -129,8 +130,12 @@ public class StyleProductRecommender {
 
         // 2. 날씨 점수 (40%)
         double weatherScore = WeatherCompatibilityTable.getWeatherScore(currentTemp, clothes.getItemType());
-        double totalScore = (STYLE_WEIGHT * maxStyleScore) + (WEATHER_WEIGHT * weatherScore);
-        String reason = String.format("Style Match: %.1f, Weather Match: %.1f", maxStyleScore, weatherScore);
+        // 3. 계절 일치 점수 (추가)
+        ClothesSeason currentSeason = ClothesSeason.fromTemperature(currentTemp);
+        double seasonMatchScore = currentSeason.isCompatibleWith(clothes.getSeason()) ? 1.0 : 0.0;
+
+        double totalScore = (STYLE_WEIGHT * maxStyleScore) + (WEATHER_WEIGHT * weatherScore * 0.7) + (0.12 * seasonMatchScore);
+        String reason = String.format("Style: %.1f, Weather: %.1f, Season: %.1f", maxStyleScore, weatherScore, seasonMatchScore);
         return new ScoredRecommendation(clothes, totalScore, reason);
     }
 

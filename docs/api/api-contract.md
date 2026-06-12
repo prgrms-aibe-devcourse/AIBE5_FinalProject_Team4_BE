@@ -86,6 +86,11 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | POST   | `/api/v1/auth/refresh`             | Access Token 재발급 |
 | POST   | `/api/v1/auth/logout`              | 로그아웃            |
 
+### 사용자
+| Method | Path | 설명 |
+| --- | --- | --- |
+| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 userId 반환 (미인증 시 401) |
+| GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
 
 ### 카탈로그
 
@@ -556,6 +561,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/outfit-books` | 코디북 목록 조회 |
 | GET | `/api/v1/outfit-books/{bookId}` | 코디북 상세 조회 |
 | POST | `/api/v1/outfit-books/{bookId}/outfits` | 코디 저장 |
+| GET | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 상세 조회 |
 | PUT | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 수정 |
 | DELETE | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 삭제 |
 
@@ -583,7 +589,33 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 > - `items` 생략(null): 기존 구성 아이템 유지, 메타데이터만 수정
 > - `items: []` (빈 배열): 기존 구성 아이템 전체 삭제
 > - `items: [...]` (목록): 기존 구성 전체 교체
+#### GET /api/v1/outfit-books/{bookId}/outfits/{outfitId} — 코디 조회
 
+```json
+{
+  "success": true,
+  "data": {
+    "outfitId": 1,
+    "outfitBookId": 1,
+    "title": "봄 데일리 코디",
+    "description": "가볍게 입기 좋은 봄 코디",
+    "thumbnailUrl": "",
+    "situation": "일상",
+    "season": "SPRING",
+    "favorite": false,
+    "items": [
+      {
+        "outfitItemId": 1,
+        "itemRole": "TOP",
+        "layerOrder": 1,
+        "clothes": { ... }
+      }
+    ],
+    "createdAt": "2026-06-11T11:00:00",
+    "updatedAt": "2026-06-11T11:00:00"
+  }
+}
+```
 #### 코디북 조회 응답 (OutfitBookResponse)
 
 ```json
