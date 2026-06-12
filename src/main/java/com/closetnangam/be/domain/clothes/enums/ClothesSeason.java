@@ -30,7 +30,7 @@ public enum ClothesSeason {
         try {
             return fromNormalized(code.trim().toUpperCase());
         } catch (IllegalArgumentException exception) {
-            return ALL_SEASON;  
+            return ALL_SEASON;
         }
     }
 
