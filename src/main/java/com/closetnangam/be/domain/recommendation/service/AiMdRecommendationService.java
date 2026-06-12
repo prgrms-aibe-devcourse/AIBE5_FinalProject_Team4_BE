@@ -30,7 +30,9 @@ import com.closetnangam.be.domain.recommendation.dto.response.AiMdPersonaRespons
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse.ProductRecommendation;
 import com.closetnangam.be.domain.user.entity.User;
+import com.closetnangam.be.domain.user.entity.UserStyle;
 import com.closetnangam.be.domain.user.repository.UserRepository;
+import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.global.external.clothes.dto.record.NaverProductCreateRequest;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothesStyleDto;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothingColorDto;
@@ -45,13 +47,17 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,8 +69,17 @@ public class AiMdRecommendationService {
 
     private static final int OUTFIT_COUNT = 4;
     private static final int PRODUCT_RECOMMENDATION_COUNT = 10;
+    private static final int PRODUCT_SEARCH_QUERY_COUNT = 6;
+    private static final int PRODUCT_SEARCH_RESULTS_PER_QUERY = 10;
+    private static final int MAX_PRODUCT_CANDIDATES_FOR_PROMPT = 50;
+    private static final int MAX_RECOMMENDATIONS_PER_BRAND = 2;
+    private static final int MAX_RECOMMENDATIONS_PER_CATEGORY = 4;
     private static final int MAX_WARDROBE_ITEMS_FOR_PROMPT = 24;
     private static final int OUTFIT_PRODUCTS_PER_CATEGORY = 10;
+    private static final List<Integer> PRODUCT_SEARCH_START_INDEXES = List.of(1, 11, 21);
+    private static final List<String> PRODUCT_SEARCH_CATEGORY_KEYWORDS = List.of(
+            "티셔츠", "셔츠", "니트", "팬츠", "자켓", "스니커즈"
+    );
     private static final Set<String> REQUIRED_OUTFIT_CATEGORIES = Set.of("TOP", "BOTTOM", "SHOES");
     private static final Map<String, String> OUTFIT_CATEGORY_SEARCH_KEYWORDS = Map.of(
             "TOP", "티셔츠",
@@ -80,6 +95,7 @@ public class AiMdRecommendationService {
     private final OutfitItemRepository outfitItemRepository;
     private final ClothesRepository clothesRepository;
     private final StyleRepository styleRepository;
+    private final UserStyleRepository userStyleRepository;
     private final NaverApiService naverApiService;
     private final ExternalClothesService externalClothesService;
     private final GeminiService geminiService;
@@ -171,11 +187,15 @@ public class AiMdRecommendationService {
         User user = findUser(userId);
         AiMdPersona persona = resolvePersonaForUser(user, mdId);
         List<WardrobeClothes> wardrobeItems = findOwnedWardrobeItems(userId);
-        String query = buildProductSearchQuery(persona, wardrobeItems);
-        List<NaverShoppingProductResponse> products = naverApiService.searchShoppingProducts(query);
+        List<StyleSearchProfile> styleProfiles = buildStyleSearchProfiles(userId, persona);
+        List<ProductSearchPlan> searchPlans = buildProductSearchPlans(persona, wardrobeItems, styleProfiles);
+        List<NaverShoppingProductResponse> products = searchProductCandidates(searchPlans);
+        String query = searchPlans.stream()
+                .map(ProductSearchPlan::query)
+                .collect(Collectors.joining(" | "));
 
         AiMdGeminiProductResult aiResult = geminiService.generateJsonFromText(
-                buildProductPrompt(persona, wardrobeItems, products),
+                buildProductPrompt(persona, wardrobeItems, styleProfiles, products),
                 AiMdGeminiProductResult.class
         );
 
@@ -183,11 +203,25 @@ public class AiMdRecommendationService {
                 .filter(product -> StringUtils.hasText(product.productId()))
                 .collect(Collectors.toMap(NaverShoppingProductResponse::productId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
 
-        List<ProductRecommendation> recommendations = safeProductCandidates(aiResult).stream()
-                .map(candidate -> toProductRecommendation(candidate, productById))
-                .filter(Objects::nonNull)
-                .limit(PRODUCT_RECOMMENDATION_COUNT)
-                .collect(Collectors.toCollection(ArrayList::new));
+        List<ProductRecommendation> recommendations = new ArrayList<>();
+        Set<String> selectedProductKeys = new HashSet<>();
+        Map<String, Integer> brandCounts = new HashMap<>();
+        Map<String, Integer> categoryCounts = new HashMap<>();
+        for (AiMdGeminiProductResult.ProductCandidate candidate : safeProductCandidates(aiResult)) {
+            ProductRecommendation recommendation = toProductRecommendation(candidate, productById);
+            if (recommendation == null || !addRecommendationIfDiverse(
+                    recommendations,
+                    selectedProductKeys,
+                    brandCounts,
+                    categoryCounts,
+                    recommendation
+            )) {
+                continue;
+            }
+            if (recommendations.size() >= PRODUCT_RECOMMENDATION_COUNT) {
+                break;
+            }
+        }
 
         /*
          * Gemini가 후보 중 일부만 고르는 경우에도 프론트는 10개 영역을 안정적으로 렌더링할 수 있어야 한다.
@@ -197,10 +231,29 @@ public class AiMdRecommendationService {
             if (recommendations.size() >= PRODUCT_RECOMMENDATION_COUNT) {
                 break;
             }
-            boolean alreadyAdded = recommendations.stream()
-                    .anyMatch(recommendation -> Objects.equals(recommendation.product().productId(), product.productId()));
-            if (!alreadyAdded) {
-                recommendations.add(new ProductRecommendation(product, persona.displayName() + " MD 스타일에 맞는 후보 상품입니다."));
+            addRecommendationIfDiverse(
+                    recommendations,
+                    selectedProductKeys,
+                    brandCounts,
+                    categoryCounts,
+                    new ProductRecommendation(product, persona.displayName() + " MD 스타일에 맞는 후보 상품입니다.")
+            );
+        }
+
+        /*
+         * 검색 결과 자체가 특정 브랜드나 카테고리에 치우친 경우에도 응답 개수는 가능한 한 10개를 유지합니다.
+         * 다양성 제한을 적용한 1차 선별이 부족할 때만 중복 상품 제외 조건만 유지해 남은 칸을 채웁니다.
+         */
+        for (NaverShoppingProductResponse product : products) {
+            if (recommendations.size() >= PRODUCT_RECOMMENDATION_COUNT) {
+                break;
+            }
+            String identityKey = productIdentityKey(product);
+            if (selectedProductKeys.add(identityKey)) {
+                recommendations.add(new ProductRecommendation(
+                        product,
+                        persona.displayName() + " MD 스타일에 맞는 후보 상품입니다."
+                ));
             }
         }
 
@@ -506,19 +559,182 @@ public class AiMdRecommendationService {
         return aiResult.products();
     }
 
-    private String buildProductSearchQuery(AiMdPersona persona, List<WardrobeClothes> wardrobeItems) {
+    /**
+     * 사용자 스타일 점수를 검색 비중으로 변환합니다.
+     * combinedWeight가 높은 스타일은 가중 추첨 구간을 더 많이 차지하고, 낮은 양수 스타일도 후보에는 남겨
+     * 재추천할 때 가끔 노출될 수 있게 합니다. MD 전문 스타일에는 소폭 보너스를 더합니다.
+     */
+    private List<StyleSearchProfile> buildStyleSearchProfiles(Long userId, AiMdPersona persona) {
+        List<StyleSearchProfile> profiles = userStyleRepository.findAllByUserId(userId).stream()
+                .filter(userStyle -> userStyle.getCombinedWeight() != null && userStyle.getCombinedWeight() > 0)
+                .map(userStyle -> toStyleSearchProfile(userStyle, persona))
+                .sorted(Comparator.comparingInt(StyleSearchProfile::weight).reversed())
+                .toList();
+        if (!profiles.isEmpty()) {
+            return profiles;
+        }
+
+        /*
+         * 아직 USER_STYLES 점수가 없는 사용자는 선택한 MD의 스타일을 fallback으로 사용합니다.
+         * 앞쪽 대표 스타일에 더 높은 기본 가중치를 주되 나머지 스타일도 검색될 수 있게 유지합니다.
+         */
+        List<StyleSearchProfile> fallback = new ArrayList<>();
+        for (int index = 0; index < persona.styleNames().size(); index++) {
+            fallback.add(new StyleSearchProfile(
+                    persona.styleCodes().get(index),
+                    persona.styleNames().get(index),
+                    Math.max(1, persona.styleNames().size() - index)
+            ));
+        }
+        return List.copyOf(fallback);
+    }
+
+    private StyleSearchProfile toStyleSearchProfile(UserStyle userStyle, AiMdPersona persona) {
+        int mdAffinityBonus = persona.styleCodes().contains(userStyle.getStyle().getCode()) ? 3 : 0;
+        return new StyleSearchProfile(
+                userStyle.getStyle().getCode(),
+                userStyle.getStyle().getName(),
+                userStyle.getCombinedWeight() + mdAffinityBonus
+        );
+    }
+
+    /**
+     * 매 요청마다 스타일·카테고리·색상·검색 페이지를 다시 조합합니다.
+     * 같은 사용자라도 재추천 시 후보군이 달라지며, 스타일 선택 확률은 USER_STYLES 가중치를 따릅니다.
+     */
+    private List<ProductSearchPlan> buildProductSearchPlans(
+            AiMdPersona persona,
+            List<WardrobeClothes> wardrobeItems,
+            List<StyleSearchProfile> styleProfiles
+    ) {
         String genderKeyword = persona.gender() == User.Gender.MALE ? "남성" : "여성";
-        String colorKeyword = wardrobeItems.stream()
+        List<String> colorKeywords = wardrobeItems.stream()
                 .map(WardrobeClothes::getClothes)
                 .flatMap(clothes -> clothes.getSortedColorTags().stream())
-                .min(Comparator.comparing(ClothingColor::getSortOrder))
                 .map(ClothingColor::getColorCode)
                 .map(this::toColorLabel)
-                .orElse("");
-        return Stream.of(genderKeyword, colorKeyword, persona.styleNames().get(0), "코디 아이템")
                 .filter(StringUtils::hasText)
                 .distinct()
-                .collect(Collectors.joining(" "));
+                .toList();
+        List<String> categoryKeywords = new ArrayList<>(PRODUCT_SEARCH_CATEGORY_KEYWORDS);
+        Collections.shuffle(categoryKeywords);
+
+        List<ProductSearchPlan> plans = new ArrayList<>();
+        Set<String> planKeys = new LinkedHashSet<>();
+        int attempts = 0;
+        while (plans.size() < PRODUCT_SEARCH_QUERY_COUNT && attempts++ < PRODUCT_SEARCH_QUERY_COUNT * 5) {
+            StyleSearchProfile style = selectWeightedStyle(styleProfiles);
+            String categoryKeyword = categoryKeywords.get(plans.size() % categoryKeywords.size());
+            String colorKeyword = selectOptionalColor(colorKeywords);
+            String searchQuery = Stream.of(genderKeyword, colorKeyword, style.name(), categoryKeyword)
+                    .filter(StringUtils::hasText)
+                    .distinct()
+                    .collect(Collectors.joining(" "));
+            int start = PRODUCT_SEARCH_START_INDEXES.get(
+                    ThreadLocalRandom.current().nextInt(PRODUCT_SEARCH_START_INDEXES.size())
+            );
+            String planKey = searchQuery + "#" + start;
+            if (planKeys.add(planKey)) {
+                plans.add(new ProductSearchPlan(searchQuery, start));
+            }
+        }
+        return List.copyOf(plans);
+    }
+
+    private StyleSearchProfile selectWeightedStyle(List<StyleSearchProfile> profiles) {
+        int totalWeight = profiles.stream().mapToInt(StyleSearchProfile::weight).sum();
+        int ticket = ThreadLocalRandom.current().nextInt(totalWeight);
+        for (StyleSearchProfile profile : profiles) {
+            ticket -= profile.weight();
+            if (ticket < 0) {
+                return profile;
+            }
+        }
+        return profiles.get(profiles.size() - 1);
+    }
+
+    private String selectOptionalColor(List<String> colors) {
+        if (colors.isEmpty() || ThreadLocalRandom.current().nextInt(100) >= 40) {
+            return "";
+        }
+        return colors.get(ThreadLocalRandom.current().nextInt(colors.size()));
+    }
+
+    /**
+     * 여러 검색 결과를 한 후보군으로 합치고 동일 productId 및 동일한 정규화 상품명을 제거합니다.
+     * 최종 후보 순서를 섞어 Gemini가 네이버의 고정 정렬 순서에 반복적으로 끌려가지 않게 합니다.
+     */
+    private List<NaverShoppingProductResponse> searchProductCandidates(List<ProductSearchPlan> searchPlans) {
+        Map<String, NaverShoppingProductResponse> candidatesByKey = new LinkedHashMap<>();
+        for (ProductSearchPlan plan : searchPlans) {
+            naverApiService.searchShoppingProducts(
+                            plan.query(),
+                            PRODUCT_SEARCH_RESULTS_PER_QUERY,
+                            plan.start(),
+                            "sim"
+                    ).forEach(product -> candidatesByKey.putIfAbsent(productIdentityKey(product), product));
+        }
+        List<NaverShoppingProductResponse> candidates = new ArrayList<>(candidatesByKey.values());
+        Collections.shuffle(candidates);
+        return candidates.stream()
+                .limit(MAX_PRODUCT_CANDIDATES_FOR_PROMPT)
+                .toList();
+    }
+
+    private String productIdentityKey(NaverShoppingProductResponse product) {
+        String normalizedTitle = defaultIfBlank(product.title(), "")
+                .toLowerCase()
+                .replaceAll("[^가-힣a-z0-9]", "");
+        if (StringUtils.hasText(normalizedTitle)) {
+            return "title:" + normalizedTitle;
+        }
+        return "id:" + defaultIfBlank(product.productId(), product.link());
+    }
+
+    /**
+     * 최종 응답이 특정 브랜드나 상의 한 종류로 몰리지 않도록 서비스 레벨에서 상한을 적용합니다.
+     * Gemini 지침만으로 다양성을 보장하지 않고, fallback 상품에도 동일한 제한을 사용합니다.
+     */
+    private boolean addRecommendationIfDiverse(
+            List<ProductRecommendation> recommendations,
+            Set<String> selectedProductKeys,
+            Map<String, Integer> brandCounts,
+            Map<String, Integer> categoryCounts,
+            ProductRecommendation recommendation
+    ) {
+        NaverShoppingProductResponse product = recommendation.product();
+        String identityKey = productIdentityKey(product);
+        if (selectedProductKeys.contains(identityKey)) {
+            return false;
+        }
+
+        String brandKey = normalizeDiversityKey(product.brand());
+        String categoryKey = defaultIfBlank(resolveExternalProductCategory(product), "UNKNOWN");
+        if (StringUtils.hasText(brandKey)
+                && brandCounts.getOrDefault(brandKey, 0) >= MAX_RECOMMENDATIONS_PER_BRAND) {
+            return false;
+        }
+        if (!"UNKNOWN".equals(categoryKey)
+                && categoryCounts.getOrDefault(categoryKey, 0) >= MAX_RECOMMENDATIONS_PER_CATEGORY) {
+            return false;
+        }
+
+        selectedProductKeys.add(identityKey);
+        recommendations.add(recommendation);
+        if (StringUtils.hasText(brandKey)) {
+            brandCounts.merge(brandKey, 1, Integer::sum);
+        }
+        if (!"UNKNOWN".equals(categoryKey)) {
+            categoryCounts.merge(categoryKey, 1, Integer::sum);
+        }
+        return true;
+    }
+
+    private String normalizeDiversityKey(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return value.toLowerCase().replaceAll("[^가-힣a-z0-9]", "");
     }
 
     private String buildOutfitPrompt(
@@ -618,6 +834,7 @@ public class AiMdRecommendationService {
     private String buildProductPrompt(
             AiMdPersona persona,
             List<WardrobeClothes> wardrobeItems,
+            List<StyleSearchProfile> styleProfiles,
             List<NaverShoppingProductResponse> products
     ) {
         return """
@@ -633,13 +850,19 @@ public class AiMdRecommendationService {
                 [사용자 옷장 요약]
                 %s
 
+                [사용자 스타일 가중치]
+                %s
+
                 [상품 후보]
                 %s
 
                 규칙:
                 - products 배열은 가능한 한 10개를 반환합니다.
                 - productId는 상품 후보 목록에 있는 값만 사용합니다.
-                - reason은 사용자 옷장과 MD 스타일을 함께 언급합니다.
+                - 사용자 스타일 가중치가 높은 스타일의 상품은 더 자주 고르고, 낮은 양수 스타일도 일부 섞어 추천 결과가 한 스타일로만 고정되지 않게 합니다.
+                - 같은 상품, 이름만 조금 다른 동일 모델, 같은 브랜드의 지나치게 유사한 상품을 반복 선택하지 않습니다.
+                - 상의·하의·아우터·신발과 브랜드가 한 종류에 치우치지 않도록 후보 범위 안에서 다양하게 구성합니다.
+                - reason은 사용자 옷장, 사용자 스타일 취향, MD 스타일을 함께 언급합니다.
                 - JSON 외 문장은 쓰지 않습니다.
 
                 응답 JSON:
@@ -657,8 +880,15 @@ public class AiMdRecommendationService {
                 persona.speechStyle(),
                 persona.description(),
                 summarizeWardrobeItems(wardrobeItems),
+                summarizeStyleProfiles(styleProfiles),
                 summarizeProducts(products)
         );
+    }
+
+    private String summarizeStyleProfiles(List<StyleSearchProfile> styleProfiles) {
+        return styleProfiles.stream()
+                .map(profile -> "- style=%s, weight=%d".formatted(profile.name(), profile.weight()))
+                .collect(Collectors.joining("\n"));
     }
 
     private String summarizeWardrobeItems(List<WardrobeClothes> wardrobeItems) {
@@ -702,6 +932,12 @@ public class AiMdRecommendationService {
                                 defaultIfBlank(product.category3(), "")
                         ))
                 .collect(Collectors.joining("\n"));
+    }
+
+    private record StyleSearchProfile(String code, String name, int weight) {
+    }
+
+    private record ProductSearchPlan(String query, int start) {
     }
 
     private String resolveThumbnailUrl(List<WardrobeClothes> ownedItems, List<NaverShoppingProductResponse> externalProducts) {

@@ -1,7 +1,7 @@
 ---
 doc_type: be_doc_index
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-10
+last_updated: 2026-06-12
 ---
 
 # 프로젝트 문서
@@ -34,6 +34,8 @@ last_updated: 2026-06-10
 | [database/erd.md](./database/erd.md) | BE | 확정 ERD v2.3, 테이블 역할, 관계 기준 |
 | [database/data-lifecycle.md](./database/data-lifecycle.md) | BE | 데이터 생성, 삭제, 보존 기준 |
 | [api/api-contract.md](./api/api-contract.md) | BE | API 경로, 응답 형식, 오류 처리, 엔드포인트 기준 |
+| [api/ai-md-api-spec.md](./api/ai-md-api-spec.md) | BE + FE 연동 | AI MD 선택, 코디·상품 추천, 선택 저장을 위한 상세 API 명세 |
+| [api/similar-product-api-spec.md](./api/similar-product-api-spec.md) | BE + FE 연동 | 보유 옷 선택, 유사상품 조회, 외부 구매 및 미보유 상품 저장 연동 명세 |
 | [architecture/package-structure.md](./architecture/package-structure.md) | BE | BE 패키지 구조와 책임 경계 |
 | [backend/implementation-gaps.md](./backend/implementation-gaps.md) | BE | 현재 BE 코드와 공식 문서 기준의 차이 |
 

@@ -1,13 +1,21 @@
 package com.closetnangam.be.domain.recommendation.service;
 
+import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdGeminiOutfitResult;
+import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse.ProductRecommendation;
+import com.closetnangam.be.domain.user.entity.User;
+import com.closetnangam.be.domain.user.entity.UserStyle;
+import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,9 +34,7 @@ class AiMdRecommendationServiceTest {
          * 앞쪽 후보가 raw id만 가지고 있어도 실제 사용자 옷장에 매핑되지 않으면 건너뛰고,
          * 뒤쪽의 저장 가능한 후보까지 확인한 뒤 4개를 확정해야 한다.
          */
-        AiMdRecommendationService service = new AiMdRecommendationService(
-                null, null, null, null, null, null, null, null, null, null
-        );
+        AiMdRecommendationService service = serviceWithUserStyleRepository(null);
         AiMdGeminiOutfitResult aiResult = new AiMdGeminiOutfitResult(List.of(
                 outfit("저장 불가 1", 999L),
                 outfit("저장 가능 1", 1L),
@@ -65,9 +71,7 @@ class AiMdRecommendationServiceTest {
     @Test
     @DisplayName("상의만 조합한 후보는 완성형 코디에서 제외한다")
     void savableOutfitsRejectsOutfitWithoutBottomAndShoes() {
-        AiMdRecommendationService service = new AiMdRecommendationService(
-                null, null, null, null, null, null, null, null, null, null
-        );
+        AiMdRecommendationService service = serviceWithUserStyleRepository(null);
         AiMdGeminiOutfitResult aiResult = new AiMdGeminiOutfitResult(List.of(
                 new AiMdGeminiOutfitResult.OutfitCandidate(
                         "상의 레이어드뿐인 코디",
@@ -95,9 +99,7 @@ class AiMdRecommendationServiceTest {
     @Test
     @DisplayName("코디 프롬프트는 실제 MD처럼 구체적인 추천 사유를 작성하도록 요구한다")
     void outfitPromptRequiresNaturalPersonaReason() {
-        AiMdRecommendationService service = new AiMdRecommendationService(
-                null, null, null, null, null, null, null, null, null, null
-        );
+        AiMdRecommendationService service = serviceWithUserStyleRepository(null);
 
         String prompt = ReflectionTestUtils.invokeMethod(
                 service,
@@ -129,9 +131,7 @@ class AiMdRecommendationServiceTest {
     @Test
     @DisplayName("추천 사유 fallback도 MD별 말투를 유지한다")
     void defaultOutfitReasonReflectsPersonaVoice() {
-        AiMdRecommendationService service = new AiMdRecommendationService(
-                null, null, null, null, null, null, null, null, null, null
-        );
+        AiMdRecommendationService service = serviceWithUserStyleRepository(null);
 
         String taeSikReason = ReflectionTestUtils.invokeMethod(
                 service,
@@ -177,6 +177,142 @@ class AiMdRecommendationServiceTest {
                 .doesNotHaveDuplicates();
     }
 
+    @Test
+    @DisplayName("사용자 스타일 점수와 MD 친화도를 상품 검색 가중치에 반영한다")
+    void productSearchProfilesReflectUserStyleWeights() {
+        UserStyleRepository userStyleRepository = mock(UserStyleRepository.class);
+        UserStyle street = userStyle("STREET", "스트릿", 20);
+        UserStyle minimal = userStyle("MINIMAL", "미니멀", 5);
+        when(userStyleRepository.findAllByUserId(1L)).thenReturn(List.of(minimal, street));
+
+        AiMdRecommendationService service = serviceWithUserStyleRepository(userStyleRepository);
+        List<?> profiles = ReflectionTestUtils.invokeMethod(
+                service,
+                "buildStyleSearchProfiles",
+                1L,
+                AiMdPersona.TAE_SIK
+        );
+
+        assertThat(profiles).hasSize(2);
+        Object first = profiles.get(0);
+        Object second = profiles.get(1);
+        String firstName = ReflectionTestUtils.invokeMethod(first, "name");
+        Integer firstWeight = ReflectionTestUtils.invokeMethod(first, "weight");
+        String secondName = ReflectionTestUtils.invokeMethod(second, "name");
+        Integer secondWeight = ReflectionTestUtils.invokeMethod(second, "weight");
+
+        assertThat(firstName).isEqualTo("스트릿");
+        assertThat(firstWeight).isEqualTo(23);
+        assertThat(secondName).isEqualTo("미니멀");
+        assertThat(secondWeight).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("상품명이 같으면 네이버 productId가 달라도 동일 상품 후보로 판별한다")
+    void productIdentityKeyDeduplicatesSameNormalizedTitle() {
+        AiMdRecommendationService service = serviceWithUserStyleRepository(null);
+        NaverShoppingProductResponse first = product("product-1", "나이키 에어 반팔 티셔츠", "티셔츠");
+        NaverShoppingProductResponse second = product("product-2", "나이키  에어-반팔 티셔츠", "티셔츠");
+
+        String firstKey = ReflectionTestUtils.invokeMethod(service, "productIdentityKey", first);
+        String secondKey = ReflectionTestUtils.invokeMethod(service, "productIdentityKey", second);
+
+        assertThat(firstKey).isEqualTo(secondKey);
+    }
+
+    @Test
+    @DisplayName("상품 추천 프롬프트는 스타일 가중치와 브랜드 및 카테고리 다양성을 요구한다")
+    void productPromptRequiresWeightedDiversity() {
+        UserStyleRepository userStyleRepository = mock(UserStyleRepository.class);
+        when(userStyleRepository.findAllByUserId(1L)).thenReturn(List.of());
+        AiMdRecommendationService service = serviceWithUserStyleRepository(userStyleRepository);
+        List<?> profiles = ReflectionTestUtils.invokeMethod(
+                service,
+                "buildStyleSearchProfiles",
+                1L,
+                AiMdPersona.TAE_SIK
+        );
+
+        String prompt = ReflectionTestUtils.invokeMethod(
+                service,
+                "buildProductPrompt",
+                AiMdPersona.TAE_SIK,
+                List.of(),
+                profiles,
+                List.of()
+        );
+
+        assertThat(prompt)
+                .contains("[사용자 스타일 가중치]")
+                .contains("가중치가 높은 스타일의 상품은 더 자주")
+                .contains("낮은 양수 스타일도 일부 섞어")
+                .contains("같은 상품, 이름만 조금 다른 동일 모델")
+                .contains("브랜드가 한 종류에 치우치지 않도록");
+    }
+
+    @Test
+    @DisplayName("상품 추천 1차 선별은 같은 브랜드와 카테고리의 개수를 제한한다")
+    void productRecommendationLimitsBrandAndCategoryConcentration() {
+        /*
+         * Gemini가 한 브랜드나 상의만 반복 선택하더라도 최종 API 응답이 그대로 쏠리지 않아야 한다.
+         * 브랜드는 최대 2개, 카테고리는 최대 4개까지만 1차 추천 목록에 포함한다.
+         */
+        AiMdRecommendationService service = serviceWithUserStyleRepository(null);
+        List<ProductRecommendation> recommendations = new ArrayList<>();
+        Set<String> selectedProductKeys = new HashSet<>();
+        Map<String, Integer> brandCounts = new HashMap<>();
+        Map<String, Integer> categoryCounts = new HashMap<>();
+
+        assertThat(addRecommendation(
+                service, recommendations, selectedProductKeys, brandCounts, categoryCounts,
+                product("nike-1", "나이키 반팔 1", "티셔츠", "나이키")
+        )).isTrue();
+        assertThat(addRecommendation(
+                service, recommendations, selectedProductKeys, brandCounts, categoryCounts,
+                product("nike-2", "나이키 반팔 2", "티셔츠", "나이키")
+        )).isTrue();
+        assertThat(addRecommendation(
+                service, recommendations, selectedProductKeys, brandCounts, categoryCounts,
+                product("nike-3", "나이키 반팔 3", "티셔츠", "나이키")
+        )).isFalse();
+
+        assertThat(addRecommendation(
+                service, recommendations, selectedProductKeys, brandCounts, categoryCounts,
+                product("brand-a", "브랜드A 반팔", "티셔츠", "브랜드A")
+        )).isTrue();
+        assertThat(addRecommendation(
+                service, recommendations, selectedProductKeys, brandCounts, categoryCounts,
+                product("brand-b", "브랜드B 반팔", "티셔츠", "브랜드B")
+        )).isTrue();
+        assertThat(addRecommendation(
+                service, recommendations, selectedProductKeys, brandCounts, categoryCounts,
+                product("brand-c", "브랜드C 반팔", "티셔츠", "브랜드C")
+        )).isFalse();
+
+        assertThat(recommendations).hasSize(4);
+        assertThat(brandCounts).containsEntry("나이키", 2);
+        assertThat(categoryCounts).containsEntry("TOP", 4);
+    }
+
+    private boolean addRecommendation(
+            AiMdRecommendationService service,
+            List<ProductRecommendation> recommendations,
+            Set<String> selectedProductKeys,
+            Map<String, Integer> brandCounts,
+            Map<String, Integer> categoryCounts,
+            NaverShoppingProductResponse product
+    ) {
+        return Boolean.TRUE.equals(ReflectionTestUtils.invokeMethod(
+                service,
+                "addRecommendationIfDiverse",
+                recommendations,
+                selectedProductKeys,
+                brandCounts,
+                categoryCounts,
+                new ProductRecommendation(product, "추천 사유")
+        ));
+    }
+
     private AiMdGeminiOutfitResult.OutfitCandidate outfit(String title, Long wardrobeClothesId) {
         return new AiMdGeminiOutfitResult.OutfitCandidate(
                 title,
@@ -198,10 +334,40 @@ class AiMdRecommendationServiceTest {
         return wardrobeClothes;
     }
 
+    private UserStyle userStyle(String code, String name, int combinedWeight) {
+        User user = mock(User.class);
+        Style style = Style.builder()
+                .code(code)
+                .name(name)
+                .description(name + " 스타일")
+                .build();
+        UserStyle userStyle = UserStyle.builder()
+                .user(user)
+                .style(style)
+                .build();
+        ReflectionTestUtils.setField(userStyle, "combinedWeight", combinedWeight);
+        return userStyle;
+    }
+
+    private AiMdRecommendationService serviceWithUserStyleRepository(UserStyleRepository userStyleRepository) {
+        return new AiMdRecommendationService(
+                null, null, null, null, null, null, null, userStyleRepository, null, null, null
+        );
+    }
+
     private NaverShoppingProductResponse product(
             String productId,
             String title,
             String category3
+    ) {
+        return product(productId, title, category3, "테스트브랜드");
+    }
+
+    private NaverShoppingProductResponse product(
+            String productId,
+            String title,
+            String category3,
+            String brand
     ) {
         return new NaverShoppingProductResponse(
                 title,
@@ -212,7 +378,7 @@ class AiMdRecommendationServiceTest {
                 "테스트몰",
                 productId,
                 "1",
-                "테스트브랜드",
+                brand,
                 "테스트제조사",
                 "패션의류",
                 "남성의류",
