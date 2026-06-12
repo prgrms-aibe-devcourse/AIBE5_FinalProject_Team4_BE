@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 public class ClothesRecommendationService {
 
     private static final String CLOTHES_NOT_FOUND_MESSAGE = "해당 옷을 찾을 수 없습니다.";
-    private static final int CANDIDATE_LIMIT_PER_CATEGORY = 500;
+    private static final int CANDIDATE_LIMIT_PER_CATEGORY = 2000;
     private static final String EXTERNAL_DEFAULT_SEASON = "ALL_SEASON";
 
     /**
@@ -95,7 +95,7 @@ public class ClothesRecommendationService {
      * 기준 옷({clothesId})와 어울리는 상품을 카테고리별로 추천합니다.
      *
      * <p>후보 풀: {@code CLOTHES} 중 {@code clothes_info_source = EXTERNAL_SHOPPING} 공용 쇼핑 마스터만.
-     * 기준 옷과 같은 카테고리를 제외하고 TOP/BOTTOM/OUTER/SHOES 각각 최대 500건(최신순)을 조회한 뒤
+     * 기준 옷과 같은 카테고리를 제외하고 TOP/BOTTOM/OUTER/SHOES 각각 최대 2000건(최신순)을 조회한 뒤
      * 점수 상위를 반환합니다. PHOTO·PURCHASE_HISTORY 등 개인 등록 마스터는 후보에 포함하지 않습니다.
      *
      * <p><b>Precondition:</b> 호출 전에 컨트롤러에서 {@code SecurityUtils.verifyUserIdMatch(userId)}로
@@ -103,7 +103,7 @@ public class ClothesRecommendationService {
      *
      * @param userId           인증된 사용자 ID (컨트롤러에서 JWT 검증 후 전달)
      * @param clothesId        기준 옷 ID
-     * @param limitPerCategory 카테고리당 최대 추천 수 (1~10, 컨트롤러에서 검증)
+     * @param limitPerCategory 카테고리당 최대 추천 수 (1~50, 컨트롤러에서 검증)
      * @throws NoSuchElementException {@code clothesId}가 존재하지 않거나 {@code userId} 소유가 아닌 경우 (HTTP 404)
      */
     public ClothesRecommendationResponse recommend(Long userId, Long clothesId, int limitPerCategory) {
@@ -133,11 +133,11 @@ public class ClothesRecommendationService {
         /*
          * 카테고리별로 DB를 분리 조회합니다 (요청당 최대 CATEGORY_ORDER.size()-1 회, 각 CANDIDATE_LIMIT_PER_CATEGORY 건).
          *
-         * 의도: 단일 쿼리(findExternalCandidatesForComplementaryRecommendation)는 LIMIT 500을 전체에 적용해
+         * 의도: 단일 쿼리(findExternalCandidatesForComplementaryRecommendation)는 LIMIT 2000을 전체에 적용해
          * 한 카테고리(예: TOP)에 후보가 쏠릴 수 있습니다. 카테고리마다 최신 N건을 보장하려면
          * 카테고리별 페이징이 필요합니다.
          *
-         * 트레이드오프: anchor 제외 시 최대 3×500=1500건 후보 로드. 트래픽 증가 시
+         * 트레이드오프: anchor 제외 시 최대 3×2000=6000건 후보 로드. 트래픽 증가 시
          * CANDIDATE_LIMIT_PER_CATEGORY 조정 또는 캐시를 검토하세요.
          *
          * 태그(style/color)는 Clothes @Fetch(SUBSELECT)로 채점 시점에 일괄 로딩됩니다.

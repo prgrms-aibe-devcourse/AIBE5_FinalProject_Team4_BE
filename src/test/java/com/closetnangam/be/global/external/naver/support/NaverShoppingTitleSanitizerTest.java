@@ -68,6 +68,54 @@ class NaverShoppingTitleSanitizerTest {
     }
 
     @Test
+    @DisplayName("뒤쪽 혼합 영숫자 품번(PHE2PT2750 등)을 제거한다")
+    void removesTrailingMixedAlphanumericSku() {
+        NaverShoppingTitleSanitizer.Result polham = NaverShoppingTitleSanitizer.sanitize(
+                "폴햄 알래스카 크롭 와이드 팬츠 PHE2PT2750",
+                "56199141706"
+        );
+        assertThat(polham.displayName()).isEqualTo("폴햄 알래스카 크롭 와이드 팬츠");
+        assertThat(polham.productCode()).isEqualTo("PHE2PT2750");
+
+        NaverShoppingTitleSanitizer.Result spao = NaverShoppingTitleSanitizer.sanitize(
+                "SPAO 벌룬 와이드 팬츠 나일론 SPTCG25G12",
+                "60279832174"
+        );
+        assertThat(spao.displayName()).isEqualTo("SPAO 벌룬 와이드 팬츠 나일론");
+        assertThat(spao.productCode()).isEqualTo("SPTCG25G12");
+    }
+
+    @Test
+    @DisplayName("신발 모델명(990V6, GT2160)은 제거하지 않는다")
+    void preservesProductModelNames() {
+        NaverShoppingTitleSanitizer.Result newBalance = NaverShoppingTitleSanitizer.sanitize(
+                "뉴발란스 990V6 러닝화",
+                "60000000001"
+        );
+        assertThat(newBalance.displayName()).isEqualTo("뉴발란스 990V6 러닝화");
+        assertThat(newBalance.productCode()).isEqualTo("NAVER_60000000001");
+
+        NaverShoppingTitleSanitizer.Result asics = NaverShoppingTitleSanitizer.sanitize(
+                "아식스 젤 GT2160 운동화",
+                "60000000002"
+        );
+        assertThat(asics.displayName()).isEqualTo("아식스 젤 GT2160 운동화");
+        assertThat(asics.productCode()).isEqualTo("NAVER_60000000002");
+    }
+
+    @Test
+    @DisplayName("모델명 뒤에 내부 SKU가 있으면 SKU만 제거한다")
+    void removesSkuAfterModelName() {
+        NaverShoppingTitleSanitizer.Result result = NaverShoppingTitleSanitizer.sanitize(
+                "뉴발란스 990V6 PHE2PT2750",
+                "60000000003"
+        );
+
+        assertThat(result.displayName()).isEqualTo("뉴발란스 990V6");
+        assertThat(result.productCode()).isEqualTo("PHE2PT2750");
+    }
+
+    @Test
     @DisplayName("품번이 없는 제목은 그대로 유지한다")
     void keepsPlainTitle() {
         NaverShoppingTitleSanitizer.Result result = NaverShoppingTitleSanitizer.sanitize(

@@ -77,7 +77,10 @@ app:
         # Gemini Batch API 대량 분류·적재. local에서 enabled=true 시 기동 후 자동 실행.
         enabled: false
         # submit | import | submit-and-wait
-        mode: submit
+        mode: import
+        # random: 기존 랜덤 키워드 수집 | gap-fill: 부족 구간 버킷별 수집 (3·4번 제외, 200건×5)
+        collection-mode: gap-fill
+        gap-fill-per-bucket: 200
         model: gemini-3.5-flash
         max-products: 1000
         # import 모드에서 state.json 대신 직접 지정할 때 사용 (예: batches/123456789)

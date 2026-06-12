@@ -42,6 +42,12 @@ public class ComplementaryRecommendationBatchRunner {
     @Value("${app.recommendation.complementary.batch.max-products:200}")
     private int maxProducts;
 
+    @Value("${app.recommendation.complementary.batch.collection-mode:random}")
+    private String collectionMode;
+
+    @Value("${app.recommendation.complementary.batch.gap-fill-per-bucket:200}")
+    private int gapFillPerBucket;
+
     @Value("${app.recommendation.complementary.batch.job-name:}")
     private String configuredJobName;
 
@@ -53,7 +59,8 @@ public class ComplementaryRecommendationBatchRunner {
 
     @EventListener(ApplicationReadyEvent.class)
     public void runBatchJob() {
-        log.info("[RECO-004 Batch] 백그라운드 실행 시작. mode={}, model={}, maxProducts={}", mode, batchModel, maxProducts);
+        log.info("[RECO-004 Batch] 백그라운드 실행 시작. mode={}, collectionMode={}, model={}, maxProducts={}, gapFillPerBucket={}",
+                mode, collectionMode, batchModel, maxProducts, gapFillPerBucket);
         resolveTaskExecutor().execute(this::runSafely);
     }
 
