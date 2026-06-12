@@ -1,0 +1,33 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: closetnangam-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: closetnangam-be
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_CONFIG_ADDITIONAL_LOCATION: file:/config/
+      REDIS_HOST: redis
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./application-prod.yml:/config/application-prod.yml:ro
+      - app-uploads:/app/uploads
+    depends_on:
+      - redis
+
+volumes:
+  redis-data:
+  app-uploads:

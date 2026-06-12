@@ -9,6 +9,7 @@ import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 
 @Configuration
 public class SwaggerConfig {
@@ -16,15 +17,23 @@ public class SwaggerConfig {
     private static final String BEARER_AUTH = "Bearer Authentication";
 
     @Bean
-    public OpenAPI openAPI(@Value("${server.port:8080}") int serverPort) {
+    public OpenAPI openAPI(
+            @Value("${app.api.base-url:}") String apiBaseUrl,
+            @Value("${server.port:8080}") int serverPort
+    ) {
+        String serverUrl = StringUtils.hasText(apiBaseUrl)
+                ? apiBaseUrl.trim()
+                : "http://localhost:" + serverPort;
+        String serverDescription = StringUtils.hasText(apiBaseUrl) ? "운영 서버" : "로컬 서버";
+
         return new OpenAPI()
                 .info(new Info()
                         .title("옷장난감 API")
                         .description("AI 기반 패션 추천 서비스 API 문서")
                         .version("v1.0.0"))
                 .addServersItem(new Server()
-                        .url("http://localhost:" + serverPort)
-                        .description("로컬 서버"))
+                        .url(serverUrl)
+                        .description(serverDescription))
                 .components(new Components()
                         .addSecuritySchemes(BEARER_AUTH, new SecurityScheme()
                                 .name(BEARER_AUTH)

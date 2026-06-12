@@ -1,0 +1,15 @@
+.gradle
+build
+.git
+.github
+.idea
+*.iml
+.env
+.env.*
+!.env.example
+uploads
+docs
+deploy
+*.md
+Dockerfile
+docker-compose*.yml

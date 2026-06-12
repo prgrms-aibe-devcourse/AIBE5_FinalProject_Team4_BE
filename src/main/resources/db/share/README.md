@@ -15,19 +15,14 @@ RECO-004 외부 쇼핑 후보(`clothes` + 색상/스타일 태그)를 팀원 로
 ## 사전 준비 (받는 사람)
 
 1. DB 백업
-2. 아래 migration을 **데이터 import 전** 실행 (이미 적용됐으면 스킵)
+2. 스키마가 JPA `ddl-auto: update`와 다르면 **데이터 import 전** 아래 중 하나로 맞추기 (이미 반영됐으면 스킵)
 
 ```
-src/main/resources/db/migration-clothes-gender.sql
-src/main/resources/db/migration-clothes-season.sql
-src/main/resources/db/migration-clothes-drop-brand-logo-url.sql   # brand_logo_url 있으면
+# Flyway 비활성(기본) 로컬: 앱 재시작으로 ddl-auto 맞추거나
+# 수동 실행: src/main/resources/db/migration/V1__local_incremental_schema.sql
 ```
 
-3. (선택) 시즌 백필 — import 파일에 season이 포함되어 있으면 생략 가능
-
-```
-src/main/resources/db/migration-clothes-season-backfill.sql
-```
+3. (선택) 시즌 백필 — import 파일에 season이 포함되어 있으면 생략 가능 (V1에 item_type 백필 포함)
 
 ## 덤프 파일
 
