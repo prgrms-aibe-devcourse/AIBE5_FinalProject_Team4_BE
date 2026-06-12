@@ -14,7 +14,7 @@ public final class NaverShoppingTitleSanitizer {
 
     private static final Pattern HTML_TAG = Pattern.compile("<[^>]*>");
     private static final Pattern TRAILING_ALNUM_SKU = Pattern.compile("\\s+[A-Z]{1,4}\\d{6,12}$");
-    private static final Pattern TRAILING_MIXED_ALNUM_SKU = Pattern.compile(
+    private static final Pattern TRAILING_MIXED_ALNUM_CANDIDATE = Pattern.compile(
             "\\s+(?=.*\\d)[A-Z0-9]{5,}$",
             Pattern.CASE_INSENSITIVE
     );
@@ -30,7 +30,7 @@ public final class NaverShoppingTitleSanitizer {
     private static final List<Pattern> TRAILING_PATTERNS = List.of(
             TRAILING_LONG_NUMERIC,
             TRAILING_ALNUM_SKU,
-            TRAILING_MIXED_ALNUM_SKU,
+            TRAILING_MIXED_ALNUM_CANDIDATE,
             TRAILING_HYPHEN_SKU,
             TRAILING_LATIN_MODEL_TOKENS,
             TRAILING_SEASON_CODE,
@@ -62,6 +62,9 @@ public final class NaverShoppingTitleSanitizer {
                     continue;
                 }
                 String token = matcher.group().trim();
+                if (pattern == TRAILING_MIXED_ALNUM_CANDIDATE && !isMixedAlphanumericSku(token)) {
+                    continue;
+                }
                 if (StringUtils.hasText(token)) {
                     removedCodes.add(token);
                 }
@@ -127,10 +130,33 @@ public final class NaverShoppingTitleSanitizer {
         if (TRAILING_ALNUM_SKU.matcher(" " + token).matches()) {
             return true;
         }
-        if (TRAILING_MIXED_ALNUM_SKU.matcher(" " + token).matches()) {
-            return true;
+        return isMixedAlphanumericSku(token) || token.matches("\\d{7,}");
+    }
+
+    /**
+     * 내부 품번(SKU)과 신발·의류 모델명(990V6, GT2160 등)을 구분한다.
+     * SKU는 보통 8자 이상이며 문자·숫자 경계가 2회 이상 바뀐다.
+     */
+    private static boolean isMixedAlphanumericSku(String token) {
+        if (!StringUtils.hasText(token) || token.length() < 8) {
+            return false;
         }
-        return token.matches("\\d{7,}");
+        if (!token.matches("(?i)[A-Z0-9]+") || !token.matches(".*\\d.*")) {
+            return false;
+        }
+        return countAlphaNumericTransitions(token) >= 2;
+    }
+
+    private static int countAlphaNumericTransitions(String token) {
+        int transitions = 0;
+        for (int index = 1; index < token.length(); index++) {
+            boolean previousIsDigit = Character.isDigit(token.charAt(index - 1));
+            boolean currentIsDigit = Character.isDigit(token.charAt(index));
+            if (previousIsDigit != currentIsDigit) {
+                transitions++;
+            }
+        }
+        return transitions;
     }
 
     private static String fallbackProductCode(String externalProductId) {
