@@ -20,10 +20,9 @@ public class OutfitCreateRequest {
     private String title;
 
     @NotBlank
-    // description은 엔티티 제한이 따로 없으면 그대로 둬도 돼!
     private String description;
 
-    @NotBlank
+
     @Size(max = 500)
     // @URL(message = "올바른 URL 형식이 아닙니다.") // 필요하다면 @URL 추가 가능!
     private String thumbnailUrl;

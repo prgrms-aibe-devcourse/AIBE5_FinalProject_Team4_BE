@@ -141,13 +141,20 @@ public class StyleProductRecommender {
 
     private RecommendResponse mapToRecommendResponse(ScoredRecommendation scored) {
         Clothes clothes = scored.clothes();
+        ClothesTagSnapshot snapshot = clothes.getRecommendationTagSnapshot();
+
         return new RecommendResponse(
                 clothes.getName(),
                 clothes.getExternalProductUrl(),
                 clothes.getImageUrl(),
-                "0", // 가격 정보는 엔티티에 직접 없을 수 있음
+                "0",
                 String.format("%.2f", scored.score()),
-                scored.reason()
+                scored.reason(),
+                clothes.getBrandName(),
+                clothes.getCategory(),
+                snapshot.primaryColor(),
+                snapshot.primaryStyleCode(),
+                clothes.getId()
         );
     }
 

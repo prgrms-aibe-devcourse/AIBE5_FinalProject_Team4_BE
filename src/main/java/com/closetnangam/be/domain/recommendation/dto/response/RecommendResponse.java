@@ -20,5 +20,20 @@ public record RecommendResponse(
         String score,
 
         @Schema(description = "추천 이유")
-        String reason
+        String reason,
+
+        @Schema(description = "브랜드명")
+        String brandName,
+
+        @Schema(description = "카테고리")
+        String category,
+
+        @Schema(description = "대표 색상")
+        String primaryColor,
+
+        @Schema(description = "스타일")
+        String primaryStyle,
+
+        @Schema(description = "옷 ID (피드백용)")
+        Long clothesId
 ) {}
