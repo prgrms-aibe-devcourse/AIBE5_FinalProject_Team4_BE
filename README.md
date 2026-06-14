@@ -96,8 +96,16 @@
       <td>MySQL 8.4</td>
     </tr>
     <tr>
+      <td>Cache</td>
+      <td>Redis 7</td>
+    </tr>
+    <tr>
       <td>Auth</td>
       <td>Spring Security / OAuth2 / JWT</td>
+    </tr>
+    <tr>
+      <td>API Docs</td>
+      <td>SpringDoc OpenAPI / Swagger</td>
     </tr>
     <tr>
       <td>External</td>
