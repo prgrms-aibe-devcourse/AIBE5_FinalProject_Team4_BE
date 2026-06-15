@@ -2,6 +2,7 @@ package com.closetnangam.be.domain.recommendation.support;
 
 import com.closetnangam.be.domain.catalog.enums.ClothesCategory;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
+import com.closetnangam.be.global.external.naver.support.BrandNameSanitizer;
 import org.springframework.util.StringUtils;
 
 import java.util.Set;
@@ -80,7 +81,8 @@ public final class ComplementaryRecommendationProductFilter {
             "원플러스원", "1플러스1", "2플러스1", "3플러스1", "1plus1", "2plus1",
             "제작건", "단체티", "단체복", "인쇄비포함", "기본인쇄", "주문제작", "프린트스타", "맞춤인쇄", "소량프린팅",
             "부속품", "부자재", "장식소품", "금장단추", "코팅단추", "단추세트", "봉제단추", "스냅단추", "누름단추",
-            "프레스단추", "단추부자재", "지퍼부자재", "의류부자재"
+            "프레스단추", "단추부자재", "지퍼부자재", "의류부자재",
+            "바지끈", "바지끈", "바지조임끈", "조임끈", "허리끈"
     };
 
     /**
@@ -109,6 +111,14 @@ public final class ComplementaryRecommendationProductFilter {
             "셔츠|블라우스|코트|자켓|가디건|팬츠|바지|니트|맨투맨|티셔츠|후드|원피스|치마|스커트|신발|스니커|부츠|조끼|베스트|트렌치|점퍼|슬랙스|데님|청바지|반팔|긴팔|와이셔츠"
     );
 
+    /** SEO 키워드 나열형 상품명 (단일 SKU가 아닌 검색어 stuffing) */
+    private static final String[] KEYWORD_STUFFING_MARKERS = {
+            "3부", "반바지", "바람막이쇼츠", "워크아웃쇼츠", "애슬레저하프팬츠",
+            "여성바지", "남자바지", "남성바지", "여자바지"
+    };
+
+    private static final Pattern MULTI_ITEM_SET_PATTERN = Pattern.compile("\\d+종");
+
     private ComplementaryRecommendationProductFilter() {
     }
 
@@ -118,6 +128,9 @@ public final class ComplementaryRecommendationProductFilter {
 
     public static boolean isWearableCandidate(NaverShoppingProductResponse product, String cleanTitle) {
         if (product == null) {
+            return false;
+        }
+        if (shouldExcludeFromExternalPool(cleanTitle, product.brand())) {
             return false;
         }
         if (hasExcludedNaverCategory(product)) {
@@ -133,6 +146,57 @@ public final class ComplementaryRecommendationProductFilter {
             return false;
         }
         return !containsExcludedKeyword(buildTitleSearchableText(product, cleanTitle), EXCLUDED_TITLE_KEYWORDS);
+    }
+
+    /**
+     * EXTERNAL_SHOPPING 공용 풀에서 제외할 상품(비의류·부자재·키워드 stuffing·잘못된 브랜드) 여부.
+     */
+    public static boolean shouldExcludeFromExternalPool(String name, String brandName) {
+        if (BrandNameSanitizer.isLikelyProductDescriptor(brandName)) {
+            return true;
+        }
+        if (!StringUtils.hasText(name)) {
+            return false;
+        }
+        String normalized = normalize(name);
+        if (isKeywordStuffedTitle(normalized)) {
+            return true;
+        }
+        if (isMultiItemListing(normalized)) {
+            return true;
+        }
+        return containsExcludedKeyword(normalized, EXCLUDED_TITLE_KEYWORDS);
+    }
+
+    private static boolean isKeywordStuffedTitle(String normalized) {
+        int hits = 0;
+        for (String marker : KEYWORD_STUFFING_MARKERS) {
+            if (normalized.contains(normalize(marker))) {
+                hits++;
+            }
+        }
+        return hits >= 3;
+    }
+
+    private static boolean isMultiItemListing(String normalized) {
+        if (!MULTI_ITEM_SET_PATTERN.matcher(normalized).find()) {
+            return false;
+        }
+        if ((normalized.contains("여성바지") || normalized.contains("여자바지"))
+                && (normalized.contains("남자바지") || normalized.contains("남성바지"))) {
+            return true;
+        }
+        return countKeywordStuffingMarkers(normalized) >= 2;
+    }
+
+    private static int countKeywordStuffingMarkers(String normalized) {
+        int hits = 0;
+        for (String marker : KEYWORD_STUFFING_MARKERS) {
+            if (normalized.contains(normalize(marker))) {
+                hits++;
+            }
+        }
+        return hits;
     }
 
     private static boolean isSewingSupply(String... texts) {

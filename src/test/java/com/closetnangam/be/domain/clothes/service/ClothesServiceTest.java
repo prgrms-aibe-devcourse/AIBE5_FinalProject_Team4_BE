@@ -3,6 +3,7 @@ package com.closetnangam.be.domain.clothes.service;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.enums.StyleCode;
 import com.closetnangam.be.domain.clothes.dto.request.ClothesConvertToOwnedRequest;
+import com.closetnangam.be.domain.clothes.dto.request.ClothesUpdateRequest;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
@@ -113,6 +114,7 @@ class ClothesServiceTest {
         assertThat(wardrobeClothes.getOwnershipStatus()).isEqualTo(OwnershipStatus.OWNED);
         assertThat(wardrobeClothes.getClothes().getId()).isEqualTo(99L);
         assertThat(wardrobeClothes.getClothes().getClothesInfoSource()).isEqualTo(ClothesInfoSource.PURCHASE_HISTORY);
+        assertThat(wardrobeClothes.getRegistrationSource()).isEqualTo(ClothesInfoSource.EXTERNAL_SHOPPING);
         assertThat(response.clothesId()).isEqualTo(99L);
         verify(clothesTagHelper).copyTagsFrom(sharedExternal, wardrobeClothes.getClothes());
     }
@@ -137,6 +139,68 @@ class ClothesServiceTest {
         assertThat(personalClothes.getExternalSource()).isEqualTo(Clothes.EXTERNAL_NONE);
         verify(clothesRepository, never()).save(any());
         verify(clothesTagHelper, never()).copyTagsFrom(any(), any());
+    }
+
+    @Test
+    @DisplayName("외부 쇼핑 등록 옷은 사이즈만 수정한다")
+    void updateClothes_externalCatalogGarment_updatesSizeOnly() {
+        Clothes externalOwned = createClothes(99L, ClothesInfoSource.PURCHASE_HISTORY);
+        WardrobeClothes wardrobeClothes = createOwnedLink(externalOwned, ClothesInfoSource.EXTERNAL_SHOPPING);
+
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(99L, 1L))
+                .willReturn(Optional.of(wardrobeClothes));
+
+        ClothesUpdateRequest request = new ClothesUpdateRequest(
+                "changed-name",
+                "changed-brand",
+                "changed-code",
+                "https://example.com/changed.jpg",
+                "BOTTOM",
+                "SHORTS",
+                "FEMALE",
+                "BLACK",
+                java.util.List.of("GRAY"),
+                java.util.List.of("STREET"),
+                "XL",
+                "WINTER",
+                true
+        );
+
+        var response = clothesService.updateClothes(1L, 99L, request);
+
+        assertThat(wardrobeClothes.getSize()).isEqualTo("XL");
+        assertThat(externalOwned.getName()).isEqualTo("item-99");
+        assertThat(externalOwned.getBrandName()).isEqualTo("brand");
+        assertThat(response.registrationSource()).isEqualTo(ClothesInfoSource.EXTERNAL_SHOPPING);
+        verify(clothesTagHelper, never()).validateClassification(
+                any(), any(), any(), any(), any(), any()
+        );
+        verify(clothesTagHelper, never()).replaceColorTags(any(), any(), any());
+        verify(clothesTagHelper, never()).replaceStyleTags(any(), any());
+    }
+
+    private WardrobeClothes createOwnedLink(Clothes clothes, ClothesInfoSource registrationSource) {
+        User user = User.builder()
+                .nickname("user-1")
+                .email("user1@example.com")
+                .gender(User.Gender.MALE)
+                .birthDate(LocalDate.of(1990, 1, 1))
+                .build();
+        ReflectionTestUtils.setField(user, "id", 1L);
+        Wardrobe wardrobe = Wardrobe.create(user);
+        ReflectionTestUtils.setField(wardrobe, "id", 100L);
+
+        WardrobeClothes wardrobeClothes = WardrobeClothes.builder()
+                .wardrobe(wardrobe)
+                .clothes(clothes)
+                .ownershipStatus(OwnershipStatus.OWNED)
+                .size("M")
+                .favorite(false)
+                .userImageUrl("https://example.com/user.jpg")
+                .registrationSource(registrationSource)
+                .build();
+        ReflectionTestUtils.setField(wardrobeClothes, "id", 21L);
+        return wardrobeClothes;
     }
 
     private Clothes createClothes(Long clothesId, ClothesInfoSource infoSource) {
