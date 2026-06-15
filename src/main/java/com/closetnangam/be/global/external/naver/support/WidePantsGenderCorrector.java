@@ -18,7 +18,8 @@ public final class WidePantsGenderCorrector {
             Pattern.CASE_INSENSITIVE
     );
     private static final Pattern MALE_KEYWORD = Pattern.compile(
-            "남성|남자|남성용|남자용|남녀공용|남여공용|men|man|mens|boys|boy",
+            "남성|남자|남성용|남자용|남녀공용|남여공용|"
+                    + "\\b(?:men(?:'s|s)?|man|boys?)\\b",
             Pattern.CASE_INSENSITIVE
     );
 

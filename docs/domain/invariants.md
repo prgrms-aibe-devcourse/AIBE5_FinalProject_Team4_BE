@@ -73,7 +73,7 @@ last_updated: 2026-06-10
 - 사용자의 옷장에 등록된 옷 스타일 점수는 `USER_STYLES.wardrobe_weight`에 반영합니다.
 - 추천 싫어요 또는 추천 제외 피드백은 대표 스타일 -7점, 보조 스타일 각각 -3점으로 `USER_STYLES.feedback_weight`에 반영합니다.
 - 최종 스타일 점수는 `combined_weight = preference_weight + wardrobe_weight + feedback_weight` 기준으로 계산합니다.
-- 점수가 같은 추천 후보는 같은 점수 그룹 안에서 랜덤 노출합니다.
+- 점수가 같은 추천 후보는 같은 점수 그룹 안에서 랜덤 노출합니다. `RECO-005` 어울리는 옷 추천(`compatibilityScore` 동점)은 `brandName`이 `UNKNOWN`이 아닌 후보를 먼저 노출합니다.
 
 ## 추천 피드백과 제외
 

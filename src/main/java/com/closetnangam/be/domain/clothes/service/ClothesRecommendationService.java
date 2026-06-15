@@ -52,6 +52,7 @@ public class ClothesRecommendationService {
     private static final Comparator<RecommendedItem> RECOMMENDED_ITEM_COMPARATOR = Comparator
             .comparingInt(RecommendedItem::compatibilityScore)
             .reversed()
+            // RECO-005: 동점 시 brandName != UNKNOWN 우선. docs/features/recommendation-policy.md 참고.
             .thenComparing(item -> isKnownBrand(item.brandName()) ? 0 : 1);
 
     /**
