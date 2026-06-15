@@ -10,6 +10,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
+import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -21,6 +23,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
+    private final RequestCache requestCache = new HttpSessionRequestCache();
 
     @Value("${app.oauth2.redirect-uri:http://localhost:3000}")
     private String redirectUri;
@@ -31,7 +34,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
      * <p>기존 {@code ?token=} 쿼리 파라미터 방식은 브라우저 히스토리·서버 로그·Referer 헤더에
      * 토큰이 평문으로 남으므로 HttpOnly 쿠키로 전환합니다.</p>
      *
-     * 6.9에 기존 AccessToken에서 이제 RefreshToken도 함께 발급하여 Redis에 저장, 쿠키로 전달합니다.
+     * <p>Spring Security가 OAuth 콜백 이전 요청을 SavedRequest로 세션에 저장해 두면,
+     * 리다이렉트 URL에 이전 요청의 쿼리 파라미터(예: ?token=, ?state=)가 묻어올 수 있습니다.
+     * sendRedirect 전에 requestCache.removeRequest()로 SavedRequest를 명시적으로 제거합니다.</p>
      */
     @Override
     public void onAuthenticationSuccess(
@@ -39,6 +44,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             HttpServletResponse response,
             Authentication authentication
     ) throws IOException {
+        logger.info("[OAuth2] 콜백 진입");
         CustomOAuth2User principal = (CustomOAuth2User) authentication.getPrincipal();
         Long userId = principal.getUserId();
 
@@ -52,6 +58,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .secure(request.isSecure())   // HTTPS 환경에서는 Secure 플래그 자동 활성화
                 .sameSite("Lax")
                 .path("/")
+                .maxAge(Duration.ofDays(7))
                 .build();
 
         ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refreshToken)
@@ -65,8 +72,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-        // FE 마이그레이션: localStorage + ?token= 연동이 쿠키 전환 전까지 동작하도록 쿼리도 함께 전달
-        String targetUrl = redirectUri + (redirectUri.contains("?") ? "&" : "?") + "token=" + accessToken;
-        getRedirectStrategy().sendRedirect(request, response, targetUrl);
+        // SavedRequest 제거 — 이전 요청의 쿼리 파라미터가 리다이렉트 URL에 묻어오는 현상 방지
+        requestCache.removeRequest(request, response);
+        clearAuthenticationAttributes(request);
+
+        getRedirectStrategy().sendRedirect(request, response, redirectUri);
     }
 }

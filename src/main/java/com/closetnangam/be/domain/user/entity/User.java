@@ -169,6 +169,10 @@ public class User extends BaseEntity {
         this.withdrawnAt = LocalDateTime.now();
     }
 
+    public boolean isOnboarded() {
+        return !DEFAULT_BIRTH_DATE.equals(this.birthDate);
+    }
+
     public String getDefaultAnchorItemType() {
         if (this.gender == Gender.FEMALE) {
             return "SKIRT";

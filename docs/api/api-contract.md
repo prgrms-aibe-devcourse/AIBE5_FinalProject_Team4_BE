@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-12
+last_updated: 2026-06-15
 ---
 
 # API 계약
@@ -89,8 +89,48 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 ### 사용자
 | Method | Path | 설명 |
 | --- | --- | --- |
-| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 userId 반환 (미인증 시 401) |
+| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 프로필 반환 (userId, nickname, onboarded) |
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
+| PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 userId, nickname, onboarded 반환 |
+| POST | `/api/v1/users/styles` | 스타일 선호도 저장 (기존 스타일 초기화 후 새로 저장) |
+| DELETE | `/api/v1/users/me` | 회원 탈퇴 (소프트 삭제, 쿠키 만료) |
+
+#### GET /api/v1/users/profile 응답 필드
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `userId` | Long | 사용자 ID |
+| `nickname` | String | 카카오 닉네임 또는 온보딩에서 설정한 닉네임 |
+| `onboarded` | boolean | 온보딩 완료 여부. birthDate가 기본값(2000-01-01)이면 false, 실제 날짜이면 true |
+
+#### PATCH /api/v1/users/profile 요청 필드
+
+| 필드 | 필수 | 설명 |
+| --- | --- | --- |
+| `nickname` | Y | 닉네임 (50자 이하) |
+| `birthDate` | Y | 생년월일 (yyyy-MM-dd) |
+| `gender` | Y | `MALE` / `FEMALE` / `OTHER` |
+| `regionName` | Y | 지역명 (예: 서울) |
+| `regionCode` | Y | 지역 코드 |
+| `profileImageUrl` | N | 프로필 이미지 URL. 생략 시 기존 값 유지 |
+| `profileBio` | N | 한 줄 소개. 생략 시 기존 값 유지 |
+| `externalLinkUrl` | N | 외부 링크 URL. 생략 시 기존 값 유지 |
+
+#### PATCH /api/v1/users/profile 응답 필드
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `userId` | Long | 사용자 ID |
+| `nickname` | String | 저장된 닉네임 |
+| `onboarded` | boolean | 온보딩 완료 여부. 저장 후 true이면 메인 페이지로 이동 |
+
+#### POST /api/v1/users/styles 요청 필드
+
+| 필드 | 필수 | 설명 |
+| --- | --- | --- |
+| `styleCodes` | Y | 스타일 코드 배열 (1~3개, 예: `["CASUAL", "MINIMAL"]`) |
+
+허용 스타일 코드: `CASUAL`, `STREET`, `MINIMAL`, `SPORTY`, `CLASSIC`, `CHIC`, `WORKWEAR`, `CITYBOY`, `GORPCORE`, `RETRO`
 
 ### 카탈로그
 
