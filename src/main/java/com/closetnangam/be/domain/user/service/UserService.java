@@ -107,6 +107,8 @@ public class UserService {
 
         user.withdraw();
         refreshTokenService.delete(userId);
+    }
+
     @Transactional(readOnly = true)
     public MarketingConsentResponse getMarketingConsent(Long userId) {
         User user = getUser(userId);

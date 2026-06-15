@@ -94,6 +94,8 @@ public class UserController {
                 .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(ApiResponse.ok(null));
+    }
+
     @Operation(summary = "마케팅 정보 수신 동의 조회", description = "현재 사용자의 마케팅 정보 수신 동의 상태를 조회합니다.")
     @GetMapping("/{userId}/marketing-consent")
     public ResponseEntity<ApiResponse<MarketingConsentResponse>> getMarketingConsent(@PathVariable Long userId) {

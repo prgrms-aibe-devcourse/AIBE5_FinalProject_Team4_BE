@@ -171,6 +171,8 @@ public class User extends BaseEntity {
 
     public boolean isOnboarded() {
         return !DEFAULT_BIRTH_DATE.equals(this.birthDate);
+    }
+
     public void updateMarketingAgreement(boolean marketingAgreed) {
         this.marketingAgreed = marketingAgreed;
         this.marketingAgreedAt = marketingAgreed ? LocalDateTime.now() : INACTIVE_TIMESTAMP;
