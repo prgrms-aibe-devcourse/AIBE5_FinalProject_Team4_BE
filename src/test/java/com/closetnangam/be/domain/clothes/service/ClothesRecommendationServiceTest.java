@@ -151,6 +151,35 @@ class ClothesRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("어울림 점수가 같으면 brand_name이 UNKNOWN이 아닌 상품을 우선 추천한다")
+    void recommendPrefersKnownBrandWhenCompatibilityScoreIsTied() {
+        WardrobeClothes anchor = createAnchorWardrobeClothes(1L, "TOP", "SHORT_SLEEVE", "WHITE");
+        Clothes unknownBrandBottom = createExternalClothes(200L, "BOTTOM", "SLACKS", "BLACK");
+        ReflectionTestUtils.setField(unknownBrandBottom, "brandName", "UNKNOWN");
+        Clothes knownBrandBottom = createExternalClothes(201L, "BOTTOM", "SLACKS", "BLACK");
+        ReflectionTestUtils.setField(knownBrandBottom, "brandName", "폴햄");
+
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(anchor));
+        given(wardrobeExclusionMatcher.buildActiveExclusionIndex(1L))
+                .willReturn(new WardrobeExclusionIndex(Set.of(10L), Set.of(), Set.of()));
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("BOTTOM"), any(Pageable.class)))
+                .willReturn(List.of(unknownBrandBottom, knownBrandBottom));
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("OUTER"), any(Pageable.class)))
+                .willReturn(List.of());
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("SHOES"), any(Pageable.class)))
+                .willReturn(List.of());
+
+        ClothesRecommendationResponse response = clothesRecommendationService.recommend(1L, 10L, 5);
+
+        assertThat(response.recommendations().get("BOTTOM"))
+                .extracting(item -> item.clothesId())
+                .containsExactly(201L, 200L);
+        assertThat(response.recommendations().get("BOTTOM"))
+                .extracting(item -> item.compatibilityScore())
+                .containsOnly(84);
+    }
+
+    @Test
     @DisplayName("보유 전환으로 복제된 옷과 동일 identity의 원본 외부 상품은 추천에서 제외한다")
     void recommendExcludesOriginalExternalProductWhenOwnedCloneHasSameIdentity() {
         WardrobeClothes anchor = createAnchorWardrobeClothes(1L, "TOP", "SHORT_SLEEVE", "WHITE");

@@ -4,6 +4,7 @@ import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothesStyleDto;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothingColorDto;
+import com.closetnangam.be.global.external.naver.support.WidePantsGenderCorrector;
 import com.closetnangam.be.global.external.gemini.GeminiService;
 import com.closetnangam.be.global.external.gemini.dto.GeminiClothingClassificationResult;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
@@ -80,7 +81,7 @@ public class ComplementaryRecommendationClassificationService {
                     product.category3()
             );
             validateClassificationResult(result);
-            return Optional.of(toResolvedClassification(result));
+            return Optional.of(toResolvedClassification(result, product.brand(), cleanTitle));
         } catch (Exception exception) {
             if (isContextRefreshFailure(exception)) {
                 throw wrapAsUnchecked(exception);
@@ -117,6 +118,14 @@ public class ComplementaryRecommendationClassificationService {
     }
 
     private ResolvedClassification toResolvedClassification(GeminiClothingClassificationResult result) {
+        return toResolvedClassification(result, result.brandName(), result.name());
+    }
+
+    private ResolvedClassification toResolvedClassification(
+            GeminiClothingClassificationResult result,
+            String brandName,
+            String productTitle
+    ) {
         List<ClothingColorDto> colors = new ArrayList<>();
         colors.add(new ClothingColorDto(result.primaryColor(), ColorRole.PRIMARY, (byte) 0));
 
@@ -142,7 +151,12 @@ public class ComplementaryRecommendationClassificationService {
         return new ResolvedClassification(
                 result.category(),
                 result.itemType(),
-                categoryCatalogService.resolveGenderOrDefault(result.gender()).name(),
+                WidePantsGenderCorrector.correctGender(
+                        categoryCatalogService.resolveGenderOrDefault(result.gender()).name(),
+                        result.category(),
+                        brandName,
+                        productTitle
+                ),
                 categoryCatalogService.resolveSeasonOrDefault(result.season()).name(),
                 colors,
                 styles

@@ -212,9 +212,7 @@ public class ClothesService {
             linkedClothes.convertToOwned(request.productCode(), request.isVerified());
         }
 
-        ClothesInfoSource ownedRegistrationSource = originalInfoSource == ClothesInfoSource.EXTERNAL_SHOPPING
-                ? ClothesInfoSource.PURCHASE_HISTORY
-                : originalInfoSource;
+        ClothesInfoSource ownedRegistrationSource = originalInfoSource;
         wardrobeClothes.convertToOwned(
                 request.size(),
                 request.userImageUrl(),
@@ -226,6 +224,17 @@ public class ClothesService {
 
     @Transactional
     public ClothesResponse updateClothes(Long userId, Long clothesId, ClothesUpdateRequest request) {
+        WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
+        Clothes clothes = wardrobeClothes.getClothes();
+
+        if (isExternalCatalogGarment(wardrobeClothes, clothes)) {
+            wardrobeClothes.updateWardrobeDetails(
+                    request.size(),
+                    wardrobeClothes.getUserImageUrl()
+            );
+            return ClothesResponse.from(clothes, wardrobeClothes);
+        }
+
         clothesTagHelper.validateClassification(
                 request.category(),
                 request.itemType(),
@@ -235,9 +244,6 @@ public class ClothesService {
                 request.gender()
         );
         clothesTagHelper.validateSeasonIfPresent(request.season());
-
-        WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
-        Clothes clothes = wardrobeClothes.getClothes();
 
         clothes.update(
                 request.name(),
@@ -282,6 +288,14 @@ public class ClothesService {
     private WardrobeClothes getOwnedWardrobeClothes(Long userId, Long clothesId) {
         return wardrobeClothesRepository.findByClothesIdAndUserId(clothesId, userId)
                 .orElseThrow(() -> new NoSuchElementException("옷을 찾을 수 없습니다."));
+    }
+
+    /**
+     * 외부 쇼핑 카탈로그에서 가져온 옷 — 공통 옷 정보는 유지하고 옷장 사이즈만 변경합니다.
+     */
+    private boolean isExternalCatalogGarment(WardrobeClothes wardrobeClothes, Clothes clothes) {
+        return wardrobeClothes.getRegistrationSource() == ClothesInfoSource.EXTERNAL_SHOPPING
+                || clothes.getClothesInfoSource() == ClothesInfoSource.EXTERNAL_SHOPPING;
     }
 
     private Clothes buildClothes(
