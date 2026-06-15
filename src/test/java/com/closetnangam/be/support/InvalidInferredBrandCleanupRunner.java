@@ -2,6 +2,7 @@ package com.closetnangam.be.support;
 
 import com.closetnangam.be.global.external.naver.support.BrandNameSanitizer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -12,8 +13,9 @@ import java.util.List;
 
 /**
  * EXTERNAL_SHOPPING의 잘못 추론된 brand_name을 UNKNOWN으로 되돌린다.
- * 로컬/공유 DB 정리용: {@code DB_USERNAME}/{@code DB_PASSWORD} 환경 변수 필요.
+ * 로컬/공유 DB 정리용: {@code RUN_DB_MAINTENANCE=true} 와 {@code DB_USERNAME}/{@code DB_PASSWORD} 필요.
  */
+@EnabledIfEnvironmentVariable(named = "RUN_DB_MAINTENANCE", matches = "true")
 class InvalidInferredBrandCleanupRunner {
 
     private static final String JDBC_URL =

@@ -91,6 +91,20 @@ Get-Content .\build\db-share\clothes-pool-full.sql | mysql -h 127.0.0.1 -P 3307 
 - `wardrobe_clothes` 등 사용자 옷장 데이터와 FK로 연결된 행이 있으면 import 전후 정합성을 확인하세요.
 - positional INSERT(`INSERT INTO t VALUES (...)`) 덤프는 사용하지 마세요. 컬럼 순서가 다르면 데이터가 밀립니다.
 
+## DB 품질 정리 (로컬/공유 DB 전용)
+
+CI `./gradlew test`에는 포함되지 않습니다. 로컬 MySQL(`127.0.0.1:3307/closetnangamdb`) 정리 시:
+
+```powershell
+$env:RUN_DB_MAINTENANCE = "true"
+$env:DB_USERNAME = "root"
+$env:DB_PASSWORD = "local1234"
+
+./gradlew test --tests "com.closetnangam.be.support.InvalidInferredBrandCleanupRunner"
+./gradlew test --tests "com.closetnangam.be.support.WidePantsGenderCleanupRunner"
+./gradlew test --tests "com.closetnangam.be.support.InvalidExternalPoolCleanupRunner"
+```
+
 ## 검증 쿼리
 
 ```sql

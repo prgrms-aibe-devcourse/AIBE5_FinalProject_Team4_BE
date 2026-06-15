@@ -2,6 +2,7 @@ package com.closetnangam.be.support;
 
 import com.closetnangam.be.domain.recommendation.support.ComplementaryRecommendationProductFilter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -13,7 +14,9 @@ import java.util.List;
 /**
  * EXTERNAL_SHOPPING 공용 풀에서 비의류·키워드 stuffing·잘못된 브랜드 상품을 삭제한다.
  * 옷장/코디에서 참조 중인 CLOTHES는 건너뛴다.
+ * {@code RUN_DB_MAINTENANCE=true} 일 때만 실행 (CI 기본 test 제외).
  */
+@EnabledIfEnvironmentVariable(named = "RUN_DB_MAINTENANCE", matches = "true")
 class InvalidExternalPoolCleanupRunner {
 
     private static final String JDBC_URL =

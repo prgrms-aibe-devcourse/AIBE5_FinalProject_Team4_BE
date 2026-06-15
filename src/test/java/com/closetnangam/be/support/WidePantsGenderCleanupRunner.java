@@ -2,6 +2,7 @@ package com.closetnangam.be.support;
 
 import com.closetnangam.be.global.external.naver.support.WidePantsGenderCorrector;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -12,8 +13,9 @@ import java.util.List;
 
 /**
  * 와이드 팬츠 MALE 오분류를 FEMALE로 되돌린다.
- * 로컬/공유 DB 정리용: {@code DB_USERNAME}/{@code DB_PASSWORD} 환경 변수 필요.
+ * 로컬/공유 DB 정리용: {@code RUN_DB_MAINTENANCE=true} 와 {@code DB_USERNAME}/{@code DB_PASSWORD} 필요.
  */
+@EnabledIfEnvironmentVariable(named = "RUN_DB_MAINTENANCE", matches = "true")
 class WidePantsGenderCleanupRunner {
 
     private static final String JDBC_URL =
