@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "상품 추천 응답 DTO")
 public record RecommendResponse(
+
         @Schema(description = "상품명")
         String title,
 

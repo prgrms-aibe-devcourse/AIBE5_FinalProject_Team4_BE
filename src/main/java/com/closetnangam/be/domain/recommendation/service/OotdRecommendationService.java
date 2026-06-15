@@ -163,6 +163,5 @@ public class OotdRecommendationService {
                 .favorite(wc.getFavorite())
                 .build();
     }
-
     private record ScoredItem(WardrobeClothes item, double score) {}
 }

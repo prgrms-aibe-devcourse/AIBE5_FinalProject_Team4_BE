@@ -157,6 +157,5 @@ public class StyleProductRecommender {
                 clothes.getId()
         );
     }
-
     private record ScoredRecommendation(Clothes clothes, double score, String reason) {}
 }
