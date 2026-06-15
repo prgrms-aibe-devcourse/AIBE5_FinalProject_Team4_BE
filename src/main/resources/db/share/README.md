@@ -105,6 +105,8 @@ $env:DB_PASSWORD = "local1234"
 ./gradlew test --tests "com.closetnangam.be.support.InvalidExternalPoolCleanupRunner"
 ```
 
+`InvalidExternalPoolCleanupRunner`는 `wardrobe_clothes`·`outfit_items` 참조가 있는 상품은 건너뛰고, `recommendation_feedbacks`만 남은 invalid 풀 상품은 피드백 행을 먼저 삭제한 뒤 태그·`clothes`를 **한 트랜잭션**에서 제거합니다.
+
 ## 검증 쿼리
 
 ```sql

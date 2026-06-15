@@ -13,7 +13,13 @@ import java.util.List;
 
 /**
  * EXTERNAL_SHOPPING 공용 풀에서 비의류·키워드 stuffing·잘못된 브랜드 상품을 삭제한다.
- * 옷장/코디에서 참조 중인 CLOTHES는 건너뛴다.
+ * <p>
+ * 참조 정책:
+ * <ul>
+ *   <li>{@code wardrobe_clothes}, {@code outfit_items} 참조가 있으면 삭제하지 않는다.</li>
+ *   <li>{@code recommendation_feedbacks}만 참조하는 invalid 풀 상품은 피드백 행을 먼저 삭제한 뒤
+ *       태그·clothes를 같은 트랜잭션에서 제거한다. (공유 풀에서 제거 대상이므로 고아 피드백도 정리)</li>
+ * </ul>
  * {@code RUN_DB_MAINTENANCE=true} 일 때만 실행 (CI 기본 test 제외).
  */
 @EnabledIfEnvironmentVariable(named = "RUN_DB_MAINTENANCE", matches = "true")
@@ -42,7 +48,7 @@ class InvalidExternalPoolCleanupRunner {
                 try (ResultSet rs = select.executeQuery()) {
                     while (rs.next()) {
                         long clothesId = rs.getLong("clothes_id");
-                        if (isReferenced(connection, clothesId)) {
+                        if (isReferencedByUserData(connection, clothesId)) {
                             continue;
                         }
                         if (ComplementaryRecommendationProductFilter.shouldExcludeFromExternalPool(
@@ -60,30 +66,44 @@ class InvalidExternalPoolCleanupRunner {
                 return;
             }
 
-            try (PreparedStatement deleteColors = connection.prepareStatement(
-                    "DELETE FROM clothing_colors WHERE clothes_id = ?");
-                 PreparedStatement deleteStyles = connection.prepareStatement(
-                         "DELETE FROM clothing_styles WHERE clothes_id = ?");
-                 PreparedStatement deleteClothes = connection.prepareStatement(
-                         "DELETE FROM clothes WHERE clothes_id = ?")) {
-                for (Long clothesId : targetIds) {
-                    deleteColors.setLong(1, clothesId);
-                    deleteColors.addBatch();
-                    deleteStyles.setLong(1, clothesId);
-                    deleteStyles.addBatch();
-                    deleteClothes.setLong(1, clothesId);
-                    deleteClothes.addBatch();
+            connection.setAutoCommit(false);
+            try {
+                try (PreparedStatement deleteFeedbacks = connection.prepareStatement(
+                        "DELETE FROM recommendation_feedbacks WHERE clothes_id = ?");
+                     PreparedStatement deleteColors = connection.prepareStatement(
+                             "DELETE FROM clothing_colors WHERE clothes_id = ?");
+                     PreparedStatement deleteStyles = connection.prepareStatement(
+                             "DELETE FROM clothing_styles WHERE clothes_id = ?");
+                     PreparedStatement deleteClothes = connection.prepareStatement(
+                             "DELETE FROM clothes WHERE clothes_id = ?")) {
+                    for (Long clothesId : targetIds) {
+                        deleteFeedbacks.setLong(1, clothesId);
+                        deleteFeedbacks.addBatch();
+                        deleteColors.setLong(1, clothesId);
+                        deleteColors.addBatch();
+                        deleteStyles.setLong(1, clothesId);
+                        deleteStyles.addBatch();
+                        deleteClothes.setLong(1, clothesId);
+                        deleteClothes.addBatch();
+                    }
+                    deleteFeedbacks.executeBatch();
+                    deleteColors.executeBatch();
+                    deleteStyles.executeBatch();
+                    deleteClothes.executeBatch();
                 }
-                deleteColors.executeBatch();
-                deleteStyles.executeBatch();
-                deleteClothes.executeBatch();
+                connection.commit();
+            } catch (Exception e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
             }
 
             System.out.printf("Removed %d invalid EXTERNAL_SHOPPING pool products.%n", targetIds.size());
         }
     }
 
-    private static boolean isReferenced(Connection connection, long clothesId) throws Exception {
+    private static boolean isReferencedByUserData(Connection connection, long clothesId) throws Exception {
         try (PreparedStatement wardrobe = connection.prepareStatement(
                 "SELECT 1 FROM wardrobe_clothes WHERE clothes_id = ? LIMIT 1")) {
             wardrobe.setLong(1, clothesId);
