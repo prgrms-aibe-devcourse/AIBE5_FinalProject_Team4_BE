@@ -36,23 +36,6 @@ public interface ClothesRepository extends JpaRepository<Clothes, Long> {
             Pageable pageable
     );
 
-    /**
-     * @deprecated 카테고리별 상한이 없어 한 카테고리에 후보가 쏠립니다.
-     *             {@link #findComplementaryRecommendationCandidatesByCategory}를 카테고리마다 호출하세요.
-     */
-    @Deprecated
-    @Query("""
-            select c from Clothes c
-            where c.clothesInfoSource = com.closetnangam.be.domain.clothes.enums.ClothesInfoSource.EXTERNAL_SHOPPING
-              and c.category <> :excludeCategory
-              and c.category in ('TOP', 'BOTTOM', 'OUTER', 'SHOES')
-            order by c.createdAt desc
-            """)
-    List<Clothes> findExternalCandidatesForComplementaryRecommendation(
-            @Param("excludeCategory") String excludeCategory,
-            Pageable pageable
-    );
-
     @Query("""
     SELECT s.name, COUNT(cst.id) as styleCount
     FROM WardrobeClothes wc

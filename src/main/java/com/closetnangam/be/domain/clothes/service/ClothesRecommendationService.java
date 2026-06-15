@@ -47,6 +47,12 @@ public class ClothesRecommendationService {
     private static final String CLOTHES_NOT_FOUND_MESSAGE = "해당 옷을 찾을 수 없습니다.";
     private static final int CANDIDATE_LIMIT_PER_CATEGORY = 2000;
     private static final String EXTERNAL_DEFAULT_SEASON = "ALL_SEASON";
+    private static final String UNKNOWN_BRAND = "UNKNOWN";
+
+    private static final Comparator<RecommendedItem> RECOMMENDED_ITEM_COMPARATOR = Comparator
+            .comparingInt(RecommendedItem::compatibilityScore)
+            .reversed()
+            .thenComparing(item -> isKnownBrand(item.brandName()) ? 0 : 1);
 
     /**
      * 응답에서 카테고리를 보여줄 순서.
@@ -133,7 +139,7 @@ public class ClothesRecommendationService {
         /*
          * 카테고리별로 DB를 분리 조회합니다 (요청당 최대 CATEGORY_ORDER.size()-1 회, 각 CANDIDATE_LIMIT_PER_CATEGORY 건).
          *
-         * 의도: 단일 쿼리(findExternalCandidatesForComplementaryRecommendation)는 LIMIT 2000을 전체에 적용해
+         * 의도: 단일 쿼리로 LIMIT 2000을 전체에 적용하면
          * 한 카테고리(예: TOP)에 후보가 쏠릴 수 있습니다. 카테고리마다 최신 N건을 보장하려면
          * 카테고리별 페이징이 필요합니다.
          *
@@ -203,7 +209,7 @@ public class ClothesRecommendationService {
 
             List<RecommendedItem> sorted = categoryCandidates.stream()
                     .map(entry -> toRecommendedItem(anchorContext, entry))
-                    .sorted(Comparator.comparingInt(RecommendedItem::compatibilityScore).reversed())
+                    .sorted(RECOMMENDED_ITEM_COMPARATOR)
                     .limit(limit)
                     .toList();
             ordered.put(category, sorted);
@@ -386,6 +392,14 @@ public class ClothesRecommendationService {
             return EXTERNAL_DEFAULT_SEASON;
         }
         return clothes.getSeason().name();
+    }
+
+    /** {@code brand_name}이 채워진 외부 쇼핑 상품인지 여부 (동점 시 추천 순위 tie-breaker). */
+    private static boolean isKnownBrand(String brandName) {
+        if (!StringUtils.hasText(brandName)) {
+            return false;
+        }
+        return !UNKNOWN_BRAND.equalsIgnoreCase(brandName.trim());
     }
 
     private record ScoringCandidate(

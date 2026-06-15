@@ -25,6 +25,7 @@ import com.closetnangam.be.global.external.clothes.dto.request.ClothingColorDto;
 import com.closetnangam.be.global.external.clothes.dto.response.ProductDto;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
 import com.closetnangam.be.global.external.naver.service.NaverApiService;
+import com.closetnangam.be.global.external.naver.support.BrandNameSanitizer;
 import com.closetnangam.be.global.external.naver.support.NaverShoppingTitleSanitizer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -293,7 +294,7 @@ public class ExternalClothesService {
             clothes = existingClothes.get();
         } else {
             // DB에 없는 새로운 상품일 때만 생성 (마스터 도감 적재)
-            String brandName = StringUtils.hasText(request.brand()) ? request.brand().trim() : UNKNOWN;
+            String brandName = BrandNameSanitizer.sanitize(request.brand());
             ClothesCategory category = StringUtils.hasText(categoryOverride)
                     ? ClothesCategory.valueOf(categoryOverride.trim())
                     : refineCategory(request.category3());
