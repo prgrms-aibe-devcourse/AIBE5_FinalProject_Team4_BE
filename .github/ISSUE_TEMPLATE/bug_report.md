@@ -1,7 +1,7 @@
 ---
 name: "🐛 버그 리포트"
 about: "버그 발생 시 작성합니다"
-title: "[BUG] "
+title: "fix/ "
 labels: "bug"
 assignees: ""
 ---
@@ -28,3 +28,7 @@ assignees: ""
 - Spring Boot 버전: 
 
 ## 🔗 관련 로그 / 스크린샷
+
+## 🚧 브랜치 정보
+- **Base branch**: `develop`
+- **작업 branch**: `fix/#이슈번호`

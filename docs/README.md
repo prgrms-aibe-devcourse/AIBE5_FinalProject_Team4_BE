@@ -1,12 +1,12 @@
 ---
 doc_type: be_doc_index
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-12
+last_updated: 2026-06-15
 ---
 
 # 프로젝트 문서
 
-이 폴더는 옷장난감 BE 레포의 공식 프로젝트 문서입니다. 기획, 기능 범위, 도메인 규칙, 기능 정책, DB 구조, API 계약, 패키지 구조를 같은 기준으로 이해하기 위해 작성합니다.
+이 폴더는 옷장난감 BE 레포의 공식 프로젝트 문서입니다. 기획, 기능 범위, 도메인 규칙, 기능 정책, DB 구조, API 계약, 패키지 구조, 약관 기준을 같은 기준으로 이해하기 위해 작성합니다.
 
 ## 문서 원칙
 
@@ -14,6 +14,7 @@ last_updated: 2026-06-12
 - FE 레포에는 공통 문서의 동일본을 둡니다.
 - 기능 요구사항과 세부기능 ID의 공식 기준은 [requirements/requirements-definition.md](./requirements/requirements-definition.md)입니다.
 - API 계약, DB, ERD 상세는 BE 문서를 원본으로 봅니다.
+- 이용약관, 개인정보 처리방침, 마케팅 수신 동의 원본과 버전은 BE `docs/legal/`에서 관리합니다.
 - FE 화면 흐름, FE API 사용 방식, mock 정책, 로딩/에러/빈 상태는 FE 문서에서 상세화합니다.
 - 코드와 문서가 다르면 PR에서 코드가 문서를 따를지, 문서 기준을 수정할지 명시합니다.
 - 현재 코드와 공식 문서 기준의 차이는 [backend/implementation-gaps.md](./backend/implementation-gaps.md)에 기록합니다. 차이가 해소되거나 새로 생기면 해당 문서도 함께 수정합니다.
@@ -31,11 +32,19 @@ last_updated: 2026-06-12
 | [domain/invariants.md](./domain/invariants.md) | 공통 | 구현 중 유지해야 하는 핵심 도메인 규칙 |
 | [features/recommendation-policy.md](./features/recommendation-policy.md) | 공통 | 추천 점수, 피드백, 추천 제외, 동점 처리 기준 |
 | [features/garment-registration.md](./features/garment-registration.md) | 공통 + BE 상세 | 옷 등록 흐름과 BE 저장/API 기준 |
+| [architecture/system-architecture.md](./architecture/system-architecture.md) | 공통 + BE 상세 | FE, BE, DB, 외부 API, 저장소, 인프라의 전체 연결 구조 |
+| [architecture/information-architecture.md](./architecture/information-architecture.md) | 공통 | 화면, 메뉴, 주요 진입 흐름 |
+| [architecture/sequence-diagrams.md](./architecture/sequence-diagrams.md) | 공통 | 로그인, 옷 등록, 옷장, 추천, 보유 전환, 룩피드 주요 기능 흐름 |
+| [architecture/tech-stack.md](./architecture/tech-stack.md) | 공통 + BE 상세 | FE/BE 기술 스택, 외부 API, 인프라, 테스트 도구 기준 |
 | [database/erd.md](./database/erd.md) | BE | 확정 ERD v2.3, 테이블 역할, 관계 기준 |
 | [database/data-lifecycle.md](./database/data-lifecycle.md) | BE | 데이터 생성, 삭제, 보존 기준 |
 | [api/api-contract.md](./api/api-contract.md) | BE | API 경로, 응답 형식, 오류 처리, 엔드포인트 기준 |
 | [api/ai-md-api-spec.md](./api/ai-md-api-spec.md) | BE + FE 연동 | AI MD 선택, 코디·상품 추천, 선택 저장을 위한 상세 API 명세 |
 | [api/similar-product-api-spec.md](./api/similar-product-api-spec.md) | BE + FE 연동 | 보유 옷 선택, 유사상품 조회, 외부 구매 및 미보유 상품 저장 연동 명세 |
+| [legal/README.md](./legal/README.md) | BE 원본 + FE 연동 | 이용약관, 개인정보 처리방침, 마케팅 수신 동의 문서와 버전 관리 기준 |
+| [legal/terms.md](./legal/terms.md) | BE 원본 | 서비스 이용약관 초안 |
+| [legal/privacy-policy.md](./legal/privacy-policy.md) | BE 원본 | 개인정보 처리방침 초안 |
+| [legal/marketing-consent.md](./legal/marketing-consent.md) | BE 원본 | 마케팅 정보 수신 동의 초안 |
 | [architecture/package-structure.md](./architecture/package-structure.md) | BE | BE 패키지 구조와 책임 경계 |
 | [backend/implementation-gaps.md](./backend/implementation-gaps.md) | BE | 현재 BE 코드와 공식 문서 기준의 차이 |
 
@@ -46,14 +55,16 @@ last_updated: 2026-06-12
 1. [기획서](./planning/project-plan.md)에서 서비스 목표와 MVP 범위를 확인합니다.
 2. [요구사항 정의서](./requirements/requirements-definition.md)에서 요구사항 ID, 세부기능 ID, 기능 요구, 정책/제약을 확인합니다.
 3. [기능 인덱스](./requirements/feature-index.md)에서 세부기능 ID와 API, 데이터, FE 화면 연결 기준을 확인합니다.
-4. [도메인 용어집](./domain/glossary.md), [카탈로그 사용 가이드](./domain/catalog.md), [도메인 규칙](./domain/invariants.md)에서 데이터 의미, enum, code, 불변 규칙을 확인합니다.
-5. [BE 구현 정합성 현황](./backend/implementation-gaps.md)에서 현재 코드와 공식 기준의 차이, 개발/임시 API 경계를 확인합니다.
-6. [추천 정책](./features/recommendation-policy.md)과 [옷 등록 플로우](./features/garment-registration.md)에서 주요 기능 정책을 확인합니다.
-7. [API 계약](./api/api-contract.md)에서 경로, 요청/응답 DTO, 공통 응답, 인증/인가, 오류 처리 기준을 확인합니다.
-8. [ERD](./database/erd.md)와 [데이터 생명주기](./database/data-lifecycle.md)에서 테이블 책임, 관계, 삭제/보존 기준을 확인합니다.
-9. [패키지 구조](./architecture/package-structure.md)에서 controller, service, repository, entity, dto 위치와 책임 경계를 확인합니다.
-10. 문서 기준과 코드가 다르면 코드가 문서를 따를지, 문서 기준을 수정할지 PR 안에서 명시합니다.
-11. 현재 코드와 공식 기준의 차이가 생기거나 해소되면 [BE 구현 정합성 현황](./backend/implementation-gaps.md)을 같은 PR에서 수정합니다.
+4. [시스템 아키텍처](./architecture/system-architecture.md), [정보 구조도](./architecture/information-architecture.md), [시퀀스 다이어그램](./architecture/sequence-diagrams.md), [기술 스택](./architecture/tech-stack.md)에서 전체 구성, 화면 흐름, 주요 기능 동작 순서, 사용 기술을 확인합니다.
+5. [도메인 용어집](./domain/glossary.md), [카탈로그 사용 가이드](./domain/catalog.md), [도메인 규칙](./domain/invariants.md)에서 데이터 의미, enum, code, 불변 규칙을 확인합니다.
+6. [BE 구현 정합성 현황](./backend/implementation-gaps.md)에서 현재 코드와 공식 기준의 차이, 개발/임시 API 경계를 확인합니다.
+7. [추천 정책](./features/recommendation-policy.md)과 [옷 등록 플로우](./features/garment-registration.md)에서 주요 기능 정책을 확인합니다.
+8. [약관 문서 관리](./legal/README.md)에서 이용약관, 개인정보 처리방침, 마케팅 수신 동의와 버전 관리 기준을 확인합니다.
+9. [API 계약](./api/api-contract.md)에서 경로, 요청/응답 DTO, 공통 응답, 인증/인가, 오류 처리 기준을 확인합니다.
+10. [ERD](./database/erd.md)와 [데이터 생명주기](./database/data-lifecycle.md)에서 테이블 책임, 관계, 삭제/보존 기준을 확인합니다.
+11. [패키지 구조](./architecture/package-structure.md)에서 controller, service, repository, entity, dto 위치와 책임 경계를 확인합니다.
+12. 문서 기준과 코드가 다르면 코드가 문서를 따를지, 문서 기준을 수정할지 PR 안에서 명시합니다.
+13. 현재 코드와 공식 기준의 차이가 생기거나 해소되면 [BE 구현 정합성 현황](./backend/implementation-gaps.md)을 같은 PR에서 수정합니다.
 
 ## 문서와 코드 정합성 기준
 
@@ -80,6 +91,10 @@ docs/domain/catalog.md
 docs/domain/invariants.md
 docs/features/recommendation-policy.md
 docs/features/garment-registration.md
+docs/architecture/system-architecture.md
+docs/architecture/information-architecture.md
+docs/architecture/sequence-diagrams.md
+docs/architecture/tech-stack.md
 ```
 
 FE 전용 문서는 화면 흐름, API 사용 방식, mock 정책, 로딩/에러/빈 상태를 중심으로 별도 작성합니다.

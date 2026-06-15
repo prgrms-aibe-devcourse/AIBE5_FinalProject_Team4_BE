@@ -1,7 +1,7 @@
 ---
 doc_type: be_implementation_gaps
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-12
+last_updated: 2026-06-14
 ---
 
 # BE 구현 정합성 현황
@@ -37,8 +37,8 @@ last_updated: 2026-06-12
 | 옷장 통계 범위 | `/statistics` API가 `OWNED` 상태의 보유 옷만 계산하고 `totalOwnedCount`를 반환 | 옷장 전체 요약은 `OWNED`와 `WISHLIST`를 함께 고려 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | `USER_STYLES.wardrobe_weight` 산정 범위 | `/statistics` API 호출 시 보유 옷 기준 스타일 가중치를 계산해 `USER_STYLES.wardrobe_weight`에 동기화 | `wardrobe_weight`는 사용자의 옷장에 등록된 옷 스타일 기반 점수라는 기준을 따름 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | `CLOTHES.season` 수정 범위와 계절 기준 | 현재 `season`은 `CLOTHES`에 저장되지만 옷 수정 요청에서 변경 가능. 일부 Swagger/OpenAPI 설명은 `season`을 옷장 정보처럼 설명함. `GET /api/v1/categories` 일반 응답은 계절 목록을 별도 필드로 제공하지 않고, 추천/날씨 계산은 `ClothesSeason` 기준으로 통합됨 | `season`은 `CLOTHES` 공통 정보이며 옷 등록 시 1개 선택하고 생성 후 변경하지 않음 | [requirements-definition.md](../requirements/requirements-definition.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [invariants.md](../domain/invariants.md), [api-contract.md](../api/api-contract.md) |
-| 추천 동점 처리 | 옷장 기반 어울리는 옷 추천 API가 점수 내림차순으로만 정렬하고 동점 그룹 랜덤 처리는 하지 않음 | 같은 점수 그룹 안에서는 랜덤 노출 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
-| 이미지 저장 방식 | 현재 이미지 업로드/조회 구현은 로컬 파일 저장소와 `/api/v1/images/**` 조회 endpoint를 사용 | 운영 기준은 AWS S3 저장과 이미지 URL 관리 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md) |
+| 이미지 저장 방식 | 현재 이미지 업로드/조회 구현은 로컬 파일 저장소와 `/api/v1/images/**` 조회 endpoint를 사용 | 운영 기준은 AWS S3 저장과 이미지 URL 관리 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md) |
+| 배포/인프라 목표 구조 | GitHub Actions는 테스트/빌드 CI를 수행하고, Docker Compose는 로컬 MySQL/Redis 개발 인프라를 실행. AWS 배포와 CD 자동화는 진행 예정 | 시스템 아키텍처는 AWS EC2/RDS/S3와 GitHub Actions 기반 배포까지 포함한 목표 구조 | [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) |
 | 추천 응답 형식 | `RECO-002` 추천 응답의 `price`는 "0" 고정, `score`는 0~1 문자열, `reason`은 기술적 매칭 결과 반환 | 실제 가격, 백분율 점수, 사용자 친화적 자연어 추천 이유 제공 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | AI MD 추천 검증 범위 | `RECO-006` API는 완성형 코디 검증과 스타일 가중 상품 후보 구성을 구현했지만, 외부 상품 포함 저장·저장 실패 및 다중 네이버 검색 조합 경로 테스트가 부족 | 외부 상품 혼합 코디 저장, 4개 미만 응답, 저장 실패/롤백, 다중 검색 결과 병합 경로를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | 개발/임시 API 경계 | local mock token API가 코드에 존재 | 공식 서비스 API는 [api-contract.md](../api/api-contract.md)의 엔드포인트 인덱스를 기준으로 판단 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) |
@@ -50,8 +50,9 @@ last_updated: 2026-06-12
 | `WARDROBE-002` | `GET /api/v1/wardrobes/users/{userId}/statistics` | `WardrobeStatisticsService`, `WardrobeStatisticsResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | 보유 옷 기준 통계만 반환. 옷장 전체 요약은 미보유 API 조합 또는 BE 계약 확정 필요 |
 | `STYLE-002` | `USER_STYLES.wardrobe_weight` | `WardrobeStatisticsService`, `UserStyle.syncWardrobeWeight`, `WardrobeStatisticsResponse.userStylePayloads` | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [erd.md](../database/erd.md) | 통계 API 호출 시 보유 옷 기준 스타일 가중치를 저장. 옷장 전체 등록 기준 반영 여부 확인 필요 |
 | `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` | 옷 계절 수정 기준 | `Clothes`, `ClothesService`, `ClothesUpdateRequest`, `PhotoClothesRegistrationController`, `PurchaseCaptureRegistrationController`, `CategoryCatalogService`, `ClothesSeason` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [api-contract.md](../api/api-contract.md) | `CLOTHES.season` 저장과 AI 분석 필드 반영은 완료. 옷 수정 요청의 `season` 변경 가능성, 일부 OpenAPI 설명, 카탈로그 일반 응답/계절 호환 계산 기준 확인 필요 |
-| `RECO-005` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 그룹 랜덤 노출 기준 반영 여부 확인 필요 |
-| `DEPLOY-004` | 이미지 저장과 조회 | `LocalImageStorageService`, `ImageController`, `StorageProperties` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md) | 현재 로컬 저장소 기반. 운영 기준인 AWS S3 전환 여부 확인 필요 |
+| `RECO-005` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 시 `brandName != UNKNOWN` 우선 |
+| `DEPLOY-004` | 이미지 저장과 조회 | `LocalImageStorageService`, `ImageController`, `StorageProperties` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md) | 현재 로컬 저장소 기반. 운영 기준인 AWS S3 전환 여부 확인 필요 |
+| `DEPLOY-001`~`DEPLOY-005` | 배포/인프라 목표 구조 | `.github/workflows/ci.yml`, `docker-compose.yml` | [requirements-definition.md](../requirements/requirements-definition.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) | 시스템 아키텍처는 목표 구조 기준. 현재 GitHub Actions는 CI, Docker Compose는 로컬 MySQL/Redis 실행, AWS 배포/CD 자동화는 진행 예정 |
 | `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | `price` placeholder("0"), 0~1 점수 형식, 기술적 추천 이유 제공. 기준 문서와 응답 형식 차이 존재 |
 | `RECO-006` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 다중 상품 검색, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
 | 개발/임시 API | `GET /api/v1/auth/mock-token` | `MockAuthController` | [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) | 공식 사용자 기능으로 보지 않음. local 개발 경계 확인 필요 |
@@ -153,28 +154,6 @@ src/main/java/com/closetnangam/be/domain/purchase/controller/PurchaseCaptureRegi
 
 공식 기준을 유지한다면 구현 PR에서 생성 후 수정 요청이 `season`을 변경하지 않도록 API/DTO/서비스 책임과 OpenAPI 설명을 함께 정리해야 합니다. 이때 카탈로그 일반 응답에서 계절 code를 내려줄지, 문서 기준 code만 사용할지 확정하고, 추천/날씨 계절 호환 계산도 `CLOTHES.season` code 기준으로 정리합니다. 반대로 현재 코드 기준을 공식 기준으로 확정한다면 [erd.md](../database/erd.md), [invariants.md](../domain/invariants.md), [catalog.md](../domain/catalog.md), [garment-registration.md](../features/garment-registration.md), [api-contract.md](../api/api-contract.md)를 같은 PR에서 수정합니다.
 
-### `RECO-005` 추천 동점 처리
-
-공식 기준 문서에서 추천 점수가 같은 후보는 같은 점수 그룹 안에서 랜덤 노출합니다.
-
-현재 BE의 옷장 기반 어울리는 옷 추천 API는 후보를 점수 내림차순으로 정렬한 뒤 `limit`을 적용합니다.
-
-```text
-src/main/java/com/closetnangam/be/domain/clothes/service/ClothesRecommendationService.java
-- sorted(Comparator.comparingInt(RecommendedItem::compatibilityScore).reversed())
-- limit(limit)
-```
-
-현재 구현에는 같은 점수 그룹을 섞는 처리가 없습니다. 따라서 같은 점수 후보의 노출 순서는 후보 조회 순서와 정렬 안정성에 영향을 받을 수 있습니다.
-
-이 항목은 이미 구현된 아래 API에 대한 정합성 확인입니다.
-
-```text
-GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations
-```
-
-담당자와 논의하여 현재처럼 결정적 정렬을 공식 기준으로 확정한다면 [domain/invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md)를 같은 PR에서 수정합니다. 동점 랜덤 노출 기준을 유지한다면 구현 PR에서 이 문서를 함께 갱신합니다.
-
 ### `DEPLOY-004` 이미지 저장 방식
 
 공식 기준 문서에서 옷 사진, 구매내역 캡처, 피드 이미지는 AWS S3 저장 기준으로 관리합니다.
@@ -195,7 +174,22 @@ src/main/java/com/closetnangam/be/global/storage/ImageController.java
 - GET /api/v1/images/purchase-captures/{userId}/{filename}
 ```
 
-따라서 현재 코드의 이미지 저장 방식은 운영 기준인 AWS S3가 아니라 로컬 개발 저장소 기준으로 이해합니다. S3 저장소로 전환하거나 로컬 저장소를 공식 기준으로 확정한다면 [api-contract.md](../api/api-contract.md), [domain/invariants.md](../domain/invariants.md), [garment-registration.md](../features/garment-registration.md), [data-lifecycle.md](../database/data-lifecycle.md)를 같은 PR에서 함께 수정합니다.
+따라서 현재 코드의 이미지 저장 방식은 운영 기준인 AWS S3가 아니라 로컬 개발 저장소 기준으로 이해합니다. S3 저장소로 전환하거나 로컬 저장소를 공식 기준으로 확정한다면 [api-contract.md](../api/api-contract.md), [domain/invariants.md](../domain/invariants.md), [garment-registration.md](../features/garment-registration.md), [data-lifecycle.md](../database/data-lifecycle.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md)를 같은 PR에서 함께 수정합니다.
+
+### `DEPLOY-001`~`DEPLOY-005` 목표 배포 구조와 현재 로컬/CI 상태
+
+[system-architecture.md](../architecture/system-architecture.md)는 현재 로컬 구현만이 아니라 MVP와 운영 배포까지 고려한 목표 시스템 구성을 설명합니다. 따라서 AWS EC2, RDS, S3, GitHub Actions 기반 배포 흐름은 목표 구조 기준으로 읽습니다.
+
+현재 BE 코드와 레포 설정 기준으로는 아래 상태입니다.
+
+- GitHub Actions는 테스트와 빌드 CI를 수행합니다.
+- EC2 자동 배포 CD workflow는 아직 구현되지 않았습니다.
+- Docker Compose는 BE 애플리케이션 실행이 아니라 로컬 MySQL/Redis 개발 인프라 실행에 사용합니다.
+- AWS S3는 운영 기준 이미지 저장소이며, 현재 구현은 로컬 이미지 저장소를 사용합니다.
+
+자동 코드리뷰와 문서 검토 시 `system-architecture.md`만 보고 현재 구현이 누락되었다고 판단하지 않고, 이 문서의 gap 항목을 함께 확인합니다.
+
+AWS 배포 또는 CD workflow가 구현되면 [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md), 루트 [README](../../README.md), 이 문서를 같은 PR에서 함께 갱신합니다.
 
 ### `RECO-002` 취향 기반 상품 추천 응답 형식
 
@@ -206,6 +200,8 @@ src/main/java/com/closetnangam/be/global/storage/ImageController.java
 - `price`: 항상 `"0"` 반환 (현재 상품 엔티티에 가격 정보가 없음)
 - `score`: `0.00` ~ `1.00` 사이의 점수를 문자열로 반환 (예: `"0.85"`)
 - `reason`: `"Style Match: 0.8, Weather Match: 1.0"` 형태의 기술적 매칭 점수 요약 반환
+- `brandName`, `category`, `primaryColor`, `primaryStyle`: 상품의 기본 메타데이터 정보 포함
+- `clothesId`: 피드백 매핑을 위한 내부 옷 ID 포함
 
 FE는 이 응답을 UI에 그대로 노출하기보다는, 아래와 같은 처리가 필요하거나 BE의 향후 개선을 기다려야 합니다.
 
@@ -286,11 +282,11 @@ API 문서 검토 시 공식 서비스 API 여부는 [api-contract.md](../api/ap
 | 1 | `CLOTHES.season` 수정 범위와 계절 기준 | ERD v2.3, 옷 등록/수정 API, 추천 계절 계산 기준에 직접 영향 |
 | 2 | `WARDROBE-002` 통계 범위 | FE 옷장 요약과 API 응답 필드 해석에 직접 영향 |
 | 3 | `USER_STYLES.wardrobe_weight` 산정 범위 | 사용자 취향 점수와 추천 개인화 기준에 영향 |
-| 4 | `RECO-005` 동점 랜덤 노출 | 현재 제공 추천 API의 노출 순서와 추천 정책 기준에 영향 |
-| 5 | `DEPLOY-004` 이미지 저장 방식 | 운영 저장소 기준과 현재 로컬 저장 구현 차이에 영향 |
-| 6 | `RECO-002` 추천 응답 형식 | FE 추천 UI의 데이터 표시 및 해석 방식에 직접 영향 |
-| 7 | `RECO-006` AI MD 추천 검증 범위 | Gemini 응답 변형과 코디 저장 롤백 경로에 영향 |
-| 8 | 개발/임시 API 경계 | FE가 local mock endpoint를 공식 서비스 API로 오해할 가능성 |
+| 4 | `DEPLOY-004` 이미지 저장 방식 | 운영 저장소 기준과 현재 로컬 저장 구현 차이에 영향 |
+| 5 | `RECO-002` 추천 응답 형식 | FE 추천 UI의 데이터 표시 및 해석 방식에 직접 영향 |
+| 6 | `RECO-006` AI MD 추천 검증 범위 | Gemini 응답 변형과 코디 저장 롤백 경로에 영향 |
+| 7 | 개발/임시 API 경계 | FE가 local mock endpoint를 공식 서비스 API로 오해할 가능성 |
+| 8 | 배포/인프라 목표 구조와 현재 로컬/CI 상태 | AWS 배포 및 CD 구현 시 시스템 문서와 실제 BE 레포 설정 정합성에 영향 |
 
 ## 문서 변경 기준
 
@@ -302,4 +298,5 @@ API 문서 검토 시 공식 서비스 API 여부는 [api-contract.md](../api/ap
 - DB 테이블, 컬럼 의미, 삭제/보존 정책이 바뀌면 [erd.md](../database/erd.md)와 [data-lifecycle.md](../database/data-lifecycle.md)를 함께 확인합니다.
 - 도메인 규칙, enum, catalog code, 점수 정책이 바뀌면 [glossary.md](../domain/glossary.md), [catalog.md](../domain/catalog.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md)를 함께 확인합니다.
 - 패키지 책임이나 주요 코드 위치 기준이 바뀌면 [package-structure.md](../architecture/package-structure.md)를 같은 PR에서 수정합니다.
+- 시스템 구성, 기술 스택, 화면 구조, 주요 기능 흐름이 바뀌면 [system-architecture.md](../architecture/system-architecture.md), [information-architecture.md](../architecture/information-architecture.md), [sequence-diagrams.md](../architecture/sequence-diagrams.md), [tech-stack.md](../architecture/tech-stack.md)를 함께 확인합니다.
 - 공통 문서가 변경되면 FE 레포의 동일 문서도 함께 확인합니다.

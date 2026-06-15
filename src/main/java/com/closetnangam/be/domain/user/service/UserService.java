@@ -4,6 +4,7 @@ import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.user.dto.request.UpdateProfileRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
+import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
 import com.closetnangam.be.domain.user.dto.response.MyProfileResponse;
 import com.closetnangam.be.domain.user.dto.response.UserProfileResponse;
 import com.closetnangam.be.domain.user.entity.User;
@@ -106,5 +107,27 @@ public class UserService {
 
         user.withdraw();
         refreshTokenService.delete(userId);
+    @Transactional(readOnly = true)
+    public MarketingConsentResponse getMarketingConsent(Long userId) {
+        User user = getUser(userId);
+        return toMarketingConsentResponse(user);
+    }
+
+    @Transactional
+    public MarketingConsentResponse updateMarketingConsent(Long userId, boolean marketingAgreed) {
+        User user = getUser(userId);
+        user.updateMarketingAgreement(marketingAgreed);
+        return toMarketingConsentResponse(user);
+    }
+
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
+    }
+
+    private MarketingConsentResponse toMarketingConsentResponse(User user) {
+        return new MarketingConsentResponse(
+                user.getMarketingAgreed()
+        );
     }
 }

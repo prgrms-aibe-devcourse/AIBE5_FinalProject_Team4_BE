@@ -131,6 +131,34 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `styleCodes` | Y | 스타일 코드 배열 (1~3개, 예: `["CASUAL", "MINIMAL"]`) |
 
 허용 스타일 코드: `CASUAL`, `STREET`, `MINIMAL`, `SPORTY`, `CLASSIC`, `CHIC`, `WORKWEAR`, `CITYBOY`, `GORPCORE`, `RETRO`
+| GET | `/api/v1/users/{userId}/marketing-consent` | 마케팅 정보 수신 동의 상태 조회 |
+| PATCH | `/api/v1/users/{userId}/marketing-consent` | 마케팅 정보 수신 동의 변경 |
+
+#### 마케팅 정보 수신 동의 변경
+
+필수 약관인 이용약관과 개인정보 처리방침은 회원가입 시 자동 동의 기준으로 처리하며, 사용자별 약관 버전/동의 시각은 별도로 저장하지 않습니다. 선택 동의인 마케팅 정보 수신 동의는 `USERS.marketing_agreed`, `USERS.marketing_agreed_at` 기준으로 관리합니다.
+
+**PATCH** `/api/v1/users/{userId}/marketing-consent`
+
+요청:
+
+```json
+{
+  "marketingAgreed": true
+}
+```
+
+응답:
+
+```json
+{
+  "success": true,
+  "data": {
+    "marketingAgreed": true
+  },
+  "message": null
+}
+```
 
 ### 카탈로그
 
@@ -359,7 +387,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 점수는 색상(35%)·스타일(30%)·itemType(20%)·시즌(15%) 가중 합산입니다. 동점 후보는 BE에서 랜덤 순서가 될 수 있습니다. FE는 사용자 프로필 성별에 맞지 않는 `gender` 후보를 내부적으로 제외할 수 있지만, 해당 값을 사용자 화면에 표시하지 않습니다.
+> **Note**: 점수는 색상(35%)·스타일(30%)·itemType(20%)·시즌(15%) 가중 합산입니다. 동점(`compatibilityScore` 동일) 후보는 `brandName`이 `UNKNOWN`이 아닌 상품을 먼저 노출합니다. FE는 사용자 프로필 성별에 맞지 않는 `gender` 후보를 내부적으로 제외할 수 있지만, 해당 값을 사용자 화면에 표시하지 않습니다.
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 
@@ -373,7 +401,12 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "imageUrl": "https://...",
       "price": "0",
       "score": "0.95",
-      "reason": "Style Match: 0.9, Weather Match: 1.0"
+      "reason": "Style Match: 0.9, Weather Match: 1.0",
+      "brandName": "브랜드명",
+      "category": "카테고리",
+      "primaryColor": "대표 색상",
+      "primaryStyle": "스타일",
+      "clothesId": 123
     }
   ],
   "message": null

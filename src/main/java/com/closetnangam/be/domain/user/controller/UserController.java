@@ -2,6 +2,8 @@ package com.closetnangam.be.domain.user.controller;
 
 import com.closetnangam.be.domain.user.dto.request.UpdateProfileRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
+import com.closetnangam.be.domain.user.dto.request.MarketingConsentUpdateRequest;
+import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
 import com.closetnangam.be.domain.user.dto.response.MyProfileResponse;
 import com.closetnangam.be.domain.user.dto.response.UserProfileResponse;
 import com.closetnangam.be.domain.user.service.UserService;
@@ -92,5 +94,20 @@ public class UserController {
                 .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(ApiResponse.ok(null));
+    @Operation(summary = "마케팅 정보 수신 동의 조회", description = "현재 사용자의 마케팅 정보 수신 동의 상태를 조회합니다.")
+    @GetMapping("/{userId}/marketing-consent")
+    public ResponseEntity<ApiResponse<MarketingConsentResponse>> getMarketingConsent(@PathVariable Long userId) {
+        SecurityUtils.verifyUserIdMatch(userId);
+        return ResponseEntity.ok(ApiResponse.ok(userService.getMarketingConsent(userId)));
+    }
+
+    @Operation(summary = "마케팅 정보 수신 동의 변경", description = "온보딩 또는 마이페이지에서 마케팅 정보 수신 동의 여부를 변경합니다.")
+    @PatchMapping("/{userId}/marketing-consent")
+    public ResponseEntity<ApiResponse<MarketingConsentResponse>> updateMarketingConsent(
+            @PathVariable Long userId,
+            @Valid @RequestBody MarketingConsentUpdateRequest request
+    ) {
+        SecurityUtils.verifyUserIdMatch(userId);
+        return ResponseEntity.ok(ApiResponse.ok(userService.updateMarketingConsent(userId, request.marketingAgreed())));
     }
 }
