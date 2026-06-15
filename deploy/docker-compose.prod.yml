@@ -21,7 +21,8 @@ services:
       SPRING_CONFIG_ADDITIONAL_LOCATION: file:/config/
       REDIS_HOST: redis
     ports:
-      - "8080:8080"
+      # 운영 API는 Nginx/ALB를 통해서만 공개하고 애플리케이션 포트는 EC2 외부에 직접 노출하지 않습니다.
+      - "127.0.0.1:8080:8080"
     volumes:
       - ./application-prod.yml:/config/application-prod.yml:ro
       - app-uploads:/app/uploads
