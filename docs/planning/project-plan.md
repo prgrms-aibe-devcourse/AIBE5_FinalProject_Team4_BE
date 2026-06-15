@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-10
+last_updated: 2026-06-14
 ---
 
 # 기획서
@@ -395,12 +395,14 @@ main
 | Frontend | React Router 7.15.1 | 화면 이동, 에러 페이지 진입, 라우팅 관리 |
 | Frontend | Axios 1.16.1 | API 요청, 인증 토큰 헤더, 공통 에러 처리 |
 | Frontend | Tailwind CSS 4.3.0 | 모바일 웹 UI와 유틸리티 클래스 기반 스타일 구성 |
-| Frontend | Node.js 24.13.0 | FE 개발 서버 실행과 빌드 실행 |
+| Frontend | Node.js 24+ | FE 개발 서버 실행과 빌드 실행 |
 | Backend | Java 21 LTS | Spring Boot 기반 서버 개발 |
 | Backend | Spring Boot 3.5.14 | REST API 서버 구성 |
 | Backend | Gradle | BE 의존성 관리, 빌드, 테스트 실행 |
 | Backend | Spring Data JPA | 객체와 테이블 매핑, CRUD 구현 |
 | Backend | Spring Security / OAuth2 / JWT | 소셜 로그인, 사용자 인증, 사용자별 접근 제어 |
+| Backend | Spring Data Redis / Redis 7 | Refresh Token 저장 |
+| Backend | SpringDoc OpenAPI / Swagger | API 명세 확인 |
 | Database | MySQL 8.4 | 관계형 서비스 데이터 저장 |
 | Infra | Docker Compose | MySQL 8.4, Redis 7 컨테이너 실행 |
 | Infra | AWS EC2 · RDS · S3 | 서버 배포, 운영 DB, 목표 이미지 저장소 기준 |
