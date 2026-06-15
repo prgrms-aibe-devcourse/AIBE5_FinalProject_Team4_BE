@@ -91,6 +91,34 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | --- | --- | --- |
 | GET | `/api/v1/users/profile` | 현재 로그인한 사용자 userId 반환 (미인증 시 401) |
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
+| GET | `/api/v1/users/{userId}/marketing-consent` | 마케팅 정보 수신 동의 상태 조회 |
+| PATCH | `/api/v1/users/{userId}/marketing-consent` | 마케팅 정보 수신 동의 변경 |
+
+#### 마케팅 정보 수신 동의 변경
+
+필수 약관인 이용약관과 개인정보 처리방침은 회원가입 시 자동 동의 기준으로 처리하며, 사용자별 약관 버전/동의 시각은 별도로 저장하지 않습니다. 선택 동의인 마케팅 정보 수신 동의는 `USERS.marketing_agreed`, `USERS.marketing_agreed_at` 기준으로 관리합니다.
+
+**PATCH** `/api/v1/users/{userId}/marketing-consent`
+
+요청:
+
+```json
+{
+  "marketingAgreed": true
+}
+```
+
+응답:
+
+```json
+{
+  "success": true,
+  "data": {
+    "marketingAgreed": true
+  },
+  "message": null
+}
+```
 
 ### 카탈로그
 
