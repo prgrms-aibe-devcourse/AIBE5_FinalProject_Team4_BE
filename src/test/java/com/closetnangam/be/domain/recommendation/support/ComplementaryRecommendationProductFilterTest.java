@@ -185,6 +185,34 @@ class ComplementaryRecommendationProductFilterTest {
         )).isTrue();
     }
 
+    @Test
+    @DisplayName("SEO 키워드 나열형·복수 구성 상품은 제외한다")
+    void excludesKeywordStuffedListings() {
+        assertThat(ComplementaryRecommendationProductFilter.shouldExcludeFromExternalPool(
+                "필인 남자 여름 3부 반바지 바람막이쇼츠 남성워크아웃쇼츠 애슬레저하프팬츠",
+                "UNKNOWN"
+        )).isTrue();
+
+        assertThat(ComplementaryRecommendationProductFilter.shouldExcludeFromExternalPool(
+                "벅703 애슬레저룩 기능성 반팔티셔츠 반팔점퍼 팬츠 3종 반팔티 여성바지 남자바지 바람막이",
+                "벅703"
+        )).isTrue();
+
+        assertThat(ComplementaryRecommendationProductFilter.shouldExcludeFromExternalPool(
+                "남성 애슬레저 하프팬츠",
+                "나이키"
+        )).isFalse();
+    }
+
+    @Test
+    @DisplayName("바지끈 등 부자재는 제외한다")
+    void excludesDrawstringAccessories() {
+        assertThat(ComplementaryRecommendationProductFilter.shouldExcludeFromExternalPool(
+                "바지 조임끈 세트",
+                "바지끈"
+        )).isTrue();
+    }
+
     private NaverShoppingProductResponse product(String title, String category2, String category3) {
         return product(title, category2, category3, null);
     }
