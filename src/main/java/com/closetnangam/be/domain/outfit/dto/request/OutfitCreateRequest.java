@@ -22,6 +22,7 @@ public class OutfitCreateRequest {
     @NotBlank
     private String description;
 
+    @NotBlank
     @Size(max = 500)
     // @URL(message = "올바른 URL 형식이 아닙니다.") // 필요하다면 @URL 추가 가능!
     private String thumbnailUrl;
