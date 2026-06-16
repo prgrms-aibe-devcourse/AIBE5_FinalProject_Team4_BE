@@ -22,6 +22,7 @@ public class ImageController {
 
     private static final String CLOTHES_SUBDIRECTORY = "clothes";
     private static final String PURCHASE_CAPTURES_SUBDIRECTORY = "purchase-captures";
+    private static final String FEED_SUBDIRECTORY = "feed";
 
     private final LocalImageStorageService localImageStorageService;
 
@@ -49,6 +50,19 @@ public class ImageController {
     ) {
         SecurityUtils.verifyOwnership(userId);
         return serveUserImage(PURCHASE_CAPTURES_SUBDIRECTORY, userId, filename);
+    }
+
+    @Operation(
+            summary = "피드 사진 조회",
+            description = "업로드된 피드 사진을 소유자 본인에게만 반환합니다. 로그인이 필요합니다."
+    )
+    @GetMapping("/feed/{userId}/{filename}")
+    public ResponseEntity<byte[]> getFeedImage(
+            @PathVariable Long userId,
+            @PathVariable String filename
+    ) {
+        SecurityUtils.verifyOwnership(userId);
+        return serveUserImage(FEED_SUBDIRECTORY, userId, filename);
     }
 
     private ResponseEntity<byte[]> serveUserImage(String subdirectory, Long userId, String filename) {
