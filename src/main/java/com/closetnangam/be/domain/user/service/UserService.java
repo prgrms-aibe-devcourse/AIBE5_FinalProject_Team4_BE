@@ -2,6 +2,7 @@ package com.closetnangam.be.domain.user.service;
 
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
+import com.closetnangam.be.domain.user.dto.request.UpdateGuideTourRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateProfileRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
 import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
@@ -36,7 +37,15 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
-        return new MyProfileResponse(user.getId(), user.getNickname(), user.isOnboarded());
+        return new MyProfileResponse(
+                user.getId(),
+                user.getNickname(),
+                user.isOnboarded(),
+                user.isGuideTourCompletedHome(),
+                user.isGuideTourCompletedWardrobe(),
+                user.isGuideTourCompletedFeed(),
+                user.isGuideTourCompletedMypage()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -77,7 +86,15 @@ public class UserService {
                 request.regionCode()
         );
 
-        return new MyProfileResponse(user.getId(), user.getNickname(), user.isOnboarded());
+        return new MyProfileResponse(
+                user.getId(),
+                user.getNickname(),
+                user.isOnboarded(),
+                user.isGuideTourCompletedHome(),
+                user.isGuideTourCompletedWardrobe(),
+                user.isGuideTourCompletedFeed(),
+                user.isGuideTourCompletedMypage()
+        );
     }
 
     @Transactional
@@ -122,6 +139,13 @@ public class UserService {
                 })
                 .toList();
         userStyleRepository.saveAll(newStyles);
+    }
+
+    @Transactional
+    public void updateGuideTour(Long userId, UpdateGuideTourRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
+        user.updateGuideTour(request.home(), request.wardrobe(), request.feed(), request.mypage());
     }
 
     @Transactional

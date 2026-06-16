@@ -74,6 +74,18 @@ public class User extends BaseEntity {
     @Column(name = "withdrawn_at", nullable = false)
     private LocalDateTime withdrawnAt;
 
+    @Column(name = "guide_tour_completed_home", nullable = false)
+    private boolean guideTourCompletedHome;
+
+    @Column(name = "guide_tour_completed_wardrobe", nullable = false)
+    private boolean guideTourCompletedWardrobe;
+
+    @Column(name = "guide_tour_completed_feed", nullable = false)
+    private boolean guideTourCompletedFeed;
+
+    @Column(name = "guide_tour_completed_mypage", nullable = false)
+    private boolean guideTourCompletedMypage;
+
     public enum Gender {
         MALE, FEMALE, OTHER
     }
@@ -189,4 +201,12 @@ public class User extends BaseEntity {
         }
         return "SHORT_SLEEVE";
     }
+
+    public void updateGuideTour(Boolean home, Boolean wardrobe, Boolean feed, Boolean mypage) {
+        if (home != null)     this.guideTourCompletedHome = home;
+        if (wardrobe != null) this.guideTourCompletedWardrobe = wardrobe;
+        if (feed != null)     this.guideTourCompletedFeed = feed;
+        if (mypage != null)   this.guideTourCompletedMypage = mypage;
+    }
+
 }

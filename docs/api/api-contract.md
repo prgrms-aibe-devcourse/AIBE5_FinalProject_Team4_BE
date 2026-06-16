@@ -89,19 +89,24 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 ### 사용자
 | Method | Path | 설명 |
 | --- | --- | --- |
-| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 프로필 반환 (userId, nickname, onboarded) |
+| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 프로필 반환 (userId, nickname, onboarded, guideTour 완료 여부) |
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
 | PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 userId, nickname, onboarded 반환 |
 | POST | `/api/v1/users/styles` | 스타일 선호도 저장 (기존 row 보존, preference_weight만 갱신) |
+| PATCH | `/api/v1/users/guide-tour` | 페이지별 가이드 투어 완료 상태 업데이트 |
 | DELETE | `/api/v1/users/me` | 회원 탈퇴 (소프트 삭제, 쿠키 만료) |
 
 #### GET /api/v1/users/profile 응답 필드
 
-| 필드 | 타입 | 설명 |
-| --- | --- | --- |
-| `userId` | Long | 사용자 ID |
-| `nickname` | String | 카카오 닉네임 또는 온보딩에서 설정한 닉네임 |
-| `onboarded` | boolean | 온보딩 완료 여부. birthDate가 기본값(2000-01-01)이면 false, 실제 날짜이면 true |
+| 필드                           | 타입 | 설명 |
+|------------------------------| --- | --- |
+| `userId`                     | Long | 사용자 ID |
+| `nickname`                   | String | 카카오 닉네임 또는 온보딩에서 설정한 닉네임 |
+| `onboarded`                  | boolean | 온보딩 완료 여부. birthDate가 기본값(2000-01-01)이면 false, 실제 날짜이면 true |
+| `guideTourCompletedHome`     | boolean | 홈 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
+| `guideTourCompletedWardrobe` | boolean | 옷장 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
+| `guideTourCompletedFeed`     | boolean | 피드 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
+| `guideTourCompletedMypage`   | boolean | 마이페이지 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true (마이페이지 미완성으로 당분간 미사용) |
 
 #### PATCH /api/v1/users/profile 요청 필드
 
@@ -123,6 +128,10 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `userId` | Long | 사용자 ID |
 | `nickname` | String | 저장된 닉네임 |
 | `onboarded` | boolean | 온보딩 완료 여부. 저장 후 true이면 메인 페이지로 이동 |
+| `guideTourCompletedHome` | boolean | 홈 화면 가이드 투어 완료 여부 |
+| `guideTourCompletedWardrobe` | boolean | 옷장 화면 가이드 투어 완료 여부 |
+| `guideTourCompletedFeed` | boolean | 피드 화면 가이드 투어 완료 여부 |
+| `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
 
 #### POST /api/v1/users/styles 요청 필드
 
@@ -131,6 +140,28 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `styleCodes` | Y | 스타일 코드 배열 (1~3개, 예: `["CASUAL", "MINIMAL"]`). 배열 순서 기준 첫 번째가 대표 스타일(+7), 나머지가 보조 스타일(+3)로 반영됩니다. |
 
 허용 스타일 코드: `CASUAL`, `STREET`, `MINIMAL`, `SPORTY`, `CLASSIC`, `CHIC`, `WORKWEAR`, `CITYBOY`, `GORPCORE`, `RETRO`
+
+#### PATCH /api/v1/users/guide-tour 요청 필드
+
+페이지별 가이드 투어 완료 여부를 업데이트합니다. null인 필드는 기존 값을 유지합니다.
+
+| 필드 | 필수 | 설명                                              |
+| --- | --- |-------------------------------------------------|
+| `home` | N | 홈 화면 투어 완료 여부. null 시 기존 값 유지                   |
+| `wardrobe` | N | 옷장 화면 투어 완료 여부. null 시 기존 값 유지                  |
+| `feed` | N | 피드 화면 투어 완료 여부. null 시 기존 값 유지                  |
+| `mypage` | N | 마이페이지 투어 완료 여부. null 시 기존 값 유지 (마이페이지 완성 시 활성화) |
+
+요청 예시:
+
+```json
+{
+  "home": true,
+  "wardrobe": null,
+  "feed": null,
+  "mypage": null
+}
+```
 
 ### 마케팅 동의
 
