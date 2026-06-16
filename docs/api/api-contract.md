@@ -131,6 +131,11 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `styleCodes` | Y | 스타일 코드 배열 (1~3개, 예: `["CASUAL", "MINIMAL"]`) |
 
 허용 스타일 코드: `CASUAL`, `STREET`, `MINIMAL`, `SPORTY`, `CLASSIC`, `CHIC`, `WORKWEAR`, `CITYBOY`, `GORPCORE`, `RETRO`
+
+### 마케팅 동의
+
+| Method | Path | 설명 |
+| --- | --- | --- |
 | GET | `/api/v1/users/{userId}/marketing-consent` | 마케팅 정보 수신 동의 상태 조회 |
 | PATCH | `/api/v1/users/{userId}/marketing-consent` | 마케팅 정보 수신 동의 변경 |
 

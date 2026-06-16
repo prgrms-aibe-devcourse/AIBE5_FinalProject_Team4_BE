@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -81,22 +83,36 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
-        // 기존 스타일 전체 삭제 후 새로 저장
-        List<UserStyle> existing = userStyleRepository.findAllByUserId(userId);
-        userStyleRepository.deleteAll(existing);
-
-        List<Style> styles = styleRepository.findByCodeIn(request.styleCodes());
-        if (styles.size() != request.styleCodes().size()) {
+        List<Style> selectedStyles = styleRepository.findByCodeIn(request.styleCodes());
+        if (selectedStyles.size() != request.styleCodes().size()) {
             throw new IllegalArgumentException("존재하지 않는 스타일 코드가 포함되어 있습니다.");
         }
+        Set<Long> selectedStyleIds = selectedStyles.stream()
+                .map(Style::getId)
+                .collect(Collectors.toSet());
 
-        List<UserStyle> newStyles = styles.stream()
-                .map(style -> UserStyle.builder()
-                        .user(user)
-                        .style(style)
-                        .build())
+        // 기존 행 보존: preference_weight만 갱신, wardrobe/feedback_weight 유지
+        List<UserStyle> existingList = userStyleRepository.findAllByUserId(userId);
+        for (UserStyle us : existingList) {
+            if (selectedStyleIds.contains(us.getStyle().getId())) {
+                us.updatePreferenceWeight(1); // 선택된 스타일: preference 활성화
+            } else {
+                us.updatePreferenceWeight(0); // 선택 해제: preference만 0으로
+            }
+        }
+
+        // 기존 행이 없는 신규 선택 스타일만 insert
+        Set<Long> existingStyleIds = existingList.stream()
+                .map(us -> us.getStyle().getId())
+                .collect(Collectors.toSet());
+        List<UserStyle> newStyles = selectedStyles.stream()
+                .filter(style -> !existingStyleIds.contains(style.getId()))
+                .map(style -> {
+                    UserStyle us = UserStyle.builder().user(user).style(style).build();
+                    us.updatePreferenceWeight(1);
+                    return us;
+                })
                 .toList();
-
         userStyleRepository.saveAll(newStyles);
     }
 
