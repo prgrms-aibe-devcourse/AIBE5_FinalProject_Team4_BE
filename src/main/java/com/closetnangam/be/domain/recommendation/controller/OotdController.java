@@ -6,11 +6,15 @@ import com.closetnangam.be.global.auth.util.SecurityUtils;
 import com.closetnangam.be.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "OOTD 추천 API")
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/ootd")
@@ -22,7 +26,7 @@ public class OotdController {
     @GetMapping("/{wardrobeId}")
     public ResponseEntity<ApiResponse<OotdResponse>> getOotd(
             @PathVariable Long wardrobeId,
-            @RequestParam double currentTemp
+            @RequestParam @DecimalMin("-50.0") @DecimalMax("60.0") double currentTemp
     ) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         OotdResponse response = ootdRecommendationService.recommend(currentUserId, wardrobeId, currentTemp);

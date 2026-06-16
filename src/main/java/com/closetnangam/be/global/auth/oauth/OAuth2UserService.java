@@ -2,16 +2,20 @@ package com.closetnangam.be.global.auth.oauth;
 
 import com.closetnangam.be.domain.user.entity.SocialAccount;
 import com.closetnangam.be.domain.user.entity.User;
+import com.closetnangam.be.domain.user.enums.UserStatus;
 import com.closetnangam.be.domain.user.repository.SocialAccountRepository;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
 
 import java.util.Map;
 import java.util.UUID;
@@ -35,6 +39,19 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
 
         SocialAccount account = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
                 .map(existing -> {
+                    User user = existing.getUser();
+                    if (user.getStatus() == UserStatus.WITHDRAWN) {
+                        // 탈퇴 후 30일 이내: 계정 복구
+                        if (user.getWithdrawnAt().isAfter(LocalDateTime.now().minusDays(30))) {
+                            user.restore();
+                        } else {
+                            // 30일 경과: 재가입 불가 (개인정보 삭제 대상)
+                            throw new OAuth2AuthenticationException(
+                                    new OAuth2Error("user_withdrawn"),
+                                    "탈퇴 후 30일이 경과하여 재로그인할 수 없습니다."
+                            );
+                        }
+                    }
                     existing.recordLogin(email);
                     return existing;
                 })
