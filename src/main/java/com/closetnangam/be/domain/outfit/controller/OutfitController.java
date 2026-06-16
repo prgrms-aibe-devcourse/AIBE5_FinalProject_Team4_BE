@@ -13,14 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Outfit", description = "코디북 API")
 @RestController
@@ -64,7 +57,7 @@ public class OutfitController {
     }
 
     @Operation(summary = "코디 수정", description = "코디북의 기존 코디를 수정합니다.")
-    @PutMapping("/{bookId}/outfits/{outfitId}")
+    @PatchMapping("/{bookId}/outfits/{outfitId}")
     public ResponseEntity<ApiResponse<OutfitResponse>> updateOutfit(
             @PathVariable Long bookId,
             @PathVariable Long outfitId,

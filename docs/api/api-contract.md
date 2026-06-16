@@ -640,7 +640,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/outfit-books/{bookId}` | 코디북 상세 조회 |
 | POST | `/api/v1/outfit-books/{bookId}/outfits` | 코디 저장 |
 | GET | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 상세 조회 |
-| PUT | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 수정 |
+| PATCH | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 수정 |
 | DELETE | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 삭제 |
 
 #### 코디 저장/수정 요청 (`OutfitCreateRequest`, `OutfitUpdateRequest`)
@@ -663,7 +663,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 수정(`PUT`) 요청에서 `items`를 생략하면 기존 구성 아이템이 유지됩니다.
+> **Note**: 수정(`PATCH`) 요청에서 `items`를 생략하면 기존 구성 아이템이 유지됩니다.
 > - `items` 생략(null): 기존 구성 아이템 유지, 메타데이터만 수정
 > - `items: []` (빈 배열): 기존 구성 아이템 전체 삭제
 > - `items: [...]` (목록): 기존 구성 전체 교체
