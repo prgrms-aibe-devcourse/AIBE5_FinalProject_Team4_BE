@@ -1,5 +1,7 @@
 package com.closetnangam.be.global.auth.oauth;
 
+import com.closetnangam.be.domain.outfit.entity.OutfitBook;
+import com.closetnangam.be.domain.outfit.repository.OutfitBookRepository;
 import com.closetnangam.be.domain.user.entity.SocialAccount;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.SocialAccountRepository;
@@ -22,6 +24,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
     private final SocialAccountRepository socialAccountRepository;
+    private final OutfitBookRepository outfitBookRepository;
 
     @Override
     @Transactional
@@ -36,11 +39,22 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
         SocialAccount account = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
                 .map(existing -> {
                     existing.recordLogin(email);
+                    ensureOutfitBook(existing.getUser());
                     return existing;
                 })
-                .orElseGet(() -> createAccount(provider, providerUserId, email, rawName));
+                .orElseGet(() -> {
+                    SocialAccount newAccount = createAccount(provider, providerUserId, email, rawName);
+                    ensureOutfitBook(newAccount.getUser());
+                    return newAccount;
+                });
 
         return new CustomOAuth2User(oAuth2User, account.getUser().getId());
+    }
+
+    private void ensureOutfitBook(User user) {
+        if (outfitBookRepository.findByUser_Id(user.getId()).isEmpty()) {
+            outfitBookRepository.save(OutfitBook.create(user));
+        }
     }
 
     private SocialAccount createAccount(String provider, String providerUserId, String email, String rawName) {
