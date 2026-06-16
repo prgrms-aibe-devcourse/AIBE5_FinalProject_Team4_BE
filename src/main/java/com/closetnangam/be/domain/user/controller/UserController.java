@@ -34,7 +34,7 @@ public class UserController {
 
     private final UserService userService;
 
-    @Operation(summary = "내 프로필 조회", description = "현재 로그인한 사용자의 userId, nickname, onboarded를 반환합니다.")
+    @Operation(summary = "내 프로필 조회", description = "현재 로그인한 사용자의 기본 프로필, 온보딩 여부, 지역, 선호 스타일, 소셜 로그인 제공자 정보를 반환합니다.")
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<MyProfileResponse>> getMyProfile() {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -58,7 +58,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    @Operation(summary = "스타일 선호도 저장", description = "선택한 스타일 코드 목록을 저장합니다. 기존 UserStyle row를 보존하면서 preference_weight만 갱신합니다. 배열 순서 기준 첫 번째 스타일은 대표(+7), 나머지는 보조(+3), 선택 해제된 스타일은 0으로 낮춥니다. wardrobe_weight, feedback_weight는 유지됩니다.")
+    @Operation(summary = "스타일 선호도 저장", description = "선택한 스타일 코드 목록을 저장합니다. 사용자별 전체 스타일 row를 보장하고 preference_weight만 갱신합니다. 배열 순서 기준 첫 번째 스타일은 대표(+7), 나머지는 보조(+3), 선택하지 않은 스타일은 0으로 낮춥니다. wardrobe_weight, feedback_weight는 유지됩니다.")
     @PostMapping("/styles")
     public ResponseEntity<ApiResponse<Void>> updateStyles(
             @Valid @RequestBody UpdateStylesRequest request

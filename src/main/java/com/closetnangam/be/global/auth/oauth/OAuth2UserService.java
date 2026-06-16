@@ -38,42 +38,48 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
         String rawName = extractName(provider, oAuth2User);
 
         SocialAccount account = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
-                .map(existing -> {
-                    User user = existing.getUser();
-                    if (user.getStatus() == UserStatus.WITHDRAWN) {
-                        // 탈퇴 후 30일 이내: 계정 복구
-                        if (user.getWithdrawnAt().isAfter(LocalDateTime.now().minusDays(30))) {
-                            user.restore();
-                        } else {
-                            // 30일 경과: 재가입 불가 (개인정보 삭제 대상)
-                            throw new OAuth2AuthenticationException(
-                                    new OAuth2Error("user_withdrawn"),
-                                    "탈퇴 후 30일이 경과하여 재로그인할 수 없습니다."
-                            );
-                        }
-                    }
-                    existing.recordLogin(email);
-                    return existing;
-                })
                 .orElseGet(() -> createAccount(provider, providerUserId, email, rawName));
 
-        return new CustomOAuth2User(oAuth2User, account.getUser().getId());
+        boolean withdrawnRestoreRequired = requiresWithdrawnRestore(account.getUser());
+        if (!withdrawnRestoreRequired) {
+            account.recordLogin(email);
+        }
+
+        return new CustomOAuth2User(oAuth2User, account.getUser().getId(), withdrawnRestoreRequired);
+    }
+
+    private boolean requiresWithdrawnRestore(User user) {
+        if (user.getStatus() != UserStatus.WITHDRAWN) {
+            return false;
+        }
+        if (user.getWithdrawnAt().isAfter(LocalDateTime.now().minusDays(30))) {
+            return true;
+        }
+        throw new OAuth2AuthenticationException(
+                new OAuth2Error("user_withdrawn"),
+                "탈퇴 후 30일이 경과하여 재로그인할 수 없습니다."
+        );
     }
 
     private SocialAccount createAccount(String provider, String providerUserId, String email, String rawName) {
         User user = userRepository.findByEmail(email)
-                .orElseGet(() -> userRepository.save(
-                        User.builder()
-                                .email(email)
-                                .nickname(buildUniqueNickname(rawName))
-                                .build()
-                ));
+                .orElseGet(() -> createUser(email, rawName));
+
         return socialAccountRepository.save(
                 SocialAccount.builder()
                         .user(user)
                         .provider(provider)
                         .providerUserId(providerUserId)
                         .providerEmail(email)
+                        .build()
+        );
+    }
+
+    private User createUser(String email, String rawName) {
+        return userRepository.save(
+                User.builder()
+                        .email(email)
+                        .nickname(buildUniqueNickname(rawName))
                         .build()
         );
     }

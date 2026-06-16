@@ -71,7 +71,7 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 30)
     private UserStatus status;
 
-    @Column(name = "withdrawn_at", nullable = false)
+    @Column(name = "withdrawn_at")
     private LocalDateTime withdrawnAt;
 
     public enum Gender {
@@ -139,9 +139,6 @@ public class User extends BaseEntity {
         if (status == null) {
             status = UserStatus.ACTIVE;
         }
-        if (withdrawnAt == null) {
-            withdrawnAt = INACTIVE_TIMESTAMP;
-        }
     }
 
     public void updateProfile(
@@ -171,7 +168,7 @@ public class User extends BaseEntity {
 
     public void restore() {
         this.status = UserStatus.ACTIVE;
-        this.withdrawnAt = INACTIVE_TIMESTAMP;
+        this.withdrawnAt = null;
     }
 
     public boolean isOnboarded() {

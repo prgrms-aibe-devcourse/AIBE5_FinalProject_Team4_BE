@@ -42,6 +42,8 @@ last_updated: 2026-06-14
 | 추천 응답 형식 | `RECO-002` 추천 응답의 `price`는 "0" 고정, `score`는 0~1 문자열, `reason`은 기술적 매칭 결과 반환 | 실제 가격, 백분율 점수, 사용자 친화적 자연어 추천 이유 제공 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | AI MD 추천 검증 범위 | `RECO-006` API는 완성형 코디 검증과 스타일 가중 상품 후보 구성을 구현했지만, 외부 상품 포함 저장·저장 실패 및 다중 네이버 검색 조합 경로 테스트가 부족 | 외부 상품 혼합 코디 저장, 4개 미만 응답, 저장 실패/롤백, 다중 검색 결과 병합 경로를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | 개발/임시 API 경계 | local mock token API가 코드에 존재 | 공식 서비스 API는 [api-contract.md](../api/api-contract.md)의 엔드포인트 인덱스를 기준으로 판단 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) |
+| 온보딩 일괄 저장 | 현재 프로필, 선호 스타일, 마케팅 동의 저장 API가 분리되어 있어 클라이언트 순차 호출 시 일부 정보만 저장될 수 있음 | 온보딩 완료는 하나의 저장 단위로 처리되어 프로필, 선호 스타일, 마케팅 동의가 함께 성공하거나 함께 실패 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [invariants.md](../domain/invariants.md) |
+| 탈퇴 30일 경과 후 개인정보 삭제/익명화 | 회원탈퇴 시 `withdrawn_at`을 기록하고 30일 이내 복구 가능한 상태로 관리하지만, 30일 경과 후 개인정보 삭제/익명화 자동 처리는 별도 구현 없음 | 탈퇴 철회 기간이 지나면 약관과 개인정보 처리방침 기준에 따라 개인정보를 삭제하거나 식별할 수 없게 처리 | [data-lifecycle.md](../database/data-lifecycle.md), [legal/README.md](../legal/README.md), [api-contract.md](../api/api-contract.md) |
 
 ## 요구사항 ID 연결표
 
@@ -56,8 +58,46 @@ last_updated: 2026-06-14
 | `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | `price` placeholder("0"), 0~1 점수 형식, 기술적 추천 이유 제공. 기준 문서와 응답 형식 차이 존재 |
 | `RECO-006` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 다중 상품 검색, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
 | 개발/임시 API | `GET /api/v1/auth/mock-token` | `MockAuthController` | [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) | 공식 사용자 기능으로 보지 않음. local 개발 경계 확인 필요 |
+| `ONBOARD-001`~`ONBOARD-010`, `STYLE-001`, `MYPAGE-001` | 온보딩 완료 저장 | `UserController`, `UserService`, `MarketingConsentController` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [invariants.md](../domain/invariants.md) | 프로필, 선호 스타일, 마케팅 동의 저장 API가 분리되어 있음. 온보딩 완료 시 부분 저장이 발생하지 않도록 일괄 저장 API 또는 트랜잭션 경계 확정 필요 |
+| 회원탈퇴 | 탈퇴 후 데이터 보존/삭제 | `UserController`, `UserService`, `User` | [data-lifecycle.md](../database/data-lifecycle.md), [legal/README.md](../legal/README.md), [api-contract.md](../api/api-contract.md) | 탈퇴 시 `withdrawn_at` 기록과 30일 이내 복구 흐름은 구현. 30일 경과 후 개인정보 삭제/익명화 자동 처리 기준은 후속 구현 필요 |
 
 ## BE 코드와 공식 기준 확인 필요
+
+### 온보딩 일괄 저장
+
+온보딩은 사용자가 처음 가입할 때 필요한 프로필, 선호 스타일, 마케팅 동의 여부를 확정하는 흐름입니다. 이 정보는 추천과 마이페이지의 기준 데이터가 되므로 일부만 저장된 상태가 남으면 안 됩니다.
+
+현재 BE API는 아래처럼 저장 책임이 분리되어 있습니다.
+
+```text
+PATCH /api/v1/users/profile
+POST /api/v1/users/styles
+PATCH /api/v1/users/{userId}/marketing-consent
+```
+
+클라이언트가 위 API를 순차 호출하면 프로필 저장은 성공했지만 선호 스타일 저장이 실패하거나, 스타일 저장은 성공했지만 마케팅 동의 저장이 실패하는 부분 저장 상태가 발생할 수 있습니다.
+
+목표 기준은 온보딩 완료를 하나의 저장 단위로 처리하는 것입니다. 구현 방식은 담당자 확인 후 아래 중 하나로 확정합니다.
+
+- BE에 온보딩 완료 전용 API를 두고 프로필, 선호 스타일, 마케팅 동의를 하나의 트랜잭션으로 저장합니다.
+- 기존 API를 유지하되 FE가 부분 저장 상태를 만들지 않도록 보상 처리 또는 재시도 기준을 명확히 합니다.
+
+현재 기준에서는 첫 번째 방식이 더 안전합니다. API 계약을 추가하거나 변경한다면 [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), FE 문서를 같은 PR 또는 Sync 이슈로 함께 갱신합니다.
+
+### 회원탈퇴 30일 경과 후 개인정보 삭제/익명화
+
+회원탈퇴 시 계정은 탈퇴 상태가 되고 `withdrawn_at`에 탈퇴 시각을 기록합니다. 탈퇴한 적이 없는 회원의 `withdrawn_at`은 `null`입니다.
+
+현재 구현은 30일 이내 복구 가능한 탈퇴 상태를 관리하는 데 초점이 있습니다. 다만 약관과 개인정보 처리방침 기준상 탈퇴 철회 기간이 지나면 개인정보를 삭제하거나 식별할 수 없게 처리하는 후속 작업이 필요합니다.
+
+후속 구현에서는 아래 기준을 확인합니다.
+
+- 30일 경과 회원을 찾는 기준
+- 이메일, 닉네임, 프로필 이미지, 자기소개, 외부 링크, 소셜 계정 연결 등 개인정보성 필드 삭제 또는 익명화 범위
+- 옷, 코디, 피드, 추천 학습 데이터처럼 서비스 품질을 위해 보존할 수 있는 비식별 데이터 범위
+- 자동 배치, 스케줄러, 관리자 수동 처리 중 운영 방식
+
+이 작업은 현재 로그인/온보딩/마이페이지 보완 범위에서는 구현하지 않고, 후속 이슈에서 처리합니다.
 
 ### `WARDROBE-002` 옷장 통계
 

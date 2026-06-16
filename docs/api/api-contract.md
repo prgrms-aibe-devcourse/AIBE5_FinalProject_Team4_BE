@@ -67,6 +67,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 - Refresh Token은 `refresh_token` HttpOnly 쿠키로 전달되며 `/api/v1/auth` 경로에서만 전송됩니다.
 - Access Token이 만료(401)되면 `POST /api/v1/auth/refresh`를 호출해 재발급합니다.
 - 로그아웃 시 `POST /api/v1/auth/logout`을 호출해 서버에서 Refresh Token을 삭제합니다.
+- 탈퇴 후 30일 이내 계정으로 OAuth 로그인을 시도하면 자동 로그인하지 않고 FE에 복구 확인 상태를 전달합니다. 사용자가 복구를 확정하면 `POST /api/v1/auth/restore-withdrawn`으로 계정을 복구하고 인증 쿠키를 발급합니다.
 - 사용자별 리소스는 JWT의 사용자 ID와 path의 `userId`가 일치해야 합니다.
 
 ## 이미지 업로드 기준
@@ -85,14 +86,15 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | GET    | `/oauth2/authorization/{provider}` | OAuth 로그인 시작    |
 | POST   | `/api/v1/auth/refresh`             | Access Token 재발급 |
 | POST   | `/api/v1/auth/logout`              | 로그아웃            |
+| POST   | `/api/v1/auth/restore-withdrawn`   | 탈퇴 계정 복구 확정 |
 
 ### 사용자
 | Method | Path | 설명 |
 | --- | --- | --- |
-| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 프로필 반환 (userId, nickname, onboarded) |
+| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 본인 프로필 반환 |
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
-| PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 userId, nickname, onboarded 반환 |
-| POST | `/api/v1/users/styles` | 스타일 선호도 저장 (기존 row 보존, preference_weight만 갱신) |
+| PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 본인 프로필 반환 |
+| POST | `/api/v1/users/styles` | 스타일 선호도 저장 (사용자별 전체 스타일 row 보장, preference_weight만 갱신) |
 | DELETE | `/api/v1/users/me` | 회원 탈퇴 (소프트 삭제, 쿠키 만료) |
 
 #### GET /api/v1/users/profile 응답 필드
@@ -101,7 +103,16 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | --- | --- | --- |
 | `userId` | Long | 사용자 ID |
 | `nickname` | String | 카카오 닉네임 또는 온보딩에서 설정한 닉네임 |
-| `onboarded` | boolean | 온보딩 완료 여부. birthDate가 기본값(2000-01-01)이면 false, 실제 날짜이면 true |
+| `onboarded` | boolean | 온보딩 완료 여부. 사용자 성별, 생년월일, 지역 코드, 선호 스타일이 모두 저장되면 true |
+| `birthDate` | Date | 생년월일 |
+| `gender` | String | 사용자 성별. `MALE` / `FEMALE` / `OTHER` |
+| `regionName` | String | 지역명 |
+| `regionCode` | String | 지역 코드 |
+| `profileImageUrl` | String | 프로필 이미지 URL |
+| `profileBio` | String | 한 줄 소개 |
+| `externalLinkUrl` | String | 외부 링크 URL |
+| `styleCodes` | String[] | 선호 스타일 code 배열 |
+| `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
 
 #### PATCH /api/v1/users/profile 요청 필드
 
@@ -122,13 +133,22 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | --- | --- | --- |
 | `userId` | Long | 사용자 ID |
 | `nickname` | String | 저장된 닉네임 |
-| `onboarded` | boolean | 온보딩 완료 여부. 저장 후 true이면 메인 페이지로 이동 |
+| `onboarded` | boolean | 온보딩 완료 여부. 프로필과 선호 스타일 저장 상태를 함께 기준으로 판단 |
+| `birthDate` | Date | 저장된 생년월일 |
+| `gender` | String | 저장된 사용자 성별 |
+| `regionName` | String | 저장된 지역명 |
+| `regionCode` | String | 저장된 지역 코드 |
+| `profileImageUrl` | String | 저장된 프로필 이미지 URL |
+| `profileBio` | String | 저장된 한 줄 소개 |
+| `externalLinkUrl` | String | 저장된 외부 링크 URL |
+| `styleCodes` | String[] | 선호 스타일 code 배열 |
+| `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
 
 #### POST /api/v1/users/styles 요청 필드
 
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
-| `styleCodes` | Y | 스타일 코드 배열 (1~3개, 예: `["CASUAL", "MINIMAL"]`). 배열 순서 기준 첫 번째가 대표 스타일(+7), 나머지가 보조 스타일(+3)로 반영됩니다. |
+| `styleCodes` | Y | 스타일 코드 배열 (1~10개, 예: `["CASUAL", "MINIMAL"]`). 저장 시 사용자별 전체 스타일 row를 보장하고, 배열 순서 기준 첫 번째는 대표 스타일(+7), 나머지는 보조 스타일(+3), 선택하지 않은 스타일은 0점으로 반영합니다. |
 
 허용 스타일 코드: `CASUAL`, `STREET`, `MINIMAL`, `SPORTY`, `CLASSIC`, `CHIC`, `WORKWEAR`, `CITYBOY`, `GORPCORE`, `RETRO`
 
@@ -160,6 +180,32 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
   "success": true,
   "data": {
     "marketingAgreed": true
+  },
+  "message": null
+}
+```
+
+### 약관
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| GET | `/api/v1/legal/terms` | 서비스 이용약관 markdown 원문 조회 |
+| GET | `/api/v1/legal/privacy-policy` | 개인정보 처리방침 markdown 원문 조회 |
+| GET | `/api/v1/legal/marketing-consent` | 마케팅 정보 수신 동의 markdown 원문 조회 |
+
+약관 원본은 BE `docs/legal/`에 두고, 실제 적용된 버전은 `docs/legal/versions/`에 보관합니다. API는 최신본의 frontmatter를 metadata로 분리하고 markdown 본문을 `content`로 반환합니다.
+
+응답 예시:
+
+```json
+{
+  "success": true,
+  "data": {
+    "policyType": "terms",
+    "version": "2026.06.15",
+    "effectiveDate": "2026-06-15",
+    "lastUpdated": "2026-06-15",
+    "content": "# 서비스 이용약관\n\n..."
   },
   "message": null
 }

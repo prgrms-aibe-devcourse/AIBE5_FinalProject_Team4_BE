@@ -23,7 +23,7 @@ last_updated: 2026-06-14
 | 옷장 | 보유 옷, 미보유 옷, 통계, 상세, 수정, 즐겨찾기, 삭제, 보유 전환 |
 | 옷 등록 | 사진 기반 등록, 구매내역 캡처 등록, 외부 상품 저장 |
 | 룩피드 | 피드 목록, 피드 상세, 작성, 좋아요, 댓글, 저장 |
-| 마이페이지 | 프로필, 소셜 계정, 외부 링크, 약관/도움말, 로그아웃, 회원 탈퇴 |
+| 마이페이지 | 프로필 확인, 개인정보 등 편집, 소셜 계정, 외부 링크, 약관/도움말, 로그아웃, 회원 탈퇴 |
 | 오류 화면 | 서버 오류, 네트워크 오류, 404 |
 
 ## 다이어그램
@@ -77,11 +77,12 @@ flowchart TD
   Feed --> FeedWrite["피드 작성"]
   Feed --> FeedAction["좋아요 / 댓글 / 저장"]
 
-  Profile --> ProfileEdit["프로필 수정"]
+  Profile --> ProfileEdit["개인정보 등 편집"]
   Profile --> SocialAccount["소셜 계정"]
   Profile --> ExternalLinks["외부 링크"]
   Profile --> TermsHelp["약관 / 도움말"]
-  Profile --> LogoutWithdraw["로그아웃 / 회원 탈퇴"]
+  Profile --> Logout["로그아웃"]
+  ProfileEdit --> Withdraw["회원 탈퇴"]
 
   App --> ErrorServer["서버 오류 화면"]
   App --> ErrorNetwork["네트워크 오류 화면"]
@@ -95,7 +96,7 @@ flowchart TD
   class Landing,Login,OAuth,Onboarding auth;
   class App,Home,Closet,Feed,Profile main;
   class OOTD,StyleReco,SimilarReco,MatchReco,AiMd,RecoDetail,Register,ClothesDetail,FeedDetail,FeedWrite,ProfileEdit detail;
-  class SaveWishlist,Feedback,ConvertOwned,ClosetSummary,OwnedList,WishlistList,PhotoRegister,PurchaseRegister,ExternalRegister,ClothesEdit,Favorite,RemoveFromWardrobe,FeedList,FeedAction,SocialAccount,ExternalLinks,TermsHelp,LogoutWithdraw,ErrorServer,ErrorNetwork,NotFound sub;
+  class SaveWishlist,Feedback,ConvertOwned,ClosetSummary,OwnedList,WishlistList,PhotoRegister,PurchaseRegister,ExternalRegister,ClothesEdit,Favorite,RemoveFromWardrobe,FeedList,FeedAction,SocialAccount,ExternalLinks,TermsHelp,Logout,Withdraw,ErrorServer,ErrorNetwork,NotFound sub;
 ```
 
 ## 변경 기준

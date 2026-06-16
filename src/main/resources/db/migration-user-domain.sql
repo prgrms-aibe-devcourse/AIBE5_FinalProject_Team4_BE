@@ -42,11 +42,7 @@ SET status = 'WITHDRAWN'
 WHERE withdrawn = 1;
 
 UPDATE users
-SET withdrawn_at = '1970-01-01 00:00:00'
-WHERE withdrawn_at IS NULL;
-
-UPDATE users
-SET withdrawn_at = '1970-01-01 00:00:00'
+SET withdrawn_at = NULL
 WHERE withdrawn = 0;
 
 -- OAuth 등으로 비어 있던 기존 row backfill (@PrePersist는 신규 insert에만 적용)
@@ -67,7 +63,7 @@ ALTER TABLE users
     MODIFY COLUMN gender VARCHAR(20) NOT NULL;
 
 ALTER TABLE users
-    MODIFY COLUMN withdrawn_at DATETIME NOT NULL;
+    MODIFY COLUMN withdrawn_at DATETIME NULL;
 
 ALTER TABLE users
     DROP COLUMN withdrawn;
