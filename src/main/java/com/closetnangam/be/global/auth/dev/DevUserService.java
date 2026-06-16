@@ -1,5 +1,7 @@
 package com.closetnangam.be.global.auth.dev;
 
+import com.closetnangam.be.domain.outfit.entity.OutfitBook;
+import com.closetnangam.be.domain.outfit.repository.OutfitBookRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -19,10 +21,11 @@ public class DevUserService {
 
     private final UserRepository userRepository;
     private final EntityManager entityManager;
+    private final OutfitBookRepository outfitBookRepository;
 
     @Transactional
     public User ensureDevUser(Long userId) {
-        return userRepository.findById(userId).orElseGet(() -> {
+        User user = userRepository.findById(userId).orElseGet(() -> {
             entityManager.createNativeQuery(
                             """
                                     INSERT INTO users (
@@ -47,5 +50,11 @@ public class DevUserService {
             return userRepository.findById(userId)
                     .orElseThrow(() -> new IllegalStateException("개발용 사용자 생성에 실패했습니다. userId=" + userId));
         });
+
+        if (outfitBookRepository.findByUser_Id(user.getId()).isEmpty()) {
+            outfitBookRepository.save(OutfitBook.create(user));
+        }
+
+        return user;
     }
 }

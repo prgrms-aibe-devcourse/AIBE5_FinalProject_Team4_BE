@@ -1,5 +1,7 @@
 package com.closetnangam.be.global.auth.oauth;
 
+import com.closetnangam.be.domain.outfit.entity.OutfitBook;
+import com.closetnangam.be.domain.outfit.repository.OutfitBookRepository;
 import com.closetnangam.be.domain.user.entity.SocialAccount;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.enums.UserStatus;
@@ -16,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,6 +27,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
     private final SocialAccountRepository socialAccountRepository;
+    private final OutfitBookRepository outfitBookRepository;
 
     @Override
     @Transactional
@@ -43,6 +45,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
         boolean withdrawnRestoreRequired = requiresWithdrawnRestore(account.getUser());
         if (!withdrawnRestoreRequired) {
             account.recordLogin(email);
+            ensureOutfitBook(account.getUser());
         }
 
         return new CustomOAuth2User(oAuth2User, account.getUser().getId(), withdrawnRestoreRequired);
@@ -52,13 +55,20 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
         if (user.getStatus() != UserStatus.WITHDRAWN) {
             return false;
         }
-        if (user.getWithdrawnAt().isAfter(LocalDateTime.now().minusDays(30))) {
+        if (user.getWithdrawnAt() != null
+                && user.getWithdrawnAt().isAfter(LocalDateTime.now().minusDays(30))) {
             return true;
         }
         throw new OAuth2AuthenticationException(
                 new OAuth2Error("user_withdrawn"),
                 "탈퇴 후 30일이 경과하여 재로그인할 수 없습니다."
         );
+    }
+
+    private void ensureOutfitBook(User user) {
+        if (outfitBookRepository.findByUser_Id(user.getId()).isEmpty()) {
+            outfitBookRepository.save(OutfitBook.create(user));
+        }
     }
 
     private SocialAccount createAccount(String provider, String providerUserId, String email, String rawName) {

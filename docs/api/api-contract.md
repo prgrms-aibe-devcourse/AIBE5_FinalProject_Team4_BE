@@ -91,7 +91,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 ### 사용자
 | Method | Path | 설명 |
 | --- | --- | --- |
-| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 본인 프로필 반환 |
+| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 본인 프로필 반환 (응답 필드는 아래 표 참고) |
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
 | PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 본인 프로필 반환 |
 | POST | `/api/v1/users/styles` | 스타일 선호도 저장 (사용자별 전체 스타일 row 보장, preference_weight만 갱신) |
@@ -686,7 +686,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/outfit-books/{bookId}` | 코디북 상세 조회 |
 | POST | `/api/v1/outfit-books/{bookId}/outfits` | 코디 저장 |
 | GET | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 상세 조회 |
-| PUT | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 수정 |
+| PATCH | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 수정 |
 | DELETE | `/api/v1/outfit-books/{bookId}/outfits/{outfitId}` | 코디 삭제 |
 
 #### 코디 저장/수정 요청 (`OutfitCreateRequest`, `OutfitUpdateRequest`)
@@ -709,7 +709,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 수정(`PUT`) 요청에서 `items`를 생략하면 기존 구성 아이템이 유지됩니다.
+> **Note**: 수정(`PATCH`) 요청에서 `items`를 생략하면 기존 구성 아이템이 유지됩니다.
 > - `items` 생략(null): 기존 구성 아이템 유지, 메타데이터만 수정
 > - `items: []` (빈 배열): 기존 구성 아이템 전체 삭제
 > - `items: [...]` (목록): 기존 구성 전체 교체
