@@ -15,6 +15,8 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.UUID;
 
@@ -31,6 +33,9 @@ public class S3ImageStorageService implements ImageStorageService {
 
     @Value("${cloud.aws.region.static:ap-northeast-2}")
     private String awsRegion;
+
+    @Value("${app.api.base-url:}")
+    private String appBaseUrl;
 
     @PostConstruct
     void validateConfig() {
@@ -87,6 +92,33 @@ public class S3ImageStorageService implements ImageStorageService {
     }
 
     @Override
+    public String resolveUserImageStoredPath(String subdirectory, Long userId, String filename) {
+        if (!StringUtils.hasText(filename)) {
+            throw new IllegalArgumentException("잘못된 파일 이름입니다.");
+        }
+
+        String decodedFilename;
+        try {
+            decodedFilename = URLDecoder.decode(filename, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("잘못된 파일 이름입니다.");
+        }
+
+        // S3 object key는 사용자별 prefix 아래의 단일 파일명만 허용합니다.
+        // 경로 탐색 문자열을 차단해 다른 사용자의 object key를 조합할 수 없게 합니다.
+        if (!StringUtils.hasText(decodedFilename)
+                || decodedFilename.contains("\0")
+                || decodedFilename.contains("/")
+                || decodedFilename.contains("\\")
+                || decodedFilename.equals(".")
+                || decodedFilename.equals("..")) {
+            throw new IllegalArgumentException("잘못된 파일 이름입니다.");
+        }
+
+        return subdirectory + "/" + userId + "/" + decodedFilename;
+    }
+
+    @Override
     public Path resolveSecureUserImagePath(String subdirectory, Long userId, String filename) {
         throw new UnsupportedOperationException("S3 저장소는 로컬 이미지 경로 조회를 지원하지 않습니다.");
     }
@@ -123,6 +155,9 @@ public class S3ImageStorageService implements ImageStorageService {
         String publicBaseUrl = storageProperties.getS3().getPublicBaseUrl();
         if (StringUtils.hasText(publicBaseUrl)) {
             return publicBaseUrl.replaceAll("/+$", "") + "/" + objectKey;
+        }
+        if (StringUtils.hasText(appBaseUrl)) {
+            return appBaseUrl.replaceAll("/+$", "") + "/api/v1/images/" + objectKey;
         }
         String bucket = storageProperties.getS3().getBucket();
         return "https://" + bucket + ".s3." + awsRegion + ".amazonaws.com/" + objectKey;

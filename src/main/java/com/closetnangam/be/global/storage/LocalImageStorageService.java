@@ -108,6 +108,11 @@ public class LocalImageStorageService implements ImageStorageService {
     }
 
     @Override
+    public String resolveUserImageStoredPath(String subdirectory, Long userId, String filename) {
+        return resolveSecureUserImagePath(subdirectory, userId, filename).toString();
+    }
+
+    @Override
     public Path resolveSecureUserImagePath(String subdirectory, Long userId, String filename) {
         if (!StringUtils.hasText(filename)) {
             throw new IllegalArgumentException("잘못된 파일 이름입니다.");

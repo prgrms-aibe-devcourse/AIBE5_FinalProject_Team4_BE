@@ -1,7 +1,7 @@
 # AWS 배포 가이드 (EC2 + RDS + S3)
 
 옷장난감 BE를 AWS에 올릴 때 필요한 리소스와 설정 순서입니다.  
-운영(`prod`)은 `STORAGE_BACKEND=s3`로 S3 URL을 `imageUrl`에 저장하고, 로컬 개발은 `local` 기본값으로 디스크 + `/api/v1/images/**`를 사용합니다.
+운영(`prod`)은 `STORAGE_BACKEND=s3`로 S3에 원본을 저장하고, `imageUrl`은 인증된 `/api/v1/images/**` 프록시 URL로 저장합니다. 로컬 개발은 `local` 기본값으로 디스크 + `/api/v1/images/**`를 사용합니다.
 
 ## 아키텍처
 
@@ -9,7 +9,7 @@
 [FE] ──HTTPS──▶ [ALB/Nginx] ──▶ [EC2: Spring Boot + Redis(container)]
                                       │
                                       ├──▶ [RDS MySQL]
-                                      └──▶ [S3 bucket]  ← img_url 연동 예정
+                                      └──▶ [S3 bucket]  ← private 원본 저장소
 ```
 
 ## 1. RDS (MySQL 8.4)
@@ -32,10 +32,13 @@ Flyway 활성화 절차는 [db/migration/README.md](../../src/main/resources/db/
 ## 2. S3
 
 1. 버킷 생성 (예: `closetnangam-images`, region `ap-northeast-2`)
-2. Block Public Access는 기본 유지 (CloudFront 또는 presigned URL 권장)
-3. img_url 공개 URL prefix를 `S3_PUBLIC_BASE_URL`에 기록 (예: CloudFront 도메인)
+2. Block Public Access는 기본 유지
+3. `S3_PUBLIC_BASE_URL`은 비워두면 백엔드 프록시 URL(`/api/v1/images/**`)을 저장합니다.
+   CloudFront를 별도로 붙일 경우에만 CloudFront 도메인을 입력합니다.
 
-**현재 코드**: `app.storage.backend=local`이면 `LocalImageStorageService` + `/api/v1/images/**`, `s3`이면 `S3ImageStorageService`가 `imageUrl`/`storedPath`(S3 object key)에 S3 URL을 저장합니다.
+**현재 코드**: `app.storage.backend=local`이면 `LocalImageStorageService`가 디스크에 저장하고,
+`s3`이면 `S3ImageStorageService`가 S3 object key를 `storedPath`에 저장합니다.
+두 저장소 모두 브라우저 조회는 `ImageController`의 `/api/v1/images/**` 인증 API를 거칩니다.
 
 ## 3. EC2
 
@@ -135,17 +138,20 @@ MVP: `deploy/docker-compose.prod.yml`의 Redis 컨테이너 사용.
 | --- | --- | --- |
 | DB | Docker MySQL :3307 (`ddl-auto: update`) | RDS + `validate` (Flyway 기본 off) |
 | Redis | Docker :6379 | EC2 compose 또는 ElastiCache |
-| 이미지 | `uploads/` + `/api/v1/images/**` | S3 URL (`STORAGE_BACKEND=s3`) |
+| 이미지 | `uploads/` + `/api/v1/images/**` | private S3 + `/api/v1/images/**` 프록시 |
 | Swagger | 활성 | 기본 비활성 |
 | Mock auth | 활성 | 비활성 (`@Profile("local")`) |
 | Batch runner | local만 | 비활성 |
 
-## 9. img_url → S3
+## 9. 이미지 저장소
 
-1. S3 버킷 생성 후 `deploy/.env`에 `S3_BUCKET`, `S3_PUBLIC_BASE_URL` 입력
+1. S3 버킷 생성 후 `deploy/.env`에 `S3_BUCKET` 입력
 2. `STORAGE_BACKEND=s3` (prod 기본값)
 3. EC2 IAM Role에 S3 권한 부여
-4. CloudFront 연동 시 `S3_PUBLIC_BASE_URL`에 CloudFront 도메인 사용
+4. `S3_PUBLIC_BASE_URL`은 기본적으로 비워둡니다. 이 경우 DB의 `imageUrl`은
+   `${APP_BASE_URL}/api/v1/images/{prefix}/{userId}/{filename}` 형식으로 저장되고,
+   백엔드가 인증 후 S3 object를 읽어 반환합니다.
+5. CloudFront 연동 시에만 `S3_PUBLIC_BASE_URL`에 CloudFront 도메인을 사용합니다.
 
 로컬 개발은 `STORAGE_BACKEND=local`(기본)로 EC2 디스크 + `/api/v1/images/**` 서빙을 유지합니다.
 
