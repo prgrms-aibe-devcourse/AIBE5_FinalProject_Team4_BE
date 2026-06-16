@@ -18,6 +18,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -44,6 +45,7 @@ public class SecurityConfig {
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter;
     private final CookieBearerTokenResolver cookieBearerTokenResolver;
+    private final CorsConfigurationSource corsConfigurationSource;
 
     /**
      * local 프로파일: API 요청은 Resource Server(JWT 쿠키)로, 소셜 로그인 흐름은 oauth2Login으로 처리합니다.
@@ -53,6 +55,7 @@ public class SecurityConfig {
     @Profile("local")
     public SecurityFilterChain localSecurityFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_URLS).permitAll()
@@ -61,7 +64,6 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 )
-                // local 환경에서도 소셜 로그인으로 토큰 발급이 가능하도록 oauth2Login 포함
                 .oauth2Login(oauth -> oauth
                         .userInfoEndpoint(e -> e.userService(oAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
@@ -88,6 +90,7 @@ public class SecurityConfig {
                     String uri = request.getRequestURI();
                     return uri != null && uri.startsWith("/api/");
                 })
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -120,9 +123,10 @@ public class SecurityConfig {
                     String uri = request.getRequestURI();
                     return uri == null || !uri.startsWith("/api/");
                 })
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(PUBLIC_URLS).permitAll()   // 기존 하드코딩 → 공통 상수 사용
+                        .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth -> oauth

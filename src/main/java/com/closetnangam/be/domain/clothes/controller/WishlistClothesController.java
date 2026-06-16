@@ -68,10 +68,7 @@ public class WishlistClothesController {
     }
 
     @Operation(summary = "미보유 → 보유 전환", description = "구매 후 미보유 옷을 보유 옷(OWNED)으로 전환합니다.")
-    @PatchMapping({
-            "/api/clothes/{clothesId}/convert-to-owned",
-            "/api/v1/clothes/{clothesId}/convert-to-owned"
-    })
+    @PatchMapping({"/api/v1/clothes/{clothesId}/convert-to-owned", "/api/clothes/{clothesId}/convert-to-owned"})
     public ResponseEntity<ApiResponse<ClothesResponse>> convertToOwned(
             @PathVariable Long clothesId,
             @Valid @RequestBody ClothesConvertToOwnedRequest request
