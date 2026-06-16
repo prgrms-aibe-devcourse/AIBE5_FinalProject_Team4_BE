@@ -25,6 +25,7 @@ spring:
             redirect-uri: http://localhost:8080/login/oauth2/code/kakao
             authorization-grant-type: authorization_code
             scope: account_email
+            client-authentication-method: client_secret_post
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
@@ -69,6 +70,8 @@ weather:
     url: ${WEATHER_API_URL:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
 
 app:
+  oauth2:
+    redirect-uri: http://localhost:5173
   recommendation:
     complementary:
       # 동기 Gemini 분류(importComplementaryRecommendationCandidate) 사용 여부. false면 규칙 기반 fallback만 사용.
@@ -77,10 +80,7 @@ app:
         # Gemini Batch API 대량 분류·적재. local에서 enabled=true 시 기동 후 자동 실행.
         enabled: false
         # submit | import | submit-and-wait
-        mode: import
-        # random: 기존 랜덤 키워드 수집 | gap-fill: 부족 구간 버킷별 수집 (3·4번 제외, 200건×5)
-        collection-mode: gap-fill
-        gap-fill-per-bucket: 200
+        mode: submit
         model: gemini-3.5-flash
         max-products: 1000
         # import 모드에서 state.json 대신 직접 지정할 때 사용 (예: batches/123456789)
@@ -91,3 +91,8 @@ app:
         file-active-poll-interval-seconds: 5
         file-active-max-poll-attempts: 60
         state-dir: build/reco-004-batch
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG

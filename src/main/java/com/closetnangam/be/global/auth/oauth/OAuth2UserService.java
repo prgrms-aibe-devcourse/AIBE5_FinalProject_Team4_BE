@@ -1,17 +1,23 @@
 package com.closetnangam.be.global.auth.oauth;
 
+import com.closetnangam.be.domain.outfit.entity.OutfitBook;
+import com.closetnangam.be.domain.outfit.repository.OutfitBookRepository;
 import com.closetnangam.be.domain.user.entity.SocialAccount;
 import com.closetnangam.be.domain.user.entity.User;
+import com.closetnangam.be.domain.user.enums.UserStatus;
 import com.closetnangam.be.domain.user.repository.SocialAccountRepository;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
 
 import java.util.Map;
 import java.util.UUID;
@@ -22,6 +28,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
     private final SocialAccountRepository socialAccountRepository;
+    private final OutfitBookRepository outfitBookRepository;
 
     @Override
     @Transactional
@@ -35,12 +42,36 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
 
         SocialAccount account = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
                 .map(existing -> {
+                    User user = existing.getUser();
+                    if (user.getStatus() == UserStatus.WITHDRAWN) {
+                        // 탈퇴 후 30일 이내: 계정 복구
+                        if (user.getWithdrawnAt().isAfter(LocalDateTime.now().minusDays(30))) {
+                            user.restore();
+                        } else {
+                            // 30일 경과: 재가입 불가 (개인정보 삭제 대상)
+                            throw new OAuth2AuthenticationException(
+                                    new OAuth2Error("user_withdrawn"),
+                                    "탈퇴 후 30일이 경과하여 재로그인할 수 없습니다."
+                            );
+                        }
+                    }
                     existing.recordLogin(email);
+                    ensureOutfitBook(existing.getUser());
                     return existing;
                 })
-                .orElseGet(() -> createAccount(provider, providerUserId, email, rawName));
+                .orElseGet(() -> {
+                    SocialAccount newAccount = createAccount(provider, providerUserId, email, rawName);
+                    ensureOutfitBook(newAccount.getUser());
+                    return newAccount;
+                });
 
         return new CustomOAuth2User(oAuth2User, account.getUser().getId());
+    }
+
+    private void ensureOutfitBook(User user) {
+        if (outfitBookRepository.findByUser_Id(user.getId()).isEmpty()) {
+            outfitBookRepository.save(OutfitBook.create(user));
+        }
     }
 
     private SocialAccount createAccount(String provider, String providerUserId, String email, String rawName) {

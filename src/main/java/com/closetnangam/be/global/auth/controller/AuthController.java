@@ -6,6 +6,7 @@ import com.closetnangam.be.global.auth.jwt.RefreshTokenService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -65,6 +66,11 @@ public class AuthController {
         if(refreshToken != null && jwtTokenProvider.isValid(refreshToken)){
             Long userId = jwtTokenProvider.extractUserId(refreshToken);
             refreshTokenService.delete(userId);
+        }
+
+        HttpSession session = request.getSession(false);
+        if(session != null){
+            session.invalidate();
         }
 
         ResponseCookie accessCookie = ResponseCookie.from("access_token", "")
