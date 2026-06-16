@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
+import jakarta.persistence.EntityNotFoundException;
 import java.util.NoSuchElementException;
 
 @Slf4j
@@ -26,8 +27,8 @@ public class GlobalExceptionHandler {
     }
 
     /** 리소스 미존재 시 HTTP 404 */
-    @ExceptionHandler(NoSuchElementException.class)
-    public ResponseEntity<ApiResponse<Void>> handleNoSuchElement(NoSuchElementException exception) {
+    @ExceptionHandler({NoSuchElementException.class, EntityNotFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(RuntimeException exception) {
         log.warn("Resource not found: {}", exception.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("요청한 리소스를 찾을 수 없습니다."));
     }
