@@ -20,7 +20,6 @@ public class OutfitCreateRequest {
     private String title;
 
     @NotBlank
-    // description은 엔티티 제한이 따로 없으면 그대로 둬도 돼!
     private String description;
 
     @NotBlank

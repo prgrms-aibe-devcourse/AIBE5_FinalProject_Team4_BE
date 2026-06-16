@@ -155,13 +155,13 @@ public class OotdRecommendationService {
                 .name(c.getName())
                 .brand(c.getBrandName())
                 .color(primaryColor)
-                .imageUrl(wc.getUserImageUrl())
+                .imageUrl((wc.getUserImageUrl() != null && !wc.getUserImageUrl().isBlank()) ? wc.getUserImageUrl() : c.getImageUrl()
+                )
                 .externalProductUrl(c.getExternalProductUrl())
                 .category(c.getCategory())
                 .itemType(c.getItemType())
                 .favorite(wc.getFavorite())
                 .build();
     }
-
     private record ScoredItem(WardrobeClothes item, double score) {}
 }

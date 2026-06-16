@@ -169,6 +169,11 @@ public class User extends BaseEntity {
         this.withdrawnAt = LocalDateTime.now();
     }
 
+    public void updateMarketingAgreement(boolean marketingAgreed) {
+        this.marketingAgreed = marketingAgreed;
+        this.marketingAgreedAt = marketingAgreed ? LocalDateTime.now() : INACTIVE_TIMESTAMP;
+    }
+
     public String getDefaultAnchorItemType() {
         if (this.gender == Gender.FEMALE) {
             return "SKIRT";
