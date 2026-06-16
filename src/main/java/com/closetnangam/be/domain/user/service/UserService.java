@@ -89,16 +89,18 @@ public class UserService {
         if (selectedStyles.size() != request.styleCodes().size()) {
             throw new IllegalArgumentException("존재하지 않는 스타일 코드가 포함되어 있습니다.");
         }
-        Set<Long> selectedStyleIds = selectedStyles.stream()
-                .map(Style::getId)
-                .collect(Collectors.toSet());
 
         // 기존 행 보존: preference_weight만 갱신, wardrobe/feedback_weight 유지
-        // 첫 번째 선택 = 대표 스타일 +7, 나머지 = 보조 스타일 +3, 선택 해제 = 0
+        // 요청 배열 순서 기준: 첫 번째 code = 대표 스타일 +7, 나머지 = 보조 스타일 +3, 선택 해제 = 0
+        // findByCodeIn()은 DB 반환 순서를 보장하지 않으므로 code → Style 맵을 만들어 요청 순서로 순회
+        Map<String, Style> styleByCode = selectedStyles.stream()
+                .collect(Collectors.toMap(Style::getCode, s -> s));
         List<UserStyle> existingList = userStyleRepository.findAllByUserId(userId);
         Map<Long, Integer> preferenceMap = new LinkedHashMap<>();
-        for (int i = 0; i < selectedStyles.size(); i++) {
-            preferenceMap.put(selectedStyles.get(i).getId(), i == 0 ? 7 : 3);
+        List<String> requestedCodes = request.styleCodes();
+        for (int i = 0; i < requestedCodes.size(); i++) {
+            Style style = styleByCode.get(requestedCodes.get(i));
+            preferenceMap.put(style.getId(), i == 0 ? 7 : 3);
         }
 
         for (UserStyle us : existingList) {
