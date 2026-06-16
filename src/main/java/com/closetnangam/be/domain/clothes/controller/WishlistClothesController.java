@@ -29,21 +29,21 @@ public class WishlistClothesController {
     private final ClothesService clothesService;
 
     @Operation(summary = "미보유 옷 목록 조회", description = "추천받아 저장한 옷, 관심 상품(WISHLIST) 목록을 조회합니다.")
-    @GetMapping("/api/users/{userId}/wishlist-clothes")
+    @GetMapping("/api/v1/users/{userId}/wishlist-clothes")
     public ResponseEntity<ApiResponse<List<ClothesResponse>>> getWishlistClothes(@PathVariable Long userId) {
         SecurityUtils.verifyUserIdMatch(userId);
         return ResponseEntity.ok(ApiResponse.ok(clothesService.getWishlistClothes(userId)));
     }
 
     @Operation(summary = "미보유 옷 즐겨찾기 목록 조회", description = "즐겨찾기로 표시한 미보유 옷 목록을 조회합니다.")
-    @GetMapping("/api/users/{userId}/wishlist-clothes/favorites")
+    @GetMapping("/api/v1/users/{userId}/wishlist-clothes/favorites")
     public ResponseEntity<ApiResponse<List<ClothesResponse>>> getFavoriteWishlistClothes(@PathVariable Long userId) {
         SecurityUtils.verifyUserIdMatch(userId);
         return ResponseEntity.ok(ApiResponse.ok(clothesService.getFavoriteWishlistClothes(userId)));
     }
 
     @Operation(summary = "미보유 옷 등록", description = "추천 상품 또는 외부 쇼핑 상품을 미보유 옷으로 저장합니다.")
-    @PostMapping("/api/users/{userId}/wishlist-clothes")
+    @PostMapping("/api/v1/users/{userId}/wishlist-clothes")
     public ResponseEntity<ApiResponse<ClothesResponse>> createWishlistClothes(
             @PathVariable Long userId,
             @Valid @RequestBody WishlistClothesCreateRequest request
@@ -57,7 +57,7 @@ public class WishlistClothesController {
             summary = "기존 옷을 미보유 옷으로 저장",
             description = "추천 결과 등 이미 CLOTHES 마스터에 등록된 상품을 사용자 위시리스트에 연결합니다."
     )
-    @PostMapping("/api/users/{userId}/wishlist-clothes/{clothesId}")
+    @PostMapping("/api/v1/users/{userId}/wishlist-clothes/{clothesId}")
     public ResponseEntity<ApiResponse<ClothesResponse>> addExistingClothesToWishlist(
             @PathVariable Long userId,
             @PathVariable Long clothesId
@@ -68,10 +68,7 @@ public class WishlistClothesController {
     }
 
     @Operation(summary = "미보유 → 보유 전환", description = "구매 후 미보유 옷을 보유 옷(OWNED)으로 전환합니다.")
-    @PatchMapping({
-            "/api/clothes/{clothesId}/convert-to-owned",
-            "/api/v1/clothes/{clothesId}/convert-to-owned"
-    })
+    @PatchMapping("/api/v1/clothes/{clothesId}/convert-to-owned")
     public ResponseEntity<ApiResponse<ClothesResponse>> convertToOwned(
             @PathVariable Long clothesId,
             @Valid @RequestBody ClothesConvertToOwnedRequest request

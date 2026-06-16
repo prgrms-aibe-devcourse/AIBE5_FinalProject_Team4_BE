@@ -16,7 +16,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -92,13 +94,16 @@ public class UserService {
                 .collect(Collectors.toSet());
 
         // 기존 행 보존: preference_weight만 갱신, wardrobe/feedback_weight 유지
+        // 첫 번째 선택 = 대표 스타일 +7, 나머지 = 보조 스타일 +3, 선택 해제 = 0
         List<UserStyle> existingList = userStyleRepository.findAllByUserId(userId);
+        Map<Long, Integer> preferenceMap = new LinkedHashMap<>();
+        for (int i = 0; i < selectedStyles.size(); i++) {
+            preferenceMap.put(selectedStyles.get(i).getId(), i == 0 ? 7 : 3);
+        }
+
         for (UserStyle us : existingList) {
-            if (selectedStyleIds.contains(us.getStyle().getId())) {
-                us.updatePreferenceWeight(1); // 선택된 스타일: preference 활성화
-            } else {
-                us.updatePreferenceWeight(0); // 선택 해제: preference만 0으로
-            }
+            int weight = preferenceMap.getOrDefault(us.getStyle().getId(), 0);
+            us.updatePreferenceWeight(weight);
         }
 
         // 기존 행이 없는 신규 선택 스타일만 insert
@@ -109,7 +114,8 @@ public class UserService {
                 .filter(style -> !existingStyleIds.contains(style.getId()))
                 .map(style -> {
                     UserStyle us = UserStyle.builder().user(user).style(style).build();
-                    us.updatePreferenceWeight(1);
+                    int weight = preferenceMap.getOrDefault(style.getId(), 0);
+                    us.updatePreferenceWeight(weight);
                     return us;
                 })
                 .toList();

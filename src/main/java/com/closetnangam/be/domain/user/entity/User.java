@@ -169,6 +169,11 @@ public class User extends BaseEntity {
         this.withdrawnAt = LocalDateTime.now();
     }
 
+    public void restore() {
+        this.status = UserStatus.ACTIVE;
+        this.withdrawnAt = INACTIVE_TIMESTAMP;
+    }
+
     public boolean isOnboarded() {
         return !DEFAULT_BIRTH_DATE.equals(this.birthDate);
     }
