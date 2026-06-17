@@ -156,10 +156,10 @@ public class SimilarProductRecommendationService {
     }
 
     private List<ClothesGender> allowedClothesGenders(User.Gender userGender) {
-        ClothesGender targetGender = ClothesGender.fromUserGender(userGender);
-        if (targetGender == ClothesGender.UNISEX) {
-            return List.of(ClothesGender.UNISEX);
+        if (userGender == null || userGender == User.Gender.OTHER) {
+            return List.of(ClothesGender.values());
         }
+        ClothesGender targetGender = ClothesGender.fromUserGender(userGender);
         return List.of(targetGender, ClothesGender.UNISEX);
     }
 

@@ -225,7 +225,7 @@ src/main/java/com/closetnangam/be/domain/recommendation/controller/Recommendatio
 src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendationService.java
 - Gemini 응답을 기반으로 상품 추천 최대 40개 구성
 - 상품 추천 후보는 네이버쇼핑 결과와 `EXTERNAL_SHOPPING` 공용 `CLOTHES` 내부 후보를 함께 사용
-- 내부 후보는 사용자 또는 선택한 MD 성별과 `UNISEX` 상품만 사용
+- 내부 후보는 사용자 또는 선택한 MD 성별과 `UNISEX` 상품만 사용. 유사상품 추천의 `OTHER`/성별 없음 사용자는 내부 후보 성별 제한 없음
 - Gemini 응답을 기반으로 저장 전 코디 후보 4개 구성
 - 사용자가 선택한 코디 후보 1개 저장
 - 코디별 보유 옷 최소 1개 포함 검증
@@ -252,7 +252,7 @@ src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendati
 
 - 상품 추천 응답에 `candidateSource=INTERNAL`, `clothesId`가 있는 내부 후보와 `candidateSource=NAVER`, `clothesId=null`인 네이버 후보가 함께 포함되는 경로
 - 내부 후보의 nullable 가격(`lowestPrice`, `highestPrice`)과 빈 구매 링크(`link=""`)가 응답 계약대로 유지되는 경로
-- 내부 후보 조회에서 사용자/MD 성별과 `UNISEX`만 포함하는 경로
+- 내부 후보 조회에서 사용자/MD 성별과 `UNISEX`만 포함하는 경로 및 유사상품 추천 `OTHER`/성별 없음 사용자의 전체 성별 허용 경로
 - 외부 상품 없이 보유 옷만으로 TOP, BOTTOM, SHOES를 완성한 후보의 추천 및 저장
 - 외부 상품을 1개 이상 포함한 코디 후보 선택 저장
 - Gemini가 4개 미만 코디를 반환했을 때 실패 처리

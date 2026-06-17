@@ -159,6 +159,41 @@ class SimilarProductRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("OTHER 사용자 유사상품 내부 후보는 성별을 제한하지 않는다")
+    void similarProductInternalCandidatesAllowAllGendersForOtherUser() {
+        WardrobeClothes wardrobeClothes = createWardrobeClothes(
+                1L,
+                User.Gender.OTHER,
+                "ourselves",
+                "multi stripe long sleeve",
+                "BLACK",
+                "LONG_SLEEVE",
+                "TOP",
+                StyleCode.CASUAL
+        );
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(wardrobeClothes));
+        given(naverApiService.searchShoppingProducts(anyString(), anyInt(), anyInt(), anyString()))
+                .willReturn(List.of());
+
+        similarProductRecommendationService.recommendSimilarProducts(1L, 10L);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<ClothesGender>> genderCaptor = ArgumentCaptor.forClass(List.class);
+        verify(clothesRepository).findSimilarProductInternalCandidates(
+                eq(10L),
+                anyList(),
+                eq("TOP"),
+                genderCaptor.capture(),
+                any(Pageable.class)
+        );
+        assertThat(genderCaptor.getValue()).containsExactly(
+                ClothesGender.MALE,
+                ClothesGender.FEMALE,
+                ClothesGender.UNISEX
+        );
+    }
+
+    @Test
     @DisplayName("선택한 옷이 요청 사용자의 옷이 아니면 추천을 차단한다")
     void recommendSimilarProductsRejectsOtherUsersClothes() {
         given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.empty());
