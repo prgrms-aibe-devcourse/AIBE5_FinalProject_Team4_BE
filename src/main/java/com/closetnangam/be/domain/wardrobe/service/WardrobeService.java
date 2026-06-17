@@ -17,10 +17,9 @@ public class WardrobeService {
     private final WardrobeRepository wardrobeRepository;
     private final UserRepository userRepository;
 
+    @Transactional
     public WardrobeResponse getWardrobeByUserId(Long userId) {
-        Wardrobe wardrobe = wardrobeRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new IllegalArgumentException("옷장을 찾을 수 없습니다."));
-        return WardrobeResponse.from(wardrobe);
+        return WardrobeResponse.from(getOrCreateWardrobe(userId));
     }
 
     @Transactional
