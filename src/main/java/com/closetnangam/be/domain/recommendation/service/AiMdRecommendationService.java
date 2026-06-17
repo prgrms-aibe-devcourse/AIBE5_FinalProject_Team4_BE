@@ -592,6 +592,14 @@ public class AiMdRecommendationService {
         if (product == null) {
             return null;
         }
+        if ("INTERNAL".equals(product.candidateSource())
+                && product.clothesId() != null
+                && StringUtils.hasText(product.category3())) {
+            String category = product.category3().trim().toUpperCase();
+            if (REQUIRED_OUTFIT_CATEGORIES.contains(category) || "OUTER".equals(category)) {
+                return category;
+            }
+        }
         String text = Stream.of(
                         product.category1(),
                         product.category2(),

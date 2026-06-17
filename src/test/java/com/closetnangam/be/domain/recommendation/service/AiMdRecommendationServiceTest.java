@@ -117,6 +117,54 @@ class AiMdRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("AI MD 코디 후보 검증은 내부 후보의 DB 카테고리 코드를 우선 사용한다")
+    void savableOutfitsUseInternalProductCategoryCode() {
+        AiMdRecommendationService service = serviceWithUserStyleRepository(null);
+        AiMdGeminiOutfitResult aiResult = new AiMdGeminiOutfitResult(List.of(
+                new AiMdGeminiOutfitResult.OutfitCandidate(
+                        "내부 후보 신발 코디",
+                        "description",
+                        "DAILY",
+                        "ALL_SEASON",
+                        "reason",
+                        "tip",
+                        List.of(1L, 2L),
+                        List.of("CLOTHES_100")
+                )
+        ));
+        NaverShoppingProductResponse internalShoes = new NaverShoppingProductResponse(
+                "Plain Product",
+                "",
+                "",
+                null,
+                null,
+                "",
+                "CLOTHES_100",
+                "INTERNAL",
+                "",
+                "",
+                "패션의류",
+                "남성의류",
+                "SHOES",
+                "스니커즈",
+                100L,
+                "INTERNAL"
+        );
+
+        List<AiMdGeminiOutfitResult.OutfitCandidate> result = ReflectionTestUtils.invokeMethod(
+                service,
+                "savableOutfits",
+                aiResult,
+                Map.of(1L, wardrobeItem("TOP"), 2L, wardrobeItem("BOTTOM")),
+                Map.of("CLOTHES_100", internalShoes)
+        );
+
+        assertThat(result)
+                .extracting(AiMdGeminiOutfitResult.OutfitCandidate::title)
+                .containsExactly("내부 후보 신발 코디");
+    }
+
+    @Test
     @DisplayName("저장 요청 검증은 내부 후보 DTO가 아니라 실제 Clothes 카테고리를 기준으로 한다")
     void saveValidationUsesResolvedInternalClothesCategory() {
         ClothesRepository clothesRepository = mock(ClothesRepository.class);
