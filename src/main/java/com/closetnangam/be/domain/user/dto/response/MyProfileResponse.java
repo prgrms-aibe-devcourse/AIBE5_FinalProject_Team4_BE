@@ -13,6 +13,7 @@ public record MyProfileResponse(
         boolean guideTourCompletedMypage,
         String gender,
         LocalDate birthDate,
+        String regionName,
         String regionCode,
         List<String> styles
 ) {}

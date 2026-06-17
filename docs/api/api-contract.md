@@ -93,6 +93,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
 | PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 응답 필드는 아래 표 참고 |
 | POST | `/api/v1/users/styles` | 스타일 선호도 저장 (기존 row 보존, preference_weight만 갱신) |
+| PATCH | `/api/v1/users/guide-tour` | 페이지별 가이드 투어 완료 상태 업데이트 |
 | DELETE | `/api/v1/users/me` | 회원 탈퇴 (소프트 삭제, 쿠키 만료) |
 
 #### GET /api/v1/users/profile 응답 필드
@@ -108,6 +109,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
 | `gender` | String | 성별 (`MALE` / `FEMALE` / `OTHER`), 온보딩 전 `null` |
 | `birthDate` | LocalDate | 생년월일 (yyyy-MM-dd), 온보딩 전 기본값 `2000-01-01` |
+| `regionName` | String | 지역명 (예: 서울특별시), 미설정 시 `""` |
 | `regionCode` | String | 지역 코드, 미설정 시 `""` |
 | `styles` | List\<String\> | 선호 스타일 코드 목록, 대표 스타일 우선 정렬, 미설정 시 `[]` |
 
@@ -137,6 +139,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
 | `gender` | String | 성별 (`MALE` / `FEMALE` / `OTHER`), 온보딩 전 `null` |
 | `birthDate` | LocalDate | 생년월일 (yyyy-MM-dd), 온보딩 전 기본값 `2000-01-01` |
+| `regionName` | String | 지역명 (예: 서울특별시), 미설정 시 `""` |
 | `regionCode` | String | 지역 코드, 미설정 시 `""` |
 | `styles` | List\<String\> | 선호 스타일 코드 목록, 대표 스타일 우선 정렬, 미설정 시 `[]` |
 

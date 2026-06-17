@@ -46,6 +46,7 @@ public class UserService {
                 user.isGuideTourCompletedMypage(),
                 user.getGender() != null ? user.getGender().name() : null,
                 user.getBirthDate(),
+                user.getRegionName(),
                 user.getRegionCode(),
                 styleCodes
         );

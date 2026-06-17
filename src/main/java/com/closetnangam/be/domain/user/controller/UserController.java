@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.user.controller;
 
+import com.closetnangam.be.domain.user.dto.request.UpdateGuideTourRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateProfileRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
 import com.closetnangam.be.domain.user.dto.request.MarketingConsentUpdateRequest;
@@ -56,6 +57,16 @@ public class UserController {
         Long userId = SecurityUtils.getCurrentUserId();
         MyProfileResponse response = userService.updateProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Operation(summary = "가이드 투어 완료 상태 업데이트",
+            description = "페이지별 가이드 투어 완료 여부를 업데이트합니다. null인 필드는 기존 값을 유지합니다.")
+    @PatchMapping("/guide-tour")
+    public ResponseEntity<ApiResponse<Void>> updateGuideTour(
+            @RequestBody UpdateGuideTourRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        userService.updateGuideTour(userId, request);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
     @Operation(summary = "스타일 선호도 저장", description = "선택한 스타일 코드 목록을 저장합니다. 기존 UserStyle row를 보존하면서 preference_weight만 갱신합니다. 배열 순서 기준 첫 번째 스타일은 대표(+7), 나머지는 보조(+3), 선택 해제된 스타일은 0으로 낮춥니다. wardrobe_weight, feedback_weight는 유지됩니다.")
