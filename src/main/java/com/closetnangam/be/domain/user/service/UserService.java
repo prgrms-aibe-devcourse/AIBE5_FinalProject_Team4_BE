@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
 import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
 import com.closetnangam.be.domain.user.dto.response.MyProfileResponse;
 import com.closetnangam.be.domain.user.dto.response.NicknameAvailabilityResponse;
+import com.closetnangam.be.domain.user.dto.response.ProfileImageUploadResponse;
 import com.closetnangam.be.domain.user.dto.response.SocialAccountResponse;
 import com.closetnangam.be.domain.user.dto.response.UserProfileResponse;
 import com.closetnangam.be.domain.user.entity.SocialAccount;
@@ -19,9 +20,11 @@ import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.domain.user.support.NicknamePolicy;
 import com.closetnangam.be.global.auth.jwt.RefreshTokenService;
+import com.closetnangam.be.global.storage.LocalImageStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -41,6 +44,7 @@ public class UserService {
     private final SocialAccountRepository socialAccountRepository;
     private final StyleRepository styleRepository;
     private final RefreshTokenService refreshTokenService;
+    private final LocalImageStorageService localImageStorageService;
 
     @Transactional(readOnly = true)
     public MyProfileResponse getMyProfile(Long userId) {
@@ -108,6 +112,13 @@ public class UserService {
         );
 
         return toMyProfileResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public ProfileImageUploadResponse uploadProfileImage(Long userId, MultipartFile file) {
+        getUser(userId);
+        LocalImageStorageService.StoredImage storedImage = localImageStorageService.storeProfileImage(userId, file);
+        return new ProfileImageUploadResponse(storedImage.publicUrl());
     }
 
     @Transactional

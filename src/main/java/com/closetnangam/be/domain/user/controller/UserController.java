@@ -7,6 +7,7 @@ import com.closetnangam.be.domain.user.dto.request.MarketingConsentUpdateRequest
 import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
 import com.closetnangam.be.domain.user.dto.response.MyProfileResponse;
 import com.closetnangam.be.domain.user.dto.response.NicknameAvailabilityResponse;
+import com.closetnangam.be.domain.user.dto.response.ProfileImageUploadResponse;
 import com.closetnangam.be.domain.user.dto.response.UserProfileResponse;
 import com.closetnangam.be.domain.user.service.UserService;
 import com.closetnangam.be.global.auth.util.SecurityUtils;
@@ -17,6 +18,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,7 +30,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "User", description = "사용자 API")
 @RestController
@@ -68,6 +73,16 @@ public class UserController {
         Long userId = SecurityUtils.getCurrentUserId();
         MyProfileResponse response = userService.updateProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지 파일을 업로드하고 프로필 저장에 사용할 imageUrl을 반환합니다. 반환된 imageUrl은 PATCH /api/v1/users/profile의 profileImageUrl에 전달해 저장합니다.")
+    @PostMapping(value = "/profile/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ProfileImageUploadResponse>> uploadProfileImage(
+            @RequestPart("file") MultipartFile file
+    ) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(userService.uploadProfileImage(userId, file)));
     }
 
     @Operation(summary = "스타일 선호도 저장", description = "선택한 스타일 코드 목록을 저장합니다. 사용자별 전체 스타일 row를 보장하고 preference_weight만 갱신합니다. 배열 순서 기준 첫 번째 스타일은 대표(+7), 나머지는 보조(+3), 선택하지 않은 스타일은 0으로 낮춥니다. wardrobe_weight, feedback_weight는 유지됩니다.")

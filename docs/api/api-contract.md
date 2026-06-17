@@ -72,7 +72,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 
 ## 이미지 업로드 기준
 
-- 옷 사진과 구매내역 캡처는 multipart form-data로 업로드합니다.
+- 옷 사진, 구매내역 캡처, 피드 이미지, 프로필 이미지는 multipart form-data로 업로드합니다.
 - 요청 part 이름은 `file`입니다.
 - 이미지 파일 크기는 10MB 이하입니다.
 - 이미지 저장은 AWS S3 기준으로 관리합니다.
@@ -95,6 +95,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
 | GET | `/api/v1/users/nickname/check` | 닉네임 규칙 및 중복 여부 확인 |
 | PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 본인 프로필 반환 |
+| POST | `/api/v1/users/profile/image` | 프로필 이미지 업로드 (`multipart/form-data`, field: `file`) |
 | POST | `/api/v1/users/onboarding` | 온보딩 완료 저장. 프로필, 선호 스타일, 마케팅 동의 여부를 하나의 트랜잭션으로 저장 |
 | POST | `/api/v1/users/styles` | 스타일 선호도 저장 (사용자별 전체 스타일 row 보장, preference_weight만 갱신) |
 | DELETE | `/api/v1/users/me` | 회원 탈퇴 (소프트 삭제, 쿠키 만료) |
@@ -159,6 +160,30 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `styleCodes` | String[] | 선호 스타일 code 배열 |
 | `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
 | `socialAccounts` | Object[] | 연결된 소셜 로그인 제공자와 제공자 이메일 목록. 조회 전용 |
+
+#### POST /api/v1/users/profile/image
+
+프로필 이미지 파일을 업로드하고 프로필 저장에 사용할 이미지 URL을 반환합니다.
+반환된 `imageUrl`은 `PATCH /api/v1/users/profile` 요청의 `profileImageUrl`에 전달해 저장합니다.
+
+요청:
+
+```text
+Content-Type: multipart/form-data
+field: file
+```
+
+응답:
+
+```json
+{
+  "success": true,
+  "data": {
+    "imageUrl": "http://localhost:8080/api/v1/images/profile/1/sample.jpg"
+  },
+  "message": null
+}
+```
 
 #### POST /api/v1/users/onboarding 요청 필드
 
@@ -835,6 +860,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/images/clothes/{userId}/{filename}` | 옷 이미지 조회 |
 | GET | `/api/v1/images/purchase-captures/{userId}/{filename}` | 구매내역 캡처 이미지 조회 |
 | GET | `/api/v1/images/feed/{userId}/{filename}` | 피드 이미지 조회 |
+| GET | `/api/v1/images/profile/{userId}/{filename}` | 프로필 이미지 조회 |
 
 ### 룩피드 (FEED-001~008)
 
