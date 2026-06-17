@@ -179,7 +179,7 @@ public class AiMdRecommendationService {
                 : request.externalProducts().stream()
                         .filter(Objects::nonNull)
                         .toList();
-        if (!hasCompleteOutfitComposition(selectedWardrobeItems, externalProducts)) {
+        if (!hasCompleteSaveOutfitComposition(selectedWardrobeItems, externalProducts)) {
             throw new IllegalArgumentException("저장할 코디에는 상의, 하의, 신발이 각각 최소 1개 포함되어야 합니다.");
         }
         return saveOutfitRecommendation(
@@ -369,15 +369,7 @@ public class AiMdRecommendationService {
 
     private Clothes getOrCreateExternalClothes(AiMdPersona persona, NaverShoppingProductResponse product) {
         if (product.clothesId() != null) {
-            if (!"INTERNAL".equals(product.candidateSource())) {
-                throw new IllegalArgumentException("내부 추천 후보가 아닌 clothesId는 외부 상품으로 저장할 수 없습니다.");
-            }
-            Clothes clothes = clothesRepository.findById(product.clothesId())
-                    .orElseThrow(() -> new EntityNotFoundException("추천 상품을 찾을 수 없습니다."));
-            if (clothes.getClothesInfoSource() != ClothesInfoSource.EXTERNAL_SHOPPING) {
-                throw new IllegalArgumentException("공용 외부 쇼핑 후보만 외부 상품으로 저장할 수 있습니다.");
-            }
-            return clothes;
+            return resolveInternalCandidateClothes(product);
         }
         if (StringUtils.hasText(product.productId())) {
             var existing = clothesRepository.findByExternalProductId(product.productId());
@@ -405,6 +397,18 @@ public class AiMdRecommendationService {
         );
         return clothesRepository.findById(clothesId)
                 .orElseThrow(() -> new EntityNotFoundException("외부 상품을 저장하지 못했습니다."));
+    }
+
+    private Clothes resolveInternalCandidateClothes(NaverShoppingProductResponse product) {
+        if (!"INTERNAL".equals(product.candidateSource())) {
+            throw new IllegalArgumentException("내부 추천 후보가 아닌 clothesId는 외부 상품으로 저장할 수 없습니다.");
+        }
+        Clothes clothes = clothesRepository.findById(product.clothesId())
+                .orElseThrow(() -> new EntityNotFoundException("추천 상품을 찾을 수 없습니다."));
+        if (clothes.getClothesInfoSource() != ClothesInfoSource.EXTERNAL_SHOPPING) {
+            throw new IllegalArgumentException("공용 외부 쇼핑 후보만 외부 상품으로 저장할 수 있습니다.");
+        }
+        return clothes;
     }
 
     private List<ClothesStyleDto> styleDtosFor(AiMdPersona persona) {
@@ -549,6 +553,31 @@ public class AiMdRecommendationService {
             List<WardrobeClothes> ownedItems,
             List<NaverShoppingProductResponse> externalProducts
     ) {
+        Set<String> categories = outfitCategories(ownedItems);
+        externalProducts.stream()
+                .map(this::resolveExternalProductCategory)
+                .filter(StringUtils::hasText)
+                .forEach(categories::add);
+        return categories.containsAll(REQUIRED_OUTFIT_CATEGORIES);
+    }
+
+    private boolean hasCompleteSaveOutfitComposition(
+            List<WardrobeClothes> ownedItems,
+            List<NaverShoppingProductResponse> externalProducts
+    ) {
+        Set<String> categories = outfitCategories(ownedItems);
+        for (NaverShoppingProductResponse product : externalProducts) {
+            String category = product.clothesId() != null
+                    ? resolveInternalCandidateClothes(product).getCategory()
+                    : resolveExternalProductCategory(product);
+            if (StringUtils.hasText(category)) {
+                categories.add(category.trim().toUpperCase());
+            }
+        }
+        return categories.containsAll(REQUIRED_OUTFIT_CATEGORIES);
+    }
+
+    private Set<String> outfitCategories(List<WardrobeClothes> ownedItems) {
         Set<String> categories = new HashSet<>();
         ownedItems.stream()
                 .map(WardrobeClothes::getClothes)
@@ -556,11 +585,7 @@ public class AiMdRecommendationService {
                 .filter(StringUtils::hasText)
                 .map(category -> category.trim().toUpperCase())
                 .forEach(categories::add);
-        externalProducts.stream()
-                .map(this::resolveExternalProductCategory)
-                .filter(StringUtils::hasText)
-                .forEach(categories::add);
-        return categories.containsAll(REQUIRED_OUTFIT_CATEGORIES);
+        return categories;
     }
 
     private String resolveExternalProductCategory(NaverShoppingProductResponse product) {

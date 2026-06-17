@@ -117,6 +117,47 @@ class AiMdRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("저장 요청 검증은 내부 후보 DTO가 아니라 실제 Clothes 카테고리를 기준으로 한다")
+    void saveValidationUsesResolvedInternalClothesCategory() {
+        ClothesRepository clothesRepository = mock(ClothesRepository.class);
+        Clothes resolvedInternalClothes = mock(Clothes.class);
+        when(resolvedInternalClothes.getClothesInfoSource()).thenReturn(ClothesInfoSource.EXTERNAL_SHOPPING);
+        when(resolvedInternalClothes.getCategory()).thenReturn("TOP");
+        when(clothesRepository.findById(100L)).thenReturn(Optional.of(resolvedInternalClothes));
+
+        AiMdRecommendationService service = new AiMdRecommendationService(
+                null, null, null, null, null, clothesRepository, null, null, null, null, null, null, null
+        );
+        NaverShoppingProductResponse forgedProduct = new NaverShoppingProductResponse(
+                "스니커즈처럼 조작한 상의",
+                "",
+                "",
+                null,
+                null,
+                "",
+                "CLOTHES_100",
+                "INTERNAL",
+                "",
+                "",
+                "패션의류",
+                "남성의류",
+                "운동화",
+                "스니커즈",
+                100L,
+                "INTERNAL"
+        );
+
+        boolean result = ReflectionTestUtils.invokeMethod(
+                service,
+                "hasCompleteSaveOutfitComposition",
+                List.of(wardrobeItem("TOP"), wardrobeItem("BOTTOM")),
+                List.of(forgedProduct)
+        );
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
     @DisplayName("코디 프롬프트는 실제 MD처럼 구체적인 추천 사유를 작성하도록 요구한다")
     void outfitPromptRequiresNaturalPersonaReason() {
         AiMdRecommendationService service = serviceWithUserStyleRepository(null);
