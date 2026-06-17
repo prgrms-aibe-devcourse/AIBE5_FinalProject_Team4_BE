@@ -1,6 +1,7 @@
 package com.closetnangam.be.domain.clothes.repository;
 
 import com.closetnangam.be.domain.clothes.entity.Clothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -47,12 +48,14 @@ public interface ClothesRepository extends JpaRepository<Clothes, Long> {
               and c.id <> :baseClothesId
               and c.id not in :excludedClothesIds
               and c.category = :category
+              and c.gender in :allowedGenders
             order by c.createdAt desc
             """)
     List<Clothes> findSimilarProductInternalCandidates(
             @Param("baseClothesId") Long baseClothesId,
             @Param("excludedClothesIds") List<Long> excludedClothesIds,
             @Param("category") String category,
+            @Param("allowedGenders") List<ClothesGender> allowedGenders,
             Pageable pageable
     );
 
@@ -63,10 +66,12 @@ public interface ClothesRepository extends JpaRepository<Clothes, Long> {
             select c from Clothes c
             where c.clothesInfoSource = com.closetnangam.be.domain.clothes.enums.ClothesInfoSource.EXTERNAL_SHOPPING
               and c.id not in :excludedClothesIds
+              and c.gender in :allowedGenders
             order by c.createdAt desc
             """)
     List<Clothes> findExternalShoppingRecommendationCandidates(
             @Param("excludedClothesIds") List<Long> excludedClothesIds,
+            @Param("allowedGenders") List<ClothesGender> allowedGenders,
             Pageable pageable
     );
 
@@ -78,11 +83,13 @@ public interface ClothesRepository extends JpaRepository<Clothes, Long> {
             where c.clothesInfoSource = com.closetnangam.be.domain.clothes.enums.ClothesInfoSource.EXTERNAL_SHOPPING
               and c.id not in :excludedClothesIds
               and c.category = :category
+              and c.gender in :allowedGenders
             order by c.createdAt desc
             """)
     List<Clothes> findExternalShoppingRecommendationCandidatesByCategory(
             @Param("excludedClothesIds") List<Long> excludedClothesIds,
             @Param("category") String category,
+            @Param("allowedGenders") List<ClothesGender> allowedGenders,
             Pageable pageable
     );
 

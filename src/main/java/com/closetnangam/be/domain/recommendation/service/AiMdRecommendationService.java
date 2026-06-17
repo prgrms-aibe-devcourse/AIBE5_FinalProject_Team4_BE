@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
@@ -202,7 +203,7 @@ public class AiMdRecommendationService {
         List<WardrobeClothes> wardrobeItems = findOwnedWardrobeItems(userId);
         List<StyleSearchProfile> styleProfiles = buildStyleSearchProfiles(userId, persona);
         List<ProductSearchPlan> searchPlans = buildProductSearchPlans(persona, wardrobeItems, styleProfiles);
-        List<NaverShoppingProductResponse> products = searchProductCandidates(userId, searchPlans);
+        List<NaverShoppingProductResponse> products = searchProductCandidates(userId, persona.gender(), searchPlans);
         String query = searchPlans.stream()
                 .map(ProductSearchPlan::query)
                 .collect(Collectors.joining(" | "));
@@ -518,6 +519,7 @@ public class AiMdRecommendationService {
             clothesRepository.findExternalShoppingRecommendationCandidatesByCategory(
                             excludedClothesIds,
                             expectedCategory,
+                            allowedClothesGenders(persona.gender()),
                             PageRequest.of(0, OUTFIT_INTERNAL_PRODUCTS_PER_CATEGORY)
                     ).stream()
                     .map(this::toInternalProductResponse)
@@ -725,11 +727,16 @@ public class AiMdRecommendationService {
         return colors.get(ThreadLocalRandom.current().nextInt(colors.size()));
     }
 
-    private List<NaverShoppingProductResponse> searchProductCandidates(Long userId, List<ProductSearchPlan> searchPlans) {
+    private List<NaverShoppingProductResponse> searchProductCandidates(
+            Long userId,
+            User.Gender personaGender,
+            List<ProductSearchPlan> searchPlans
+    ) {
         Map<String, NaverShoppingProductResponse> candidatesByKey = new LinkedHashMap<>();
         List<Long> excludedClothesIds = findExcludedClothesIds(userId);
         clothesRepository.findExternalShoppingRecommendationCandidates(
                         excludedClothesIds,
+                        allowedClothesGenders(personaGender),
                         PageRequest.of(0, INTERNAL_PRODUCT_CANDIDATE_COUNT)
                 ).stream()
                 .map(this::toInternalProductResponse)
@@ -762,6 +769,14 @@ public class AiMdRecommendationService {
             return List.of(-1L);
         }
         return excluded.stream().distinct().toList();
+    }
+
+    private List<ClothesGender> allowedClothesGenders(User.Gender userGender) {
+        ClothesGender targetGender = ClothesGender.fromUserGender(userGender);
+        if (targetGender == ClothesGender.UNISEX) {
+            return List.of(ClothesGender.UNISEX);
+        }
+        return List.of(targetGender, ClothesGender.UNISEX);
     }
 
     private NaverShoppingProductResponse toInternalProductResponse(Clothes clothes) {

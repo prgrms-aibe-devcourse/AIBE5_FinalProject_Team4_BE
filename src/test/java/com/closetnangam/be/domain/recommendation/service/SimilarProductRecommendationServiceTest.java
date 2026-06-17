@@ -6,6 +6,7 @@ import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
@@ -25,6 +26,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
@@ -33,8 +35,11 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -120,6 +125,37 @@ class SimilarProductRecommendationServiceTest {
                 similarProductRecommendationService.recommendSimilarProducts(1L, 10L);
 
         assertThat(response.products()).hasSize(50);
+    }
+
+    @Test
+    @DisplayName("유사상품 내부 후보는 사용자 성별과 유니섹스 상품만 조회한다")
+    void similarProductInternalCandidatesUseUserGenderAndUnisex() {
+        WardrobeClothes wardrobeClothes = createWardrobeClothes(
+                1L,
+                User.Gender.MALE,
+                "ourselves",
+                "multi stripe long sleeve",
+                "BLACK",
+                "LONG_SLEEVE",
+                "TOP",
+                StyleCode.CASUAL
+        );
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(wardrobeClothes));
+        given(naverApiService.searchShoppingProducts(anyString(), anyInt(), anyInt(), anyString()))
+                .willReturn(List.of());
+
+        similarProductRecommendationService.recommendSimilarProducts(1L, 10L);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<ClothesGender>> genderCaptor = ArgumentCaptor.forClass(List.class);
+        verify(clothesRepository).findSimilarProductInternalCandidates(
+                eq(10L),
+                anyList(),
+                eq("TOP"),
+                genderCaptor.capture(),
+                any(Pageable.class)
+        );
+        assertThat(genderCaptor.getValue()).containsExactly(ClothesGender.MALE, ClothesGender.UNISEX);
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.recommendation.dto.response.SimilarProductRecommendationResponse;
@@ -65,7 +66,12 @@ public class SimilarProductRecommendationService {
 
         Clothes baseClothes = wardrobeClothes.getClothes();
         String query = buildSearchQuery(wardrobeClothes);
-        List<NaverShoppingProductResponse> products = searchSimilarProducts(userId, baseClothes, query);
+        List<NaverShoppingProductResponse> products = searchSimilarProducts(
+                userId,
+                baseClothes,
+                wardrobeClothes.getWardrobe().getUser().getGender(),
+                query
+        );
 
         return new SimilarProductRecommendationResponse(
                 ClothesResponse.from(baseClothes, wardrobeClothes),
@@ -107,7 +113,12 @@ public class SimilarProductRecommendationService {
      * <p>최종 응답도 셔플해 같은 후보군이어도 노출 순서가 고정되지 않게 한다. 네이버 API 기본 검색 개수는
      * 다른 기능에 영향을 줄 수 있으므로 유사상품 추천에서만 50개를 명시적으로 요청한다.</p>
      */
-    private List<NaverShoppingProductResponse> searchSimilarProducts(Long userId, Clothes baseClothes, String query) {
+    private List<NaverShoppingProductResponse> searchSimilarProducts(
+            Long userId,
+            Clothes baseClothes,
+            User.Gender userGender,
+            String query
+    ) {
         List<Integer> starts = new ArrayList<>(SEARCH_START_INDEXES);
         Collections.shuffle(starts);
 
@@ -117,6 +128,7 @@ public class SimilarProductRecommendationService {
                         baseClothes.getId(),
                         excludedClothesIds,
                         baseClothes.getCategory(),
+                        allowedClothesGenders(userGender),
                         PageRequest.of(0, INTERNAL_CANDIDATE_COUNT)
                 ).stream()
                 .map(this::toInternalProductResponse)
@@ -141,6 +153,14 @@ public class SimilarProductRecommendationService {
             return shuffledProducts;
         }
         return shuffledProducts.subList(0, RECOMMENDATION_COUNT);
+    }
+
+    private List<ClothesGender> allowedClothesGenders(User.Gender userGender) {
+        ClothesGender targetGender = ClothesGender.fromUserGender(userGender);
+        if (targetGender == ClothesGender.UNISEX) {
+            return List.of(ClothesGender.UNISEX);
+        }
+        return List.of(targetGender, ClothesGender.UNISEX);
     }
 
     private List<Long> findExcludedClothesIds(Long userId) {

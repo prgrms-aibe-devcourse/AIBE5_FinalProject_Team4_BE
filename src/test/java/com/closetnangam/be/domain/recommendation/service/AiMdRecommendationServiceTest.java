@@ -3,16 +3,11 @@ package com.closetnangam.be.domain.recommendation.service;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
-import com.closetnangam.be.domain.recommendation.dto.response.AiMdGeminiOutfitResult;
-import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse.ProductRecommendation;
-import com.closetnangam.be.domain.user.entity.User;
-import com.closetnangam.be.domain.user.entity.UserStyle;
-import com.closetnangam.be.domain.user.repository.UserStyleRepository;
-import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
 import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitBook;
 import com.closetnangam.be.domain.outfit.entity.OutfitItem;
@@ -21,13 +16,18 @@ import com.closetnangam.be.domain.outfit.repository.OutfitItemRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitRepository;
 import com.closetnangam.be.domain.outfit.service.OutfitStyleService;
 import com.closetnangam.be.domain.recommendation.dto.request.AiMdOutfitSaveRequest;
+import com.closetnangam.be.domain.recommendation.dto.response.AiMdGeminiOutfitResult;
+import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse.ProductRecommendation;
+import com.closetnangam.be.domain.recommendation.repository.RecommendationFeedbackRepository;
+import com.closetnangam.be.domain.user.entity.User;
+import com.closetnangam.be.domain.user.entity.UserStyle;
+import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.domain.user.repository.UserRepository;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
@@ -40,7 +40,11 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -451,6 +455,40 @@ class AiMdRecommendationServiceTest {
                 .contains("낮은 양수 스타일도 일부 섞어")
                 .contains("같은 상품, 이름만 조금 다른 동일 모델")
                 .contains("브랜드가 한 종류에 치우치지 않도록");
+    }
+
+    @Test
+    @DisplayName("AI MD 상품 내부 후보는 MD 성별과 유니섹스 상품만 조회한다")
+    void aiMdProductInternalCandidatesUsePersonaGenderAndUnisex() {
+        ClothesRepository clothesRepository = mock(ClothesRepository.class);
+        WardrobeClothesRepository wardrobeClothesRepository = mock(WardrobeClothesRepository.class);
+        RecommendationFeedbackRepository recommendationFeedbackRepository = mock(RecommendationFeedbackRepository.class);
+        when(wardrobeClothesRepository.findOwnedClothesIdsByUserId(1L, OwnershipStatus.OWNED)).thenReturn(List.of());
+        when(wardrobeClothesRepository.findOwnedClothesIdsByUserId(1L, OwnershipStatus.WISHLIST)).thenReturn(List.of());
+        when(recommendationFeedbackRepository.findAllByUserId(1L)).thenReturn(List.of());
+
+        AiMdRecommendationService service = new AiMdRecommendationService(
+                null, wardrobeClothesRepository, null, null, null,
+                clothesRepository, recommendationFeedbackRepository,
+                null, null, null, null, null, null
+        );
+
+        ReflectionTestUtils.invokeMethod(
+                service,
+                "searchProductCandidates",
+                1L,
+                User.Gender.FEMALE,
+                List.of()
+        );
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<ClothesGender>> genderCaptor = ArgumentCaptor.forClass(List.class);
+        verify(clothesRepository).findExternalShoppingRecommendationCandidates(
+                anyList(),
+                genderCaptor.capture(),
+                any(Pageable.class)
+        );
+        assertThat(genderCaptor.getValue()).containsExactly(ClothesGender.FEMALE, ClothesGender.UNISEX);
     }
 
     @Test
