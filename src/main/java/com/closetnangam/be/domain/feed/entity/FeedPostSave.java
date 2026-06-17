@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.feed.entity;
 
+import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.global.common.entity.BaseEntity;
 import jakarta.persistence.Column;
@@ -20,17 +21,17 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-        name = "feed_likes",
+        name = "feed_post_saves",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_feed_likes_user_post",
+                name = "uk_feed_post_saves_user_post",
                 columnNames = {"user_id", "feed_post_id"}
         )
 )
-public class FeedPostLike extends BaseEntity {
+public class FeedPostSave extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "feed_like_id")
+    @Column(name = "feed_post_save_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -41,10 +42,20 @@ public class FeedPostLike extends BaseEntity {
     @JoinColumn(name = "feed_post_id", nullable = false)
     private FeedPost feedPost;
 
-    public static FeedPostLike of(User user, FeedPost feedPost) {
-        FeedPostLike like = new FeedPostLike();
-        like.user = user;
-        like.feedPost = feedPost;
-        return like;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "saved_outfit_id")
+    private Outfit savedOutfit;
+
+    public static FeedPostSave of(User user, FeedPost feedPost) {
+        FeedPostSave save = new FeedPostSave();
+        save.user = user;
+        save.feedPost = feedPost;
+        return save;
+    }
+
+    public static FeedPostSave of(User user, FeedPost feedPost, Outfit savedOutfit) {
+        FeedPostSave save = of(user, feedPost);
+        save.savedOutfit = savedOutfit;
+        return save;
     }
 }

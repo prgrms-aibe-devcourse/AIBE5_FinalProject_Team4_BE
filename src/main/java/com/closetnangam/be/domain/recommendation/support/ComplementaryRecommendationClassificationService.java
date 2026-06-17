@@ -4,6 +4,7 @@ import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothesStyleDto;
 import com.closetnangam.be.global.external.clothes.dto.request.ClothingColorDto;
+import com.closetnangam.be.global.external.naver.support.BrandGenderCorrector;
 import com.closetnangam.be.global.external.naver.support.WidePantsGenderCorrector;
 import com.closetnangam.be.global.external.gemini.GeminiService;
 import com.closetnangam.be.global.external.gemini.dto.GeminiClothingClassificationResult;
@@ -152,7 +153,10 @@ public class ComplementaryRecommendationClassificationService {
                 result.category(),
                 result.itemType(),
                 WidePantsGenderCorrector.correctGender(
-                        categoryCatalogService.resolveGenderOrDefault(result.gender()).name(),
+                        BrandGenderCorrector.correctGender(
+                                categoryCatalogService.resolveGenderOrDefault(result.gender()).name(),
+                                brandName
+                        ),
                         result.category(),
                         brandName,
                         productTitle
