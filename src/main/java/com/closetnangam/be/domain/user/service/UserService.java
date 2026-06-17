@@ -2,10 +2,12 @@ package com.closetnangam.be.domain.user.service;
 
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
+import com.closetnangam.be.domain.user.dto.request.CompleteOnboardingRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateProfileRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
 import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
 import com.closetnangam.be.domain.user.dto.response.MyProfileResponse;
+import com.closetnangam.be.domain.user.dto.response.NicknameAvailabilityResponse;
 import com.closetnangam.be.domain.user.dto.response.UserProfileResponse;
 import com.closetnangam.be.domain.user.entity.SocialAccount;
 import com.closetnangam.be.domain.user.entity.User;
@@ -14,11 +16,13 @@ import com.closetnangam.be.domain.user.enums.UserStatus;
 import com.closetnangam.be.domain.user.repository.SocialAccountRepository;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.user.repository.UserStyleRepository;
+import com.closetnangam.be.domain.user.support.NicknamePolicy;
 import com.closetnangam.be.global.auth.jwt.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -59,28 +63,47 @@ public class UserService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public NicknameAvailabilityResponse checkNicknameAvailability(Long userId, String nickname) {
+        String normalizedNickname = NicknamePolicy.normalize(nickname);
+        if (!NicknamePolicy.isValid(normalizedNickname)) {
+            return new NicknameAvailabilityResponse(
+                    normalizedNickname,
+                    false,
+                    NicknamePolicy.RULE_MESSAGE
+            );
+        }
+
+        boolean duplicated = userRepository.existsByNicknameAndIdNot(normalizedNickname, userId);
+        if (duplicated) {
+            return new NicknameAvailabilityResponse(
+                    normalizedNickname,
+                    false,
+                    "이미 사용 중인 닉네임입니다."
+            );
+        }
+        return new NicknameAvailabilityResponse(
+                normalizedNickname,
+                true,
+                "사용 가능한 닉네임입니다."
+        );
+    }
+
     @Transactional
     public MyProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
-        // 선택 필드는 null 전달 시 기존 값 유지
-        String profileImageUrl = request.profileImageUrl() != null
-                ? request.profileImageUrl() : user.getProfileImageUrl();
-        String profileBio = request.profileBio() != null
-                ? request.profileBio() : user.getProfileBio();
-        String externalLinkUrl = request.externalLinkUrl() != null
-                ? request.externalLinkUrl() : user.getExternalLinkUrl();
-
-        user.updateProfile(
+        updateUserProfile(
+                user,
                 request.nickname(),
-                profileImageUrl,
-                profileBio,
-                externalLinkUrl,
-                request.gender(),
                 request.birthDate(),
+                request.gender(),
                 request.regionName(),
-                request.regionCode()
+                request.regionCode(),
+                request.profileImageUrl(),
+                request.profileBio(),
+                request.externalLinkUrl()
         );
 
         return toMyProfileResponse(user);
@@ -91,7 +114,72 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
-        List<String> requestedCodes = request.styleCodes();
+        updateUserStyles(user, request.styleCodes());
+    }
+
+    @Transactional
+    public MyProfileResponse completeOnboarding(Long userId, CompleteOnboardingRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
+
+        updateUserProfile(
+                user,
+                request.nickname(),
+                request.birthDate(),
+                request.gender(),
+                request.regionName(),
+                request.regionCode(),
+                null,
+                null,
+                null
+        );
+        updateUserStyles(user, request.styleCodes());
+        user.updateMarketingAgreement(request.marketingAgreed());
+
+        return toMyProfileResponse(user);
+    }
+
+    private void updateUserProfile(
+            User user,
+            String nickname,
+            LocalDate birthDate,
+            User.Gender gender,
+            String regionName,
+            String regionCode,
+            String profileImageUrl,
+            String profileBio,
+            String externalLinkUrl
+    ) {
+        if (gender == User.Gender.OTHER) {
+            throw new IllegalArgumentException("성별은 MALE 또는 FEMALE만 선택할 수 있습니다.");
+        }
+        String normalizedNickname = NicknamePolicy.normalize(nickname);
+        NicknamePolicy.validate(normalizedNickname);
+        if (userRepository.existsByNicknameAndIdNot(normalizedNickname, user.getId())) {
+            throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
+        }
+
+        // 선택 필드는 null 전달 시 기존 값 유지
+        String nextProfileImageUrl = profileImageUrl != null
+                ? profileImageUrl : user.getProfileImageUrl();
+        String nextProfileBio = profileBio != null
+                ? profileBio : user.getProfileBio();
+        String nextExternalLinkUrl = externalLinkUrl != null
+                ? externalLinkUrl : user.getExternalLinkUrl();
+
+        user.updateProfile(
+                normalizedNickname,
+                nextProfileImageUrl,
+                nextProfileBio,
+                nextExternalLinkUrl,
+                gender,
+                birthDate,
+                regionName,
+                regionCode
+        );
+    }
+
+    private void updateUserStyles(User user, List<String> requestedCodes) {
         if (requestedCodes.stream().distinct().count() != requestedCodes.size()) {
             throw new IllegalArgumentException("중복된 스타일 코드가 포함되어 있습니다.");
         }
@@ -105,7 +193,7 @@ public class UserService {
             throw new IllegalArgumentException("존재하지 않는 스타일 코드가 포함되어 있습니다.");
         }
 
-        List<UserStyle> existingList = userStyleRepository.findAllByUserId(userId);
+        List<UserStyle> existingList = userStyleRepository.findAllByUserId(user.getId());
         Map<Long, UserStyle> existingByStyleId = existingList.stream()
                 .collect(Collectors.toMap(userStyle -> userStyle.getStyle().getId(), userStyle -> userStyle));
         Map<Long, Integer> preferenceMap = new LinkedHashMap<>();
@@ -211,11 +299,13 @@ public class UserService {
     }
 
     private boolean isOnboarded(User user, List<String> styleCodes) {
-        return user.getGender() != null
+        return user.getNickname() != null
+                && !user.getNickname().isBlank()
+                && user.getGender() != null
                 && user.getGender() != User.Gender.OTHER
                 && user.getBirthDate() != null
                 && user.getRegionCode() != null
                 && !user.getRegionCode().isBlank()
-                && !styleCodes.isEmpty();
+                && styleCodes.size() >= 2;
     }
 }

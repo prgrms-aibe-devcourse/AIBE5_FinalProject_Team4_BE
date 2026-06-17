@@ -76,7 +76,7 @@ BE는 필수 약관의 사용자별 동의 버전/시각을 별도로 저장하�
 | 항목 | 설명 |
 | --- | --- |
 | `marketing_agreed` | 마케팅 정보 수신 동의 여부 |
-| `marketing_agreed_at` | 마케팅 정보 수신 동의 시각. 미동의 또는 철회 상태에서는 비활성 기준값으로 관리합니다. |
+| `marketing_agreed_at` | 마케팅 정보 수신 동의 시각. 미동의 또는 철회 상태에서는 `NULL`로 관리합니다. |
 
 회원 탈퇴는 `USERS.status`와 `USERS.withdrawn_at`으로 관리합니다. 탈퇴 이력이 없는 활성 계정의 `withdrawn_at`은 `NULL`이며, 탈퇴 요청 시 실제 탈퇴 시각을 기록합니다.
 

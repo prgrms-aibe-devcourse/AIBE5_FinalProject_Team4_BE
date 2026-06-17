@@ -36,7 +36,7 @@ public class DevUserService {
                                     )
                                     VALUES (
                                         :id, :nickname, :email, '', '', '',
-                                        '2000-01-01', 'OTHER', '', '', 0, '1970-01-01 00:00:00',
+                                        '2000-01-01', 'OTHER', '', '', 0, NULL,
                                         'ACTIVE', NULL, NOW(), NOW()
                                     )
                                     """

@@ -19,7 +19,6 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -37,10 +36,9 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
 
         String providerUserId = extractProviderUserId(provider, oAuth2User);
         String email = extractEmail(provider, oAuth2User);
-        String rawName = extractName(provider, oAuth2User);
 
         SocialAccount account = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
-                .orElseGet(() -> createAccount(provider, providerUserId, email, rawName));
+                .orElseGet(() -> createAccount(provider, providerUserId, email));
 
         boolean withdrawnRestoreRequired = requiresWithdrawnRestore(account.getUser());
         if (!withdrawnRestoreRequired) {
@@ -71,9 +69,9 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
         }
     }
 
-    private SocialAccount createAccount(String provider, String providerUserId, String email, String rawName) {
+    private SocialAccount createAccount(String provider, String providerUserId, String email) {
         User user = userRepository.findByEmail(email)
-                .orElseGet(() -> createUser(email, rawName));
+                .orElseGet(() -> createUser(email));
 
         return socialAccountRepository.save(
                 SocialAccount.builder()
@@ -85,21 +83,12 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
         );
     }
 
-    private User createUser(String email, String rawName) {
+    private User createUser(String email) {
         return userRepository.save(
                 User.builder()
                         .email(email)
-                        .nickname(buildUniqueNickname(rawName))
                         .build()
         );
-    }
-
-    private String buildUniqueNickname(String base) {
-        String candidate = base.isBlank() ? "user" : base;
-        while (userRepository.existsByNickname(candidate)) {
-            candidate = base + "#" + UUID.randomUUID().toString().replace("-", "").substring(0, 4);
-        }
-        return candidate;
     }
 
     @SuppressWarnings("unchecked")
@@ -133,23 +122,4 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
         return email;
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractName(String provider, OAuth2User user) {
-        return switch (provider) {
-            case "kakao" -> {
-                Map<String, Object> props = (Map<String, Object>) user.getAttributes().getOrDefault("properties", Map.of());
-                Object nickname = props.get("nickname");
-                yield nickname != null ? String.valueOf(nickname) : "user";
-            }
-            case "naver" -> {
-                Map<String, Object> response = (Map<String, Object>) user.getAttributes().get("response");
-                Object name = response.get("name");
-                yield name != null ? String.valueOf(name) : "user";
-            }
-            default -> {
-                Object name = user.getAttributes().get("name");
-                yield name != null ? String.valueOf(name) : "user";
-            }
-        };
-    }
 }
