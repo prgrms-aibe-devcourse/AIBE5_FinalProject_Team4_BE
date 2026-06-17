@@ -249,7 +249,7 @@ public class SimilarProductRecommendationService {
                 .orElse("");
 
         try {
-            return ClothesColor.fromCode(primaryColorCode).getLabel();
+            return ClothesColor.fromCodeOrDefault(primaryColorCode).getLabel();
         } catch (IllegalArgumentException e) {
             return normalize(primaryColorCode);
         }

@@ -62,6 +62,10 @@ public enum ClothesItemType {
     private final String description;
 
     public static ClothesItemType fromCode(String code) {
+        return ClothesItemType.valueOf(code);
+    }
+
+    public static ClothesItemType fromCodeOrDefault(String code) {
         if (code == null || code.isBlank()) return LONG_SLEEVE;
         try {
             return ClothesItemType.valueOf(code.toUpperCase().replace(" ", "_"));
