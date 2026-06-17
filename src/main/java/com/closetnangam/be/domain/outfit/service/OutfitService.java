@@ -3,7 +3,6 @@ package com.closetnangam.be.domain.outfit.service;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
-import com.closetnangam.be.domain.clothes.enums.StyleRole;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.outfit.dto.request.OutfitCreateRequest;
@@ -15,11 +14,9 @@ import com.closetnangam.be.domain.outfit.dto.response.OutfitResponse;
 import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitBook;
 import com.closetnangam.be.domain.outfit.entity.OutfitItem;
-import com.closetnangam.be.domain.outfit.entity.OutfitStyles;
 import com.closetnangam.be.domain.outfit.repository.OutfitBookRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitItemRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitRepository;
-import com.closetnangam.be.domain.outfit.repository.OutfitStyleRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -27,7 +24,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 
 import java.util.Collections;
 import java.util.List;
@@ -45,7 +41,7 @@ public class OutfitService {
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final ClothesRepository clothesRepository;
     private final UserRepository userRepository;
-    private final OutfitStyleRepository outfitStyleRepository;
+    private final OutfitStyleService outfitStyleService;  // OutfitStyleRepository 대신 공통 서비스 주입
 
     @Transactional
     public OutfitBookResponse createBook(Long userId) {
@@ -70,11 +66,12 @@ public class OutfitService {
         List<OutfitItem> savedItems = Collections.emptyList();
         if (request.getItems() != null && !request.getItems().isEmpty()) {
             savedItems = saveOutfitItems(outfit, userId, request.getItems());
-            saveOutfitStyles(outfit, savedItems);  // 추가
+            outfitStyleService.saveOutfitStyles(outfit, savedItems);  // 추가
         }
 
         return toOutfitResponse(outfit, userId, savedItems);
     }
+
     @Transactional
     public OutfitResponse updateOutfit(Long bookId, Long outfitId, Long userId, OutfitUpdateRequest request) {
         outfitBookRepository.findByIdAndUserId(bookId, userId)
@@ -95,12 +92,12 @@ public class OutfitService {
         List<OutfitItem> currentItems;
         if (request.getItems() != null) {
             outfitItemRepository.deleteAllByOutfit_OutfitId(outfitId);
-            outfitStyleRepository.deleteAllByOutfit_OutfitId(outfitId);
+            outfitStyleService.deleteOutfitStyles(outfitId);  // 공통 서비스로 변경
             if (request.getItems().isEmpty()) {
                 currentItems = Collections.emptyList();
             } else {
                 currentItems = saveOutfitItems(outfit, userId, request.getItems());
-                saveOutfitStyles(outfit, currentItems);
+                outfitStyleService.saveOutfitStyles(outfit, currentItems);  // 공통 서비스로 변경
             }
         } else {
             // items가 null인 경우 기존 구성 유지
@@ -108,27 +105,6 @@ public class OutfitService {
         }
 
         return toOutfitResponse(outfit, userId, currentItems);
-    }
-    private void saveOutfitStyles(Outfit outfit, List<OutfitItem> items) {
-        // 구성 옷들의 스타일 태그 수집 — PRIMARY 먼저, SECONDARY 나중
-        // 동일 style_id 중복 방지를 위해 Map으로 집계
-        java.util.Map<Long, OutfitStyles> styleMap = new java.util.LinkedHashMap<>();
-
-        for (OutfitItem item : items) {
-            item.getClothes().getSortedStyleTags().forEach(tag -> {
-                Long styleId = tag.getStyle().getId();
-                // 이미 PRIMARY로 등록된 스타일은 SECONDARY로 덮어쓰지 않음
-                styleMap.merge(styleId,
-                        OutfitStyles.create(outfit, tag.getStyle(), tag.getStyleRole(), tag.getSortOrder()),
-                        (existing, incoming) -> {
-                            if (existing.getStyleRole() == StyleRole.PRIMARY) return existing;
-                            return incoming;
-                        }
-                );
-            });
-        }
-
-        outfitStyleRepository.saveAll(styleMap.values());
     }
 
     private OutfitResponse toOutfitResponse(Outfit outfit, Long userId, List<OutfitItem> items) {
@@ -171,7 +147,6 @@ public class OutfitService {
                     Clothes clothes = clothesMap.get(itemRequest.getClothesId());
 
                     // 2. WardrobeClothes에 없으면 EXTERNAL_SHOPPING만 폴백 허용
-                    // PHOTO / PURCHASE_HISTORY는 반드시 본인 옷장 소유여야 함
                     if (clothes == null) {
                         clothes = clothesRepository.findById(itemRequest.getClothesId())
                                 .orElseThrow(() -> new EntityNotFoundException(
@@ -193,6 +168,7 @@ public class OutfitService {
                 .toList();
         return outfitItemRepository.saveAll(items);
     }
+
     public OutfitResponse getOutfit(Long bookId, Long outfitId, Long userId) {
         Outfit outfit = outfitRepository.findActiveByOutfitIdAndOutfitBook_Id(outfitId, bookId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 코디입니다."));
@@ -229,10 +205,6 @@ public class OutfitService {
             return OutfitBookResponse.from(outfitBook, userId, outfits);
         }
 
-        /*
-         * AI MD가 저장한 코디는 OUTFIT_ITEMS에 실제 구성 옷을 남긴다.
-         * 코디북 재조회에서도 FE가 저장된 코디를 복원할 수 있도록 outfitId별 구성 아이템을 함께 내려준다.
-         */
         List<OutfitItem> outfitItems = outfitItemRepository.findAllByOutfitBookId(outfitBook.getId());
         Map<Long, WardrobeClothes> wardrobeClothesByClothesId = findWardrobeClothesByClothesId(userId, outfitItems);
         Map<Long, List<OutfitItemResponse>> itemResponsesByOutfitId = outfitItems.stream()
@@ -266,10 +238,6 @@ public class OutfitService {
                 .collect(Collectors.toMap(
                         item -> item.getClothes().getId(),
                         item -> item,
-                        /*
-                         * 동일 Clothes가 사용자 옷장에 중복 연결된 비정상 데이터가 있어도 코디북 조회는 실패하지 않게 한다.
-                         * 먼저 조회된 활성 WardrobeClothes를 대표 사용자 소유 정보로 사용한다.
-                         */
                         (first, ignored) -> first
                 ));
     }
