@@ -4,6 +4,7 @@ import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.user.dto.request.UpdateProfileRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
+import com.closetnangam.be.domain.user.dto.request.UpdateGuideTourRequest;
 import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
 import com.closetnangam.be.domain.user.dto.response.MyProfileResponse;
 import com.closetnangam.be.domain.user.dto.response.UserProfileResponse;
@@ -16,10 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,12 +29,34 @@ public class UserService {
     private final StyleRepository styleRepository;
     private final RefreshTokenService refreshTokenService;
 
+    private MyProfileResponse buildMyProfileResponse(User user) {
+        List<String> styleCodes = userStyleRepository.findAllByUserId(user.getId()).stream()
+                .filter(us -> us.getPreferenceWeight() > 0)
+                .sorted(Comparator.comparingInt(UserStyle::getPreferenceWeight).reversed())
+                .map(us -> us.getStyle().getCode())
+                .toList();
+
+        return new MyProfileResponse(
+                user.getId(),
+                user.getNickname(),
+                user.isOnboarded(),
+                user.isGuideTourCompletedHome(),
+                user.isGuideTourCompletedWardrobe(),
+                user.isGuideTourCompletedFeed(),
+                user.isGuideTourCompletedMypage(),
+                user.getGender() != null ? user.getGender().name() : null,
+                user.getBirthDate(),
+                user.getRegionCode(),
+                styleCodes
+        );
+    }
+
     @Transactional(readOnly = true)
     public MyProfileResponse getMyProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
-        return new MyProfileResponse(user.getId(), user.getNickname(), user.isOnboarded(),user.getRegionName());
+        return buildMyProfileResponse(user);
     }
 
     @Transactional(readOnly = true)
@@ -77,7 +97,7 @@ public class UserService {
                 request.regionCode()
         );
 
-        return new MyProfileResponse(user.getId(), user.getNickname(), user.isOnboarded(),user.getRegionName());
+        return buildMyProfileResponse(user);
     }
 
     @Transactional
@@ -122,6 +142,13 @@ public class UserService {
                 })
                 .toList();
         userStyleRepository.saveAll(newStyles);
+    }
+
+    @Transactional
+    public void updateGuideTour(Long userId, UpdateGuideTourRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
+        user.updateGuideTour(request.home(), request.wardrobe(), request.feed(), request.mypage());
     }
 
     @Transactional

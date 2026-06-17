@@ -102,7 +102,14 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `userId` | Long | 사용자 ID |
 | `nickname` | String | 카카오 닉네임 또는 온보딩에서 설정한 닉네임 |
 | `onboarded` | boolean | 온보딩 완료 여부. birthDate가 기본값(2000-01-01)이면 false, 실제 날짜이면 true |
-| `regionName` | String | 사용자 지역명 (예: 서울특별시) |
+| `guideTourCompletedHome` | boolean | 홈 가이드 투어 완료 여부 |
+| `guideTourCompletedWardrobe` | boolean | 옷장 가이드 투어 완료 여부 |
+| `guideTourCompletedFeed` | boolean | 피드 가이드 투어 완료 여부 |
+| `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
+| `gender` | String | 성별 (`MALE` / `FEMALE` / `OTHER`), 온보딩 전 `null` |
+| `birthDate` | LocalDate | 생년월일 (yyyy-MM-dd), 온보딩 전 기본값 `2000-01-01` |
+| `regionCode` | String | 지역 코드, 미설정 시 `""` |
+| `styles` | List\<String\> | 선호 스타일 코드 목록, 대표 스타일 우선 정렬, 미설정 시 `[]` |
 
 #### PATCH /api/v1/users/profile 요청 필드
 
@@ -124,7 +131,14 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `userId` | Long | 사용자 ID |
 | `nickname` | String | 저장된 닉네임 |
 | `onboarded` | boolean | 온보딩 완료 여부. 저장 후 true이면 메인 페이지로 이동 |
-| `regionName` | String | 사용자 지역명 (예: 서울특별시) |
+| `guideTourCompletedHome` | boolean | 홈 가이드 투어 완료 여부 |
+| `guideTourCompletedWardrobe` | boolean | 옷장 가이드 투어 완료 여부 |
+| `guideTourCompletedFeed` | boolean | 피드 가이드 투어 완료 여부 |
+| `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
+| `gender` | String | 성별 (`MALE` / `FEMALE` / `OTHER`), 온보딩 전 `null` |
+| `birthDate` | LocalDate | 생년월일 (yyyy-MM-dd), 온보딩 전 기본값 `2000-01-01` |
+| `regionCode` | String | 지역 코드, 미설정 시 `""` |
+| `styles` | List\<String\> | 선호 스타일 코드 목록, 대표 스타일 우선 정렬, 미설정 시 `[]` |
 
 #### POST /api/v1/users/styles 요청 필드
 
