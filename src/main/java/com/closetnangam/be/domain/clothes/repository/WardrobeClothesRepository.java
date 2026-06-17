@@ -174,6 +174,7 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             select distinct wc from WardrobeClothes wc
             join fetch wc.clothes c
             join fetch wc.wardrobe w
+            join fetch w.user
             where w.user.id = :userId
               and wc.deletedAt is null
               and wc.ownershipStatus in :ownershipStatuses

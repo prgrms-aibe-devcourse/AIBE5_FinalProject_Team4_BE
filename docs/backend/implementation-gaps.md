@@ -240,7 +240,9 @@ src/main/java/com/closetnangam/be/domain/recommendation/controller/Recommendatio
 - POST /api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save
 
 src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendationService.java
-- Gemini 응답을 기반으로 상품 추천 10개 구성
+- Gemini 응답을 기반으로 상품 추천 최대 40개 구성
+- 상품 추천 후보는 네이버쇼핑 결과와 `EXTERNAL_SHOPPING` 공용 `CLOTHES` 내부 후보를 함께 사용
+- 내부 후보는 사용자 또는 선택한 MD 성별과 `UNISEX` 상품만 사용. 유사상품 추천의 `OTHER`/성별 없음 사용자는 내부 후보 성별 제한 없음
 - Gemini 응답을 기반으로 저장 전 코디 후보 4개 구성
 - 사용자가 선택한 코디 후보 1개 저장
 - 코디별 보유 옷 최소 1개 포함 검증
@@ -265,11 +267,14 @@ src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendati
 
 다만 이 기능은 Gemini와 네이버쇼핑 응답을 조합하는 흐름이라, 아래 경로는 추가 서비스 단위 테스트로 고정할 필요가 있습니다.
 
+- 상품 추천 응답에 `candidateSource=INTERNAL`, `clothesId`가 있는 내부 후보와 `candidateSource=NAVER`, `clothesId=null`인 네이버 후보가 함께 포함되는 경로
+- 내부 후보의 nullable 가격(`lowestPrice`, `highestPrice`)과 빈 구매 링크(`link=""`)가 응답 계약대로 유지되는 경로
+- 내부 후보 조회에서 사용자/MD 성별과 `UNISEX`만 포함하는 경로 및 유사상품 추천 `OTHER`/성별 없음 사용자의 전체 성별 허용 경로
 - 외부 상품 없이 보유 옷만으로 TOP, BOTTOM, SHOES를 완성한 후보의 추천 및 저장
 - 외부 상품을 1개 이상 포함한 코디 후보 선택 저장
 - Gemini가 4개 미만 코디를 반환했을 때 실패 처리
 - Gemini가 존재하지 않는 `productId`를 반환했을 때 필터링/검증 처리
-- 여러 네이버 검색 페이지의 결과를 합치고 동일 상품을 제거하는 전체 서비스 경로
+- 여러 네이버 검색 페이지와 내부 DB 후보를 합치고 동일 상품을 제거하는 전체 서비스 경로
 - 재추천 요청에서 검색 조합이 달라지면서도 고가중치 스타일 빈도가 유지되는 통계적 경로
 - 저장 요청에서 TOP, BOTTOM, SHOES 중 하나가 누락됐을 때 `400 Bad Request`를 반환하는 컨트롤러 경로
 - 선택 코디 저장 중 외부 상품 생성, `OUTFITS`, `OUTFIT_ITEMS` 저장 실패 시 롤백 처리
