@@ -103,6 +103,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `nickname` | String | 카카오 닉네임 또는 온보딩에서 설정한 닉네임 |
 | `onboarded` | boolean | 온보딩 완료 여부. birthDate가 기본값(2000-01-01)이면 false, 실제 날짜이면 true |
 | `regionName` | String | 사용자 지역명 (예: 서울특별시) |
+| `gender` | String | 성별. `MALE` / `FEMALE` / `OTHER` |
 
 #### PATCH /api/v1/users/profile 요청 필드
 
@@ -125,6 +126,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `nickname` | String | 저장된 닉네임 |
 | `onboarded` | boolean | 온보딩 완료 여부. 저장 후 true이면 메인 페이지로 이동 |
 | `regionName` | String | 사용자 지역명 (예: 서울특별시) |
+| `gender` | String | 저장된 성별. `MALE` / `FEMALE` / `OTHER` |
 
 #### POST /api/v1/users/styles 요청 필드
 
@@ -748,6 +750,124 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | --- | --- | --- |
 | GET | `/api/v1/images/clothes/{userId}/{filename}` | 옷 이미지 조회 |
 | GET | `/api/v1/images/purchase-captures/{userId}/{filename}` | 구매내역 캡처 이미지 조회 |
+| GET | `/api/v1/images/feed/{userId}/{filename}` | 피드 이미지 조회 |
+
+### 룩피드 (FEED-001~008)
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| POST | `/api/v1/feed/posts` | FEED-001 피드 업로드 |
+| GET | `/api/v1/feed/posts` | FEED-002 공개 피드 목록 |
+| GET | `/api/v1/feed/posts/{postId}` | FEED-003 피드 상세 |
+| PUT | `/api/v1/feed/posts/{postId}` | 피드 수정 |
+| DELETE | `/api/v1/feed/posts/{postId}` | 피드 삭제 |
+| GET | `/api/v1/feed/users/{userId}/posts` | 사용자 공유 피드 목록 |
+| POST | `/api/v1/feed/images` | 피드 이미지 업로드 (`multipart/form-data`, field: `file`) |
+| POST | `/api/v1/feed/posts/{postId}/likes` | FEED-004 좋아요 토글 |
+| POST | `/api/v1/feed/posts/{postId}/saves` | FEED-005 저장 토글 |
+| GET | `/api/v1/feed/posts/{postId}/comments` | FEED-006/007 댓글·대댓글 목록 |
+| POST | `/api/v1/feed/posts/{postId}/comments` | FEED-006/007 댓글·대댓글 작성 |
+| PUT | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 수정 (작성자 본인만) |
+| DELETE | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 삭제 |
+| POST | `/api/v1/feed/users/{followeeId}/follows` | FEED-008 팔로우 토글 |
+
+#### POST /api/v1/feed/posts — 피드 업로드
+
+```json
+{
+  "outfitId": 1,
+  "caption": "오늘의 데일리룩",
+  "imageUrls": [
+    "http://localhost:8080/api/v1/images/feed/1/sample.jpg"
+  ]
+}
+```
+
+- `outfitId`는 선택. 본인 코디북의 활성 코디만 연결 가능
+- `imageUrls`는 최소 1장, 최대 10장
+
+#### GET /api/v1/feed/posts — 피드 목록
+
+Query: `page`(default 0), `size`(default 20, max 50)
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "feedPostId": 1,
+        "author": {
+          "userId": 1,
+          "nickname": "closet",
+          "profileImageUrl": "https://..."
+        },
+        "outfit": { "...": "OutfitResponse 또는 null" },
+        "caption": "오늘의 데일리룩",
+        "images": [
+          {
+            "feedPostImageId": 1,
+            "imageUrl": "http://localhost:8080/api/v1/images/feed/1/sample.jpg",
+            "sortOrder": 0
+          }
+        ],
+        "likeCount": 3,
+        "commentCount": 1,
+        "likedByMe": false,
+        "savedByMe": false,
+        "hidden": false,
+        "mine": false,
+        "createdAt": "2026-06-09T12:00:00",
+        "updatedAt": "2026-06-09T12:00:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "hasNext": false
+  }
+}
+```
+
+> **Note**: FEED-009 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
+
+#### PUT /api/v1/feed/posts/{postId}/comments/{commentId} — 댓글 수정
+
+작성자 본인만 수정 가능. `parentCommentId`는 수정 시 무시됩니다.
+
+요청:
+
+```json
+{
+  "content": "수정된 댓글 내용 (최대 1000자)"
+}
+```
+
+응답:
+
+```json
+{
+  "success": true,
+  "data": {
+    "feedCommentId": 1,
+    "feedPostId": 10,
+    "author": {
+      "userId": 1,
+      "nickname": "closet",
+      "profileImageUrl": "https://..."
+    },
+    "parentCommentId": null,
+    "content": "수정된 댓글 내용",
+    "replies": [],
+    "createdAt": "2026-06-09T12:00:00",
+    "isOwner": true
+  }
+}
+```
+
+- 본인이 아니면 403 반환
+- 존재하지 않는 댓글이면 404 반환
 
 ## API 변경 규칙
 

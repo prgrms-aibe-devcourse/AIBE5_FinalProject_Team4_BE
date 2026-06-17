@@ -29,4 +29,24 @@ public interface OutfitRepository extends JpaRepository<Outfit, Long> {
               and o.deletedAt is null
             """)
     Optional<Outfit> findActiveByOutfitIdAndOutfitBook_Id(@Param("outfitId") Long outfitId, @Param("bookId") Long bookId);
+
+    @Query("""
+            select o
+            from Outfit o
+            join fetch o.outfitBook ob
+            where o.outfitId = :outfitId
+              and ob.user.id = :userId
+              and o.deletedAt is null
+            """)
+    Optional<Outfit> findActiveByOutfitIdAndUserId(@Param("outfitId") Long outfitId, @Param("userId") Long userId);
+
+    @Query("""
+            select o
+            from Outfit o
+            join fetch o.outfitBook ob
+            join fetch ob.user
+            where o.outfitId = :outfitId
+              and o.deletedAt is null
+            """)
+    Optional<Outfit> findActiveByOutfitId(@Param("outfitId") Long outfitId);
 }

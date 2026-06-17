@@ -7,6 +7,7 @@ import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
@@ -17,7 +18,9 @@ import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher.Wardro
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.user.entity.User;
+import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class ClothesRecommendationServiceTest {
@@ -49,8 +53,17 @@ class ClothesRecommendationServiceTest {
     @Mock
     private WardrobeExclusionMatcher wardrobeExclusionMatcher;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private ClothesRecommendationService clothesRecommendationService;
+
+    @BeforeEach
+    void setUpUser() {
+        lenient().when(userRepository.findById(1L))
+                .thenReturn(Optional.of(createUser(1L, User.Gender.MALE)));
+    }
 
     @Test
     @DisplayName("어울리는 옷 추천은 DB 전체 후보 풀에서 카테고리별 점수 상위를 반환한다")
@@ -207,6 +220,68 @@ class ClothesRecommendationServiceTest {
         ClothesRecommendationResponse response = clothesRecommendationService.recommend(1L, 10L, 5);
 
         assertThat(response.recommendations()).doesNotContainKey("BOTTOM");
+    }
+
+    @Test
+    @DisplayName("여성 사용자에게는 남성 전용 신발을 추천하지 않는다")
+    void recommendExcludesMaleShoesForFemaleUser() {
+        given(userRepository.findById(2L)).willReturn(Optional.of(createUser(2L, User.Gender.FEMALE)));
+
+        WardrobeClothes anchor = createAnchorWardrobeClothes(2L, "TOP", "SHORT_SLEEVE", "WHITE");
+        Clothes maleShoes = createExternalClothes(200L, "SHOES", "SNEAKERS", "WHITE");
+        ReflectionTestUtils.setField(maleShoes, "gender", ClothesGender.MALE);
+        Clothes femaleShoes = createExternalClothes(201L, "SHOES", "SNEAKERS", "BLACK");
+        ReflectionTestUtils.setField(femaleShoes, "gender", ClothesGender.FEMALE);
+
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 2L)).willReturn(Optional.of(anchor));
+        given(wardrobeExclusionMatcher.buildActiveExclusionIndex(2L))
+                .willReturn(new WardrobeExclusionIndex(Set.of(10L), Set.of(), Set.of()));
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("BOTTOM"), any(Pageable.class)))
+                .willReturn(List.of());
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("OUTER"), any(Pageable.class)))
+                .willReturn(List.of());
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("SHOES"), any(Pageable.class)))
+                .willReturn(List.of(maleShoes, femaleShoes));
+
+        ClothesRecommendationResponse response = clothesRecommendationService.recommend(2L, 10L, 5);
+
+        assertThat(response.recommendations().get("SHOES"))
+                .extracting(item -> item.clothesId())
+                .containsExactly(201L);
+    }
+
+    @Test
+    @DisplayName("여름 기준 옷이어도 겨울 시즌 신발은 점수 기준으로 추천될 수 있다")
+    void recommendIncludesWinterShoesForSummerAnchor() {
+        WardrobeClothes anchor = createAnchorWardrobeClothes(1L, "TOP", "SHORT_SLEEVE", "WHITE", "SUMMER");
+        Clothes winterBoots = createExternalClothes(200L, "SHOES", "BOOTS", "BLACK", ClothesSeason.WINTER);
+
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(anchor));
+        given(wardrobeExclusionMatcher.buildActiveExclusionIndex(1L))
+                .willReturn(new WardrobeExclusionIndex(Set.of(10L), Set.of(), Set.of()));
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("BOTTOM"), any(Pageable.class)))
+                .willReturn(List.of());
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("OUTER"), any(Pageable.class)))
+                .willReturn(List.of());
+        given(clothesRepository.findComplementaryRecommendationCandidatesByCategory(eq("SHOES"), any(Pageable.class)))
+                .willReturn(List.of(winterBoots));
+
+        ClothesRecommendationResponse response = clothesRecommendationService.recommend(1L, 10L, 5);
+
+        assertThat(response.recommendations().get("SHOES"))
+                .extracting(item -> item.clothesId())
+                .containsExactly(200L);
+    }
+
+    private User createUser(Long userId, User.Gender gender) {
+        User user = User.builder()
+                .nickname("user-" + userId)
+                .email("user" + userId + "@example.com")
+                .gender(gender)
+                .birthDate(LocalDate.of(1990, 1, 1))
+                .build();
+        ReflectionTestUtils.setField(user, "id", userId);
+        return user;
     }
 
     private WardrobeClothes createOwnedLink(Clothes clothes) {
