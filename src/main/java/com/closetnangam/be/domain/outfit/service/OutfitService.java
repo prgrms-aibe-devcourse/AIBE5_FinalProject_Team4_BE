@@ -2,7 +2,6 @@ package com.closetnangam.be.domain.outfit.service;
 
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
-import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.outfit.dto.request.OutfitCreateRequest;
@@ -175,27 +174,9 @@ public class OutfitService {
             return List.of();
         }
 
-        List<Long> clothesIds = sourceItems.stream()
-                .map(item -> item.getClothes().getId())
-                .distinct()
+        return sourceItems.stream()
+                .map(item -> new OutfitItemRequest(item.getClothes().getId(), item.getItemRole(), item.getLayerOrder()))
                 .toList();
-
-        Set<Long> ownedClothesIds = wardrobeClothesRepository
-                .findAllByClothesIdsAndUserId(clothesIds, userId).stream()
-                .map(item -> item.getClothes().getId())
-                .collect(Collectors.toSet());
-
-        List<OutfitItemRequest> resolved = new ArrayList<>();
-        for (OutfitItem item : sourceItems) {
-            Clothes clothes = item.getClothes();
-            Long clothesId = clothes.getId();
-
-            if (ownedClothesIds.contains(clothesId)
-                    || clothes.getClothesInfoSource() == ClothesInfoSource.EXTERNAL_SHOPPING) {
-                resolved.add(new OutfitItemRequest(clothesId, item.getItemRole(), item.getLayerOrder()));
-            }
-        }
-        return resolved;
     }
 
     private List<OutfitItem> saveOutfitItems(Outfit outfit, Long userId, List<OutfitItemRequest> itemRequests) {
@@ -213,17 +194,11 @@ public class OutfitService {
                 .map(itemRequest -> {
                     Clothes clothes = clothesMap.get(itemRequest.getClothesId());
 
-                    // 2. WardrobeClothes에 없으면 EXTERNAL_SHOPPING만 폴백 허용
-                    // PHOTO / PURCHASE_HISTORY는 반드시 본인 옷장 소유여야 함
+                    // 2. WardrobeClothes에 없으면 원본 Clothes 엔티티 직접 참조 (피드 저장 시 타인 옷 포함)
                     if (clothes == null) {
                         clothes = clothesRepository.findById(itemRequest.getClothesId())
                                 .orElseThrow(() -> new EntityNotFoundException(
                                         "옷을 찾을 수 없습니다. ID: " + itemRequest.getClothesId()));
-
-                        if (clothes.getClothesInfoSource() != ClothesInfoSource.EXTERNAL_SHOPPING) {
-                            throw new EntityNotFoundException(
-                                    "사용자 옷장에서 옷을 찾을 수 없습니다. ID: " + itemRequest.getClothesId());
-                        }
                     }
 
                     return OutfitItem.builder()
