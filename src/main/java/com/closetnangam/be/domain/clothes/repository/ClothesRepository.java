@@ -36,6 +36,62 @@ public interface ClothesRepository extends JpaRepository<Clothes, Long> {
             Pageable pageable
     );
 
+    /**
+     * 유사상품 추천 내부 후보 — 공용 외부 쇼핑 마스터 중 기준 옷과 같은 카테고리 후보를 조회합니다.
+     *
+     * <p>다른 사용자의 개인 사진/옷장 연결 정보는 노출하지 않고, 공용 Clothes 마스터 정보만 사용합니다.</p>
+     */
+    @Query("""
+            select distinct c from Clothes c
+            left join fetch c.styleTags st
+            left join fetch st.style
+            where c.clothesInfoSource = com.closetnangam.be.domain.clothes.enums.ClothesInfoSource.EXTERNAL_SHOPPING
+              and c.id <> :baseClothesId
+              and c.id not in :excludedClothesIds
+              and c.category = :category
+            order by c.createdAt desc
+            """)
+    List<Clothes> findSimilarProductInternalCandidates(
+            @Param("baseClothesId") Long baseClothesId,
+            @Param("excludedClothesIds") List<Long> excludedClothesIds,
+            @Param("category") String category,
+            Pageable pageable
+    );
+
+    /**
+     * AI MD 추천 내부 후보 — 공용 외부 쇼핑 마스터 중 사용자의 현재 옷장에 없는 후보를 조회합니다.
+     */
+    @Query("""
+            select distinct c from Clothes c
+            left join fetch c.styleTags st
+            left join fetch st.style
+            where c.clothesInfoSource = com.closetnangam.be.domain.clothes.enums.ClothesInfoSource.EXTERNAL_SHOPPING
+              and c.id not in :excludedClothesIds
+            order by c.createdAt desc
+            """)
+    List<Clothes> findExternalShoppingRecommendationCandidates(
+            @Param("excludedClothesIds") List<Long> excludedClothesIds,
+            Pageable pageable
+    );
+
+    /**
+     * AI MD 코디 보강 후보 — 공용 외부 쇼핑 마스터 중 카테고리가 맞고 사용자의 현재 옷장에 없는 후보를 조회합니다.
+     */
+    @Query("""
+            select distinct c from Clothes c
+            left join fetch c.styleTags st
+            left join fetch st.style
+            where c.clothesInfoSource = com.closetnangam.be.domain.clothes.enums.ClothesInfoSource.EXTERNAL_SHOPPING
+              and c.id not in :excludedClothesIds
+              and c.category = :category
+            order by c.createdAt desc
+            """)
+    List<Clothes> findExternalShoppingRecommendationCandidatesByCategory(
+            @Param("excludedClothesIds") List<Long> excludedClothesIds,
+            @Param("category") String category,
+            Pageable pageable
+    );
+
     @Query("""
     SELECT s.name, COUNT(cst.id) as styleCount
     FROM WardrobeClothes wc

@@ -30,6 +30,8 @@ import com.closetnangam.be.domain.recommendation.dto.response.AiMdOutfitRecommen
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdPersonaResponse;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse.ProductRecommendation;
+import com.closetnangam.be.domain.recommendation.entity.RecommendationFeedback;
+import com.closetnangam.be.domain.recommendation.repository.RecommendationFeedbackRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.entity.UserStyle;
 import com.closetnangam.be.domain.user.repository.UserRepository;
@@ -43,6 +45,7 @@ import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductRespons
 import com.closetnangam.be.global.external.naver.service.NaverApiService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -72,11 +75,13 @@ public class AiMdRecommendationService {
     private static final int PRODUCT_RECOMMENDATION_COUNT = 40;
     private static final int PRODUCT_SEARCH_QUERY_COUNT = 8;
     private static final int PRODUCT_SEARCH_RESULTS_PER_QUERY = 20;
+    private static final int INTERNAL_PRODUCT_CANDIDATE_COUNT = 80;
     private static final int MAX_PRODUCT_CANDIDATES_FOR_PROMPT = 120;
     private static final int MAX_RECOMMENDATIONS_PER_BRAND = 2;
     private static final int MAX_RECOMMENDATIONS_PER_CATEGORY = 4;
     private static final int MAX_WARDROBE_ITEMS_FOR_PROMPT = 24;
     private static final int OUTFIT_PRODUCTS_PER_CATEGORY = 10;
+    private static final int OUTFIT_INTERNAL_PRODUCTS_PER_CATEGORY = 10;
     private static final List<Integer> OUTFIT_PRODUCT_SEARCH_START_INDEXES = List.of(1, 11, 21, 31, 41);
     private static final List<String> OUTFIT_PRODUCT_SEARCH_SORT_OPTIONS = List.of("sim", "date");
     private static final List<Integer> PRODUCT_SEARCH_START_INDEXES = List.of(1, 21, 41, 61, 81, 101);
@@ -101,6 +106,7 @@ public class AiMdRecommendationService {
     private final OutfitRepository outfitRepository;
     private final OutfitItemRepository outfitItemRepository;
     private final ClothesRepository clothesRepository;
+    private final RecommendationFeedbackRepository recommendationFeedbackRepository;
     private final StyleRepository styleRepository;
     private final UserStyleRepository userStyleRepository;
     private final NaverApiService naverApiService;
@@ -118,7 +124,7 @@ public class AiMdRecommendationService {
         User user = findUser(userId);
         AiMdPersona persona = resolvePersonaForUser(user, mdId);
         List<WardrobeClothes> wardrobeItems = findAiMdWardrobeItems(userId);
-        List<NaverShoppingProductResponse> externalProducts = searchOutfitProductsByCategory(persona);
+        List<NaverShoppingProductResponse> externalProducts = searchOutfitProductsByCategory(userId, persona);
         List<WardrobeClothes> promptWardrobeItems = shuffledCopy(wardrobeItems);
         List<NaverShoppingProductResponse> promptExternalProducts = shuffledCopy(externalProducts);
 
@@ -195,7 +201,7 @@ public class AiMdRecommendationService {
         List<WardrobeClothes> wardrobeItems = findOwnedWardrobeItems(userId);
         List<StyleSearchProfile> styleProfiles = buildStyleSearchProfiles(userId, persona);
         List<ProductSearchPlan> searchPlans = buildProductSearchPlans(persona, wardrobeItems, styleProfiles);
-        List<NaverShoppingProductResponse> products = searchProductCandidates(searchPlans);
+        List<NaverShoppingProductResponse> products = searchProductCandidates(userId, searchPlans);
         String query = searchPlans.stream()
                 .map(ProductSearchPlan::query)
                 .collect(Collectors.joining(" | "));
@@ -361,6 +367,10 @@ public class AiMdRecommendationService {
     }
 
     private Clothes getOrCreateExternalClothes(AiMdPersona persona, NaverShoppingProductResponse product) {
+        if (product.clothesId() != null) {
+            return clothesRepository.findById(product.clothesId())
+                    .orElseThrow(() -> new EntityNotFoundException("추천 상품을 찾을 수 없습니다."));
+        }
         if (StringUtils.hasText(product.productId())) {
             var existing = clothesRepository.findByExternalProductId(product.productId());
             if (existing.isPresent()) {
@@ -483,15 +493,24 @@ public class AiMdRecommendationService {
                 .toList();
     }
 
-    private List<NaverShoppingProductResponse> searchOutfitProductsByCategory(AiMdPersona persona) {
+    private List<NaverShoppingProductResponse> searchOutfitProductsByCategory(Long userId, AiMdPersona persona) {
         String genderKeyword = persona.gender() == User.Gender.MALE ? "남성" : "여성";
         String styleKeyword = randomElement(persona.styleNames());
         Map<String, NaverShoppingProductResponse> productsById = new LinkedHashMap<>();
+        List<Long> excludedClothesIds = findExcludedClothesIds(userId);
         List<Map.Entry<String, String>> categoryEntries = new ArrayList<>(OUTFIT_CATEGORY_SEARCH_KEYWORDS.entrySet());
         Collections.shuffle(categoryEntries);
 
         for (Map.Entry<String, String> categoryEntry : categoryEntries) {
             String expectedCategory = categoryEntry.getKey();
+            clothesRepository.findExternalShoppingRecommendationCandidatesByCategory(
+                            excludedClothesIds,
+                            expectedCategory,
+                            PageRequest.of(0, OUTFIT_INTERNAL_PRODUCTS_PER_CATEGORY)
+                    ).stream()
+                    .map(this::toInternalProductResponse)
+                    .forEach(product -> productsById.putIfAbsent(product.productId(), product));
+
             String query = Stream.of(genderKeyword, styleKeyword, categoryEntry.getValue())
                     .filter(StringUtils::hasText)
                     .collect(Collectors.joining(" "));
@@ -665,8 +684,16 @@ public class AiMdRecommendationService {
         return colors.get(ThreadLocalRandom.current().nextInt(colors.size()));
     }
 
-    private List<NaverShoppingProductResponse> searchProductCandidates(List<ProductSearchPlan> searchPlans) {
+    private List<NaverShoppingProductResponse> searchProductCandidates(Long userId, List<ProductSearchPlan> searchPlans) {
         Map<String, NaverShoppingProductResponse> candidatesByKey = new LinkedHashMap<>();
+        List<Long> excludedClothesIds = findExcludedClothesIds(userId);
+        clothesRepository.findExternalShoppingRecommendationCandidates(
+                        excludedClothesIds,
+                        PageRequest.of(0, INTERNAL_PRODUCT_CANDIDATE_COUNT)
+                ).stream()
+                .map(this::toInternalProductResponse)
+                .forEach(product -> candidatesByKey.putIfAbsent(productIdentityKey(product), product));
+
         for (ProductSearchPlan plan : searchPlans) {
             naverApiService.searchShoppingProducts(
                     plan.query(),
@@ -682,6 +709,44 @@ public class AiMdRecommendationService {
                 .toList();
     }
 
+    private List<Long> findExcludedClothesIds(Long userId) {
+        List<Long> excluded = new ArrayList<>();
+        excluded.addAll(wardrobeClothesRepository.findOwnedClothesIdsByUserId(userId, OwnershipStatus.OWNED));
+        excluded.addAll(wardrobeClothesRepository.findOwnedClothesIdsByUserId(userId, OwnershipStatus.WISHLIST));
+        recommendationFeedbackRepository.findAllByUserId(userId).stream()
+                .filter(RecommendationFeedback::isExcluded)
+                .map(feedback -> feedback.getClothes().getId())
+                .forEach(excluded::add);
+        if (excluded.isEmpty()) {
+            return List.of(-1L);
+        }
+        return excluded.stream().distinct().toList();
+    }
+
+    private NaverShoppingProductResponse toInternalProductResponse(Clothes clothes) {
+        String productId = StringUtils.hasText(clothes.getExternalProductId()) && !"NONE".equalsIgnoreCase(clothes.getExternalProductId())
+                ? clothes.getExternalProductId()
+                : "CLOTHES_" + clothes.getId();
+        return new NaverShoppingProductResponse(
+                clothes.getName(),
+                normalizeExternalValue(clothes.getExternalProductUrl()),
+                normalizeExternalValue(clothes.getImageUrl()),
+                null,
+                null,
+                normalizeExternalValue(clothes.getExternalSource()),
+                productId,
+                "INTERNAL",
+                normalizeExternalValue(clothes.getBrandName()),
+                normalizeExternalValue(clothes.getBrandName()),
+                "패션의류",
+                getGenderCategoryLabel(clothes),
+                defaultIfBlank(clothes.getCategory(), "UNKNOWN"),
+                toItemTypeLabel(clothes.getItemType()),
+                clothes.getId(),
+                "INTERNAL"
+        );
+    }
+
     private String productIdentityKey(NaverShoppingProductResponse product) {
         String normalizedTitle = defaultIfBlank(product.title(), "")
                 .toLowerCase()
@@ -690,6 +755,21 @@ public class AiMdRecommendationService {
             return "title:" + normalizedTitle;
         }
         return "id:" + defaultIfBlank(product.productId(), product.link());
+    }
+
+    private String normalizeExternalValue(String value) {
+        if (!StringUtils.hasText(value) || "NONE".equalsIgnoreCase(value)) {
+            return "";
+        }
+        return value.trim();
+    }
+
+    private String getGenderCategoryLabel(Clothes clothes) {
+        return switch (clothes.getGender()) {
+            case MALE -> "남성의류";
+            case FEMALE -> "여성의류";
+            case UNISEX -> "공용의류";
+        };
     }
 
     private boolean addRecommendationIfDiverse(
@@ -979,9 +1059,11 @@ public class AiMdRecommendationService {
             return "- 없음";
         }
         return products.stream()
-                .map(product -> "- productId=%s, outfitCategory=%s, title=%s, brand=%s, mall=%s, price=%s, naverCategory=%s/%s/%s"
+                .map(product -> "- productId=%s, clothesId=%s, source=%s, outfitCategory=%s, title=%s, brand=%s, mall=%s, price=%s, naverCategory=%s/%s/%s"
                         .formatted(
                                 product.productId(),
+                                product.clothesId(),
+                                defaultIfBlank(product.candidateSource(), "NAVER"),
                                 defaultIfBlank(resolveExternalProductCategory(product), "UNKNOWN"),
                                 product.title(),
                                 defaultIfBlank(product.brand(), "UNKNOWN"),

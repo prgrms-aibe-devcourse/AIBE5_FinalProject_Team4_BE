@@ -162,7 +162,7 @@ class AiMdRecommendationServiceTest {
         )).thenReturn(List.of(wardrobeItem));
 
         AiMdRecommendationService service = new AiMdRecommendationService(
-                null, wardrobeClothesRepository, null, null, null, null, null, null, null, null, null
+                null, wardrobeClothesRepository, null, null, null, null, null, null, null, null, null, null, null
         );
 
         List<?> result = ReflectionTestUtils.invokeMethod(service, "findAiMdWardrobeItems", 1L);
@@ -421,7 +421,7 @@ class AiMdRecommendationServiceTest {
 
     private AiMdRecommendationService serviceWithUserStyleRepository(UserStyleRepository userStyleRepository) {
         return new AiMdRecommendationService(
-                null, null, null, null, null, null, null, userStyleRepository, null, null, null, null
+                null, null, null, null, null, null, null, null, userStyleRepository, null, null, null, null
         );  // 마지막 null이 OutfitStyleService
     }
 
@@ -514,7 +514,7 @@ class AiMdRecommendationServiceTest {
         AiMdRecommendationService service = new AiMdRecommendationService(
                 userRepository, wardrobeClothesRepository, outfitBookRepository,
                 outfitRepository, outfitItemRepository,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 outfitStyleService
         );
 

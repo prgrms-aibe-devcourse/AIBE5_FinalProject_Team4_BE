@@ -10,8 +10,10 @@ import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.StyleRole;
+import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.recommendation.dto.response.SimilarProductRecommendationResponse;
+import com.closetnangam.be.domain.recommendation.repository.RecommendationFeedbackRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
@@ -42,6 +44,12 @@ class SimilarProductRecommendationServiceTest {
 
     @Mock
     private WardrobeClothesRepository wardrobeClothesRepository;
+
+    @Mock
+    private ClothesRepository clothesRepository;
+
+    @Mock
+    private RecommendationFeedbackRepository recommendationFeedbackRepository;
 
     @Mock
     private NaverApiService naverApiService;

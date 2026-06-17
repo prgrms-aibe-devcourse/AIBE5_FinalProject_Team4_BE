@@ -6,14 +6,19 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.recommendation.dto.response.SimilarProductRecommendationResponse;
+import com.closetnangam.be.domain.recommendation.entity.RecommendationFeedback;
+import com.closetnangam.be.domain.recommendation.repository.RecommendationFeedbackRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
 import com.closetnangam.be.global.external.naver.service.NaverApiService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,12 +41,15 @@ import java.util.stream.Stream;
 public class SimilarProductRecommendationService {
 
     private static final int RECOMMENDATION_COUNT = 50;
+    private static final int INTERNAL_CANDIDATE_COUNT = 80;
     private static final int SEARCH_DISPLAY_COUNT = 50;
     private static final int SEARCH_PAGE_COUNT = 2;
     private static final List<Integer> SEARCH_START_INDEXES = List.of(1, 51, 101, 151, 201);
     private static final List<String> SEARCH_SORT_OPTIONS = List.of("sim", "date");
 
     private final WardrobeClothesRepository wardrobeClothesRepository;
+    private final ClothesRepository clothesRepository;
+    private final RecommendationFeedbackRepository recommendationFeedbackRepository;
     private final NaverApiService naverApiService;
 
     /**
@@ -57,7 +65,7 @@ public class SimilarProductRecommendationService {
 
         Clothes baseClothes = wardrobeClothes.getClothes();
         String query = buildSearchQuery(wardrobeClothes);
-        List<NaverShoppingProductResponse> products = searchSimilarProducts(query);
+        List<NaverShoppingProductResponse> products = searchSimilarProducts(userId, baseClothes, query);
 
         return new SimilarProductRecommendationResponse(
                 ClothesResponse.from(baseClothes, wardrobeClothes),
@@ -99,11 +107,21 @@ public class SimilarProductRecommendationService {
      * <p>최종 응답도 셔플해 같은 후보군이어도 노출 순서가 고정되지 않게 한다. 네이버 API 기본 검색 개수는
      * 다른 기능에 영향을 줄 수 있으므로 유사상품 추천에서만 50개를 명시적으로 요청한다.</p>
      */
-    private List<NaverShoppingProductResponse> searchSimilarProducts(String query) {
+    private List<NaverShoppingProductResponse> searchSimilarProducts(Long userId, Clothes baseClothes, String query) {
         List<Integer> starts = new ArrayList<>(SEARCH_START_INDEXES);
         Collections.shuffle(starts);
 
         Map<String, NaverShoppingProductResponse> productByKey = new LinkedHashMap<>();
+        List<Long> excludedClothesIds = findExcludedClothesIds(userId);
+        clothesRepository.findSimilarProductInternalCandidates(
+                        baseClothes.getId(),
+                        excludedClothesIds,
+                        baseClothes.getCategory(),
+                        PageRequest.of(0, INTERNAL_CANDIDATE_COUNT)
+                ).stream()
+                .map(this::toInternalProductResponse)
+                .forEach(product -> productByKey.putIfAbsent(deduplicationKey(product), product));
+
         for (int index = 0; index < Math.min(SEARCH_PAGE_COUNT, starts.size()); index++) {
             String sort = randomSort();
             List<NaverShoppingProductResponse> products = naverApiService.searchShoppingProducts(
@@ -123,6 +141,44 @@ public class SimilarProductRecommendationService {
             return shuffledProducts;
         }
         return shuffledProducts.subList(0, RECOMMENDATION_COUNT);
+    }
+
+    private List<Long> findExcludedClothesIds(Long userId) {
+        List<Long> excluded = new ArrayList<>();
+        excluded.addAll(wardrobeClothesRepository.findOwnedClothesIdsByUserId(userId, com.closetnangam.be.domain.clothes.enums.OwnershipStatus.OWNED));
+        excluded.addAll(wardrobeClothesRepository.findOwnedClothesIdsByUserId(userId, com.closetnangam.be.domain.clothes.enums.OwnershipStatus.WISHLIST));
+        recommendationFeedbackRepository.findAllByUserId(userId).stream()
+                .filter(RecommendationFeedback::isExcluded)
+                .map(feedback -> feedback.getClothes().getId())
+                .forEach(excluded::add);
+        if (excluded.isEmpty()) {
+            return List.of(-1L);
+        }
+        return excluded.stream().distinct().toList();
+    }
+
+    private NaverShoppingProductResponse toInternalProductResponse(Clothes clothes) {
+        String productId = StringUtils.hasText(clothes.getExternalProductId()) && !"NONE".equalsIgnoreCase(clothes.getExternalProductId())
+                ? clothes.getExternalProductId()
+                : "CLOTHES_" + clothes.getId();
+        return new NaverShoppingProductResponse(
+                clothes.getName(),
+                normalize(clothes.getExternalProductUrl()),
+                normalize(clothes.getImageUrl()),
+                null,
+                null,
+                normalize(clothes.getExternalSource()),
+                productId,
+                "INTERNAL",
+                normalize(clothes.getBrandName()),
+                normalize(clothes.getBrandName()),
+                "패션의류",
+                getGenderCategoryLabel(clothes),
+                normalize(clothes.getCategory()),
+                getItemTypeLabel(clothes),
+                clothes.getId(),
+                "INTERNAL"
+        );
     }
 
     private String randomSort() {
@@ -152,6 +208,14 @@ public class SimilarProductRecommendationService {
             return "여성";
         }
         return "";
+    }
+
+    private String getGenderCategoryLabel(Clothes clothes) {
+        return switch (clothes.getGender()) {
+            case MALE -> "남성의류";
+            case FEMALE -> "여성의류";
+            case UNISEX -> "공용의류";
+        };
     }
 
     /**
