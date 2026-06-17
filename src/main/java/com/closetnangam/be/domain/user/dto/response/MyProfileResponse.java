@@ -2,6 +2,7 @@ package com.closetnangam.be.domain.user.dto.response;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.closetnangam.be.domain.user.entity.User;
 
 public record MyProfileResponse(
         Long userId,
