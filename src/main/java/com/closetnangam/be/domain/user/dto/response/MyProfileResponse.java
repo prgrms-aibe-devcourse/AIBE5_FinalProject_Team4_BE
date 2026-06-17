@@ -7,6 +7,7 @@ import java.util.List;
 
 public record MyProfileResponse(
         Long userId,
+        String email,
         String nickname,
         boolean onboarded,
         LocalDate birthDate,
@@ -17,6 +18,7 @@ public record MyProfileResponse(
         String profileBio,
         String externalLinkUrl,
         List<String> styleCodes,
-        List<String> socialProviders
+        List<String> socialProviders,
+        List<SocialAccountResponse> socialAccounts
 ) {
 }

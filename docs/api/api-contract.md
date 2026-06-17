@@ -104,6 +104,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
 | `userId` | Long | 사용자 ID |
+| `email` | String | 사용자 계정 이메일. 소셜 로그인에서 확인된 이메일을 조회용으로 반환 |
 | `nickname` | String? | 온보딩/마이페이지에서 사용자가 설정한 닉네임. 온보딩 완료 전에는 `null`일 수 있음 |
 | `onboarded` | boolean | 온보딩 완료 여부. 닉네임, 사용자 성별, 생년월일, 지역 코드, 선호 스타일이 모두 저장되면 true |
 | `birthDate` | Date? | 생년월일. 온보딩 완료 전에는 `null`일 수 있음 |
@@ -115,6 +116,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `externalLinkUrl` | String | 외부 링크 URL |
 | `styleCodes` | String[] | 선호 스타일 code 배열 |
 | `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
+| `socialAccounts` | Object[] | 연결된 소셜 로그인 제공자와 제공자 이메일 목록. 조회 전용 |
 
 #### GET /api/v1/users/nickname/check 응답 필드
 
@@ -144,6 +146,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
 | `userId` | Long | 사용자 ID |
+| `email` | String | 사용자 계정 이메일. 소셜 로그인에서 확인된 이메일을 조회용으로 반환 |
 | `nickname` | String | 저장된 닉네임 |
 | `onboarded` | boolean | 온보딩 완료 여부. 프로필과 선호 스타일 저장 상태를 함께 기준으로 판단 |
 | `birthDate` | Date | 저장된 생년월일 |
@@ -155,6 +158,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `externalLinkUrl` | String | 저장된 외부 링크 URL |
 | `styleCodes` | String[] | 선호 스타일 code 배열 |
 | `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
+| `socialAccounts` | Object[] | 연결된 소셜 로그인 제공자와 제공자 이메일 목록. 조회 전용 |
 
 #### POST /api/v1/users/onboarding 요청 필드
 

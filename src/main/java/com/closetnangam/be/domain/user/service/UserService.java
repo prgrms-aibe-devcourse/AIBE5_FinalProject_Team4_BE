@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
 import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
 import com.closetnangam.be.domain.user.dto.response.MyProfileResponse;
 import com.closetnangam.be.domain.user.dto.response.NicknameAvailabilityResponse;
+import com.closetnangam.be.domain.user.dto.response.SocialAccountResponse;
 import com.closetnangam.be.domain.user.dto.response.UserProfileResponse;
 import com.closetnangam.be.domain.user.entity.SocialAccount;
 import com.closetnangam.be.domain.user.entity.User;
@@ -276,14 +277,26 @@ public class UserService {
                 .map(userStyle -> userStyle.getStyle().getCode())
                 .toList();
 
-        List<String> socialProviders = socialAccountRepository.findAllByUserId(user.getId()).stream()
+        List<SocialAccount> socialAccountList = socialAccountRepository.findAllByUserId(user.getId()).stream()
+                .sorted(Comparator.comparing(SocialAccount::getProvider))
+                .toList();
+
+        List<String> socialProviders = socialAccountList.stream()
                 .map(SocialAccount::getProvider)
                 .distinct()
                 .sorted()
                 .toList();
 
+        List<SocialAccountResponse> socialAccounts = socialAccountList.stream()
+                .map(account -> new SocialAccountResponse(
+                        account.getProvider(),
+                        account.getProviderEmail()
+                ))
+                .toList();
+
         return new MyProfileResponse(
                 user.getId(),
+                user.getEmail(),
                 user.getNickname(),
                 isOnboarded(user, styleCodes),
                 user.getBirthDate(),
@@ -294,7 +307,8 @@ public class UserService {
                 user.getProfileBio(),
                 user.getExternalLinkUrl(),
                 styleCodes,
-                socialProviders
+                socialProviders,
+                socialAccounts
         );
     }
 
