@@ -3,12 +3,26 @@ package com.closetnangam.be.domain.recommendation.service;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdGeminiOutfitResult;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse.ProductRecommendation;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.entity.UserStyle;
 import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
+import com.closetnangam.be.domain.outfit.entity.Outfit;
+import com.closetnangam.be.domain.outfit.entity.OutfitBook;
+import com.closetnangam.be.domain.outfit.entity.OutfitItem;
+import com.closetnangam.be.domain.outfit.repository.OutfitBookRepository;
+import com.closetnangam.be.domain.outfit.repository.OutfitItemRepository;
+import com.closetnangam.be.domain.outfit.repository.OutfitRepository;
+import com.closetnangam.be.domain.outfit.service.OutfitStyleService;
+import com.closetnangam.be.domain.recommendation.dto.request.AiMdOutfitSaveRequest;
+import com.closetnangam.be.domain.user.repository.UserRepository;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -351,8 +365,8 @@ class AiMdRecommendationServiceTest {
 
     private AiMdRecommendationService serviceWithUserStyleRepository(UserStyleRepository userStyleRepository) {
         return new AiMdRecommendationService(
-                null, null, null, null, null, null, null, userStyleRepository, null, null, null
-        );
+                null, null, null, null, null, null, null, userStyleRepository, null, null, null, null
+        );  // 마지막 null이 OutfitStyleService
     }
 
     private NaverShoppingProductResponse product(
@@ -385,5 +399,87 @@ class AiMdRecommendationServiceTest {
                 category3,
                 ""
         );
+    }
+    @Test
+    @DisplayName("AI MD 코디 저장 시 outfitStyleService.saveOutfitStyles가 호출된다")
+    void saveRecommendedOutfit_호출시_outfitStyles_저장된다() {
+        // given
+        UserRepository userRepository = mock(UserRepository.class);
+        WardrobeClothesRepository wardrobeClothesRepository = mock(WardrobeClothesRepository.class);
+        OutfitBookRepository outfitBookRepository = mock(OutfitBookRepository.class);
+        OutfitRepository outfitRepository = mock(OutfitRepository.class);
+        OutfitItemRepository outfitItemRepository = mock(OutfitItemRepository.class);
+        OutfitStyleService outfitStyleService = mock(OutfitStyleService.class);
+
+        User user = mock(User.class);
+        when(user.getId()).thenReturn(1L);
+        when(user.getGender()).thenReturn(User.Gender.MALE);
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+
+        Clothes clothes = mock(Clothes.class);
+        when(clothes.getCategory()).thenReturn("TOP");
+        when(clothes.getSortedStyleTags()).thenReturn(List.of());
+
+        WardrobeClothes wardrobeClothes = mock(WardrobeClothes.class);
+        when(wardrobeClothes.getId()).thenReturn(1L);
+        when(wardrobeClothes.getClothes()).thenReturn(clothes);
+        when(wardrobeClothes.getUserImageUrl()).thenReturn("https://image.url");
+
+        Clothes bottomClothes = mock(Clothes.class);
+        when(bottomClothes.getCategory()).thenReturn("BOTTOM");
+        when(bottomClothes.getSortedStyleTags()).thenReturn(List.of());
+        WardrobeClothes bottomWardrobe = mock(WardrobeClothes.class);
+        when(bottomWardrobe.getId()).thenReturn(2L);
+        when(bottomWardrobe.getClothes()).thenReturn(bottomClothes);
+
+        Clothes shoesClothes = mock(Clothes.class);
+        when(shoesClothes.getCategory()).thenReturn("SHOES");
+        when(shoesClothes.getSortedStyleTags()).thenReturn(List.of());
+        WardrobeClothes shoesWardrobe = mock(WardrobeClothes.class);
+        when(shoesWardrobe.getId()).thenReturn(3L);
+        when(shoesWardrobe.getClothes()).thenReturn(shoesClothes);
+
+        when(wardrobeClothesRepository.findOwnedForStatistics(1L, com.closetnangam.be.domain.clothes.enums.OwnershipStatus.OWNED))
+                .thenReturn(List.of(wardrobeClothes, bottomWardrobe, shoesWardrobe));
+
+        OutfitBook outfitBook = mock(OutfitBook.class);
+        when(outfitBook.getId()).thenReturn(1L);
+        when(outfitBookRepository.findByUser_Id(1L)).thenReturn(java.util.Optional.of(outfitBook));
+
+        Outfit outfit = mock(Outfit.class);
+        when(outfit.getOutfitBook()).thenReturn(outfitBook);
+        when(outfit.getOutfitId()).thenReturn(1L);
+        when(outfitRepository.save(any())).thenReturn(outfit);
+
+        OutfitItem savedItem = mock(OutfitItem.class);
+        when(savedItem.getClothes()).thenReturn(clothes);
+        when(outfitItemRepository.saveAll(any())).thenReturn(List.of(savedItem));
+
+        AiMdRecommendationService service = new AiMdRecommendationService(
+                userRepository, wardrobeClothesRepository, outfitBookRepository,
+                outfitRepository, outfitItemRepository,
+                null, null, null, null, null, null,
+                outfitStyleService
+        );
+
+        AiMdOutfitSaveRequest request = new AiMdOutfitSaveRequest(
+                "테스트 코디", "설명", "DAILY", "ALL_SEASON",
+                "reason", "tip",
+                List.of(1L, 2L, 3L),
+                List.of()
+        );
+
+        // when
+        ReflectionTestUtils.invokeMethod(
+                service, "saveOutfitRecommendation",
+                AiMdPersona.TAE_SIK, outfitBook,
+                "테스트 코디", "설명", "DAILY", "ALL_SEASON",
+                "reason", "tip",
+                List.of(wardrobeClothes, bottomWardrobe, shoesWardrobe),
+                List.of()
+        );
+
+        // then
+        verify(outfitStyleService, times(1)).saveOutfitStyles(any(), anyList());
     }
 }

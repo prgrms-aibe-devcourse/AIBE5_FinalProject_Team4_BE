@@ -22,10 +22,9 @@ public class OutfitCreateRequest {
     @NotBlank
     private String description;
 
-    @NotBlank
+
     @Size(max = 500)
-    // @URL(message = "올바른 URL 형식이 아닙니다.") // 필요하다면 @URL 추가 가능!
-    private String thumbnailUrl;
+    private String thumbnailUrl = "";
 
     @NotBlank
     @Size(max = 50)
@@ -45,7 +44,7 @@ public class OutfitCreateRequest {
                 .outfitBook(outfitBook)
                 .title(this.title)
                 .description(this.description)
-                .thumbnailUrl(this.thumbnailUrl)
+                .thumbnailUrl(this.thumbnailUrl != null ? this.thumbnailUrl : "")
                 .situation(this.situation)
                 .season(this.season)
                 .favorite(Boolean.TRUE.equals(this.favorite))
