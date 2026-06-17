@@ -20,31 +20,31 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-        name = "feed_likes",
+        name = "user_follows",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_feed_likes_user_post",
-                columnNames = {"user_id", "feed_post_id"}
+                name = "uk_user_follows_follower_followee",
+                columnNames = {"follower_id", "followee_id"}
         )
 )
-public class FeedPostLike extends BaseEntity {
+public class UserFollow extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "feed_like_id")
+    @Column(name = "user_follow_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "follower_id", nullable = false)
+    private User follower;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "feed_post_id", nullable = false)
-    private FeedPost feedPost;
+    @JoinColumn(name = "followee_id", nullable = false)
+    private User followee;
 
-    public static FeedPostLike of(User user, FeedPost feedPost) {
-        FeedPostLike like = new FeedPostLike();
-        like.user = user;
-        like.feedPost = feedPost;
-        return like;
+    public static UserFollow of(User follower, User followee) {
+        UserFollow follow = new UserFollow();
+        follow.follower = follower;
+        follow.followee = followee;
+        return follow;
     }
 }

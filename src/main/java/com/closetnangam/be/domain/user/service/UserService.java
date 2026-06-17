@@ -36,7 +36,13 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
-        return new MyProfileResponse(user.getId(), user.getNickname(), user.isOnboarded(),user.getRegionName());
+        return new MyProfileResponse(
+                user.getId(),
+                user.getNickname(),
+                user.isOnboarded(),
+                user.getRegionName(),
+                user.getGender()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -77,7 +83,13 @@ public class UserService {
                 request.regionCode()
         );
 
-        return new MyProfileResponse(user.getId(), user.getNickname(), user.isOnboarded(),user.getRegionName());
+        return new MyProfileResponse(
+                user.getId(),
+                user.getNickname(),
+                user.isOnboarded(),
+                user.getRegionName(),
+                user.getGender()
+        );
     }
 
     @Transactional
