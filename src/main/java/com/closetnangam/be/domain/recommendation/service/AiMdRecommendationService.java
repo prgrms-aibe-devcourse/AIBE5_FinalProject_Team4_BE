@@ -20,6 +20,7 @@ import com.closetnangam.be.domain.outfit.entity.OutfitItem;
 import com.closetnangam.be.domain.outfit.repository.OutfitBookRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitItemRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitRepository;
+import com.closetnangam.be.domain.outfit.service.OutfitStyleService;
 import com.closetnangam.be.domain.recommendation.dto.request.AiMdOutfitSaveRequest;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdGeminiOutfitResult;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdGeminiProductResult;
@@ -105,6 +106,7 @@ public class AiMdRecommendationService {
     private final NaverApiService naverApiService;
     private final ExternalClothesService externalClothesService;
     private final GeminiService geminiService;
+    private final OutfitStyleService outfitStyleService;  // OutfitStyleRepository 대신 공통 서비스 주입
 
     public List<AiMdPersonaResponse> getPersonas(Long userId) {
         User user = findUser(userId);
@@ -140,10 +142,6 @@ public class AiMdRecommendationService {
             throw new IllegalStateException("AI MD가 저장 가능한 코디 4개를 구성하지 못했습니다.");
         }
 
-        /*
-         * 추천 조회 단계에서는 DB에 아무것도 저장하지 않는다.
-         * 사용자가 마음에 드는 코디를 선택하고 저장 버튼을 눌렀을 때만 saveRecommendedOutfit에서 저장한다.
-         */
         List<OutfitRecommendation> outfitRecommendations = savableOutfits.stream()
                 .map(candidate -> toOutfitRecommendation(persona, candidate, wardrobeById, productById))
                 .toList();
@@ -280,10 +278,6 @@ public class AiMdRecommendationService {
             List<WardrobeClothes> ownedItems,
             List<NaverShoppingProductResponse> externalProducts
     ) {
-        /*
-         * 이 메서드는 사용자가 저장 버튼을 누른 뒤에만 호출된다.
-         * 추천 조회 단계에서는 Outfit/OutfitItem/외부 Clothes를 만들지 않아 사용자가 원하지 않는 코디가 저장되지 않는다.
-         */
         if (ownedItems.isEmpty()) {
             throw new IllegalStateException("AI MD가 옷장 등록 옷을 포함하지 않은 코디를 반환했습니다.");
         }
@@ -309,7 +303,8 @@ public class AiMdRecommendationService {
         for (Clothes externalItem : externalClothes) {
             outfitItems.add(toOutfitItem(outfit, externalItem, layerOrder++));
         }
-        outfitItemRepository.saveAll(outfitItems);
+        List<OutfitItem> savedItems = outfitItemRepository.saveAll(outfitItems);
+        outfitStyleService.saveOutfitStyles(outfit, savedItems);  // 공통 서비스로 스타일 저장
 
         return new SavedOutfitRecommendation(
                 OutfitResponse.from(outfit),
@@ -488,10 +483,6 @@ public class AiMdRecommendationService {
                 .toList();
     }
 
-    /**
-     * 일반 검색 한 번으로는 후보가 상의에 치우칠 수 있으므로 코디 구성 카테고리별로 상품을 조회합니다.
-     * 네이버 검색 결과 중 실제 판별 카테고리가 검색 목적과 일치하는 상품만 Gemini 후보로 전달합니다.
-     */
     private List<NaverShoppingProductResponse> searchOutfitProductsByCategory(AiMdPersona persona) {
         String genderKeyword = persona.gender() == User.Gender.MALE ? "남성" : "여성";
         String styleKeyword = randomElement(persona.styleNames());
@@ -527,10 +518,6 @@ public class AiMdRecommendationService {
         return values.get(ThreadLocalRandom.current().nextInt(values.size()));
     }
 
-    /**
-     * 추천 조회와 저장 요청 모두 동일한 완성형 코디 규칙을 적용합니다.
-     * 아우터는 선택 사항이지만 상의·하의·신발은 각각 최소 한 개가 필요합니다.
-     */
     private boolean hasCompleteOutfitComposition(
             List<WardrobeClothes> ownedItems,
             List<NaverShoppingProductResponse> externalProducts
@@ -549,10 +536,6 @@ public class AiMdRecommendationService {
         return categories.containsAll(REQUIRED_OUTFIT_CATEGORIES);
     }
 
-    /**
-     * 네이버의 카테고리와 상품명을 함께 사용해 코디 구성 카테고리를 판별합니다.
-     * 신발·하의·아우터를 상의보다 먼저 확인해 복합 상품명에서 상의로 잘못 분류되는 경우를 줄입니다.
-     */
     private String resolveExternalProductCategory(NaverShoppingProductResponse product) {
         if (product == null) {
             return null;
@@ -594,11 +577,6 @@ public class AiMdRecommendationService {
         return aiResult.products();
     }
 
-    /**
-     * 사용자 스타일 점수를 검색 비중으로 변환합니다.
-     * combinedWeight가 높은 스타일은 가중 추첨 구간을 더 많이 차지하고, 낮은 양수 스타일도 후보에는 남겨
-     * 재추천할 때 가끔 노출될 수 있게 합니다. MD 전문 스타일에는 소폭 보너스를 더합니다.
-     */
     private List<StyleSearchProfile> buildStyleSearchProfiles(Long userId, AiMdPersona persona) {
         List<StyleSearchProfile> profiles = userStyleRepository.findAllByUserId(userId).stream()
                 .filter(userStyle -> userStyle.getCombinedWeight() != null && userStyle.getCombinedWeight() > 0)
@@ -609,10 +587,6 @@ public class AiMdRecommendationService {
             return profiles;
         }
 
-        /*
-         * 아직 USER_STYLES 점수가 없는 사용자는 선택한 MD의 스타일을 fallback으로 사용합니다.
-         * 앞쪽 대표 스타일에 더 높은 기본 가중치를 주되 나머지 스타일도 검색될 수 있게 유지합니다.
-         */
         List<StyleSearchProfile> fallback = new ArrayList<>();
         for (int index = 0; index < persona.styleNames().size(); index++) {
             fallback.add(new StyleSearchProfile(
@@ -633,10 +607,6 @@ public class AiMdRecommendationService {
         );
     }
 
-    /**
-     * 매 요청마다 스타일·카테고리·색상·검색 페이지를 다시 조합합니다.
-     * 같은 사용자라도 재추천 시 후보군이 달라지며, 스타일 선택 확률은 USER_STYLES 가중치를 따릅니다.
-     */
     private List<ProductSearchPlan> buildProductSearchPlans(
             AiMdPersona persona,
             List<WardrobeClothes> wardrobeItems,
@@ -695,19 +665,15 @@ public class AiMdRecommendationService {
         return colors.get(ThreadLocalRandom.current().nextInt(colors.size()));
     }
 
-    /**
-     * 여러 검색 결과를 한 후보군으로 합치고 동일 productId 및 동일한 정규화 상품명을 제거합니다.
-     * 최종 후보 순서를 섞어 Gemini가 네이버의 고정 정렬 순서에 반복적으로 끌려가지 않게 합니다.
-     */
     private List<NaverShoppingProductResponse> searchProductCandidates(List<ProductSearchPlan> searchPlans) {
         Map<String, NaverShoppingProductResponse> candidatesByKey = new LinkedHashMap<>();
         for (ProductSearchPlan plan : searchPlans) {
             naverApiService.searchShoppingProducts(
-                            plan.query(),
-                            PRODUCT_SEARCH_RESULTS_PER_QUERY,
-                            plan.start(),
-                            "sim"
-                    ).forEach(product -> candidatesByKey.putIfAbsent(productIdentityKey(product), product));
+                    plan.query(),
+                    PRODUCT_SEARCH_RESULTS_PER_QUERY,
+                    plan.start(),
+                    "sim"
+            ).forEach(product -> candidatesByKey.putIfAbsent(productIdentityKey(product), product));
         }
         List<NaverShoppingProductResponse> candidates = new ArrayList<>(candidatesByKey.values());
         Collections.shuffle(candidates);
@@ -726,10 +692,6 @@ public class AiMdRecommendationService {
         return "id:" + defaultIfBlank(product.productId(), product.link());
     }
 
-    /**
-     * 최종 응답이 특정 브랜드나 상의 한 종류로 몰리지 않도록 서비스 레벨에서 상한을 적용합니다.
-     * Gemini 지침만으로 다양성을 보장하지 않고, fallback 상품에도 동일한 제한을 사용합니다.
-     */
     private boolean addRecommendationIfDiverse(
             List<ProductRecommendation> recommendations,
             Set<String> selectedProductKeys,
