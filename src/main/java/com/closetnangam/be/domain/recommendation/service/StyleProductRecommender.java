@@ -2,6 +2,7 @@ package com.closetnangam.be.domain.recommendation.service;
 
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
@@ -78,11 +79,19 @@ public class StyleProductRecommender {
                 currentUserId, wardrobeId, currentTemp, candidates.size()
         );
 
-        // [4] 점수 계산 및 필터링
+// [4] 점수 계산 및 필터링
+        User.Gender userGender = wardrobe.getUser().getGender();
+
         List<ScoredRecommendation> scoredRecommendations = new ArrayList<>();
         for (Clothes clothes : candidates) {
             if (clothes == null || clothes.getId() == null || excludedSet.contains(clothes.getId())) {
                 continue;
+            }
+            // 성별 필터링 추가
+            ClothesGender clothesGender = clothes.getGender();
+            if (clothesGender != null && clothesGender != ClothesGender.UNISEX) {
+                if (userGender == User.Gender.MALE && clothesGender != ClothesGender.MALE) continue;
+                if (userGender == User.Gender.FEMALE && clothesGender != ClothesGender.FEMALE) continue;
             }
             scoredRecommendations.add(scoreCandidateWithUserStyles(wardrobe.getUser(), userStyles, clothes, currentTemp));
         }

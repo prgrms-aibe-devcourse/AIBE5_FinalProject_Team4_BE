@@ -41,6 +41,7 @@ public class OutfitService {
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final ClothesRepository clothesRepository;
     private final UserRepository userRepository;
+    private final OutfitStyleService outfitStyleService;  // OutfitStyleRepository 대신 공통 서비스 주입
 
     @Transactional
     public OutfitBookResponse createBook(Long userId) {
@@ -65,6 +66,7 @@ public class OutfitService {
         List<OutfitItem> savedItems = Collections.emptyList();
         if (request.getItems() != null && !request.getItems().isEmpty()) {
             savedItems = saveOutfitItems(outfit, userId, request.getItems());
+            outfitStyleService.saveOutfitStyles(outfit, savedItems);  // 추가
         }
 
         return toOutfitResponse(outfit, userId, savedItems);
@@ -90,10 +92,12 @@ public class OutfitService {
         List<OutfitItem> currentItems;
         if (request.getItems() != null) {
             outfitItemRepository.deleteAllByOutfit_OutfitId(outfitId);
+            outfitStyleService.deleteOutfitStyles(outfitId);  // 공통 서비스로 변경
             if (request.getItems().isEmpty()) {
                 currentItems = Collections.emptyList();
             } else {
                 currentItems = saveOutfitItems(outfit, userId, request.getItems());
+                outfitStyleService.saveOutfitStyles(outfit, currentItems);  // 공통 서비스로 변경
             }
         } else {
             // items가 null인 경우 기존 구성 유지
@@ -143,7 +147,6 @@ public class OutfitService {
                     Clothes clothes = clothesMap.get(itemRequest.getClothesId());
 
                     // 2. WardrobeClothes에 없으면 EXTERNAL_SHOPPING만 폴백 허용
-                    // PHOTO / PURCHASE_HISTORY는 반드시 본인 옷장 소유여야 함
                     if (clothes == null) {
                         clothes = clothesRepository.findById(itemRequest.getClothesId())
                                 .orElseThrow(() -> new EntityNotFoundException(
@@ -165,6 +168,7 @@ public class OutfitService {
                 .toList();
         return outfitItemRepository.saveAll(items);
     }
+
     public OutfitResponse getOutfit(Long bookId, Long outfitId, Long userId) {
         Outfit outfit = outfitRepository.findActiveByOutfitIdAndOutfitBook_Id(outfitId, bookId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 코디입니다."));
@@ -201,10 +205,6 @@ public class OutfitService {
             return OutfitBookResponse.from(outfitBook, userId, outfits);
         }
 
-        /*
-         * AI MD가 저장한 코디는 OUTFIT_ITEMS에 실제 구성 옷을 남긴다.
-         * 코디북 재조회에서도 FE가 저장된 코디를 복원할 수 있도록 outfitId별 구성 아이템을 함께 내려준다.
-         */
         List<OutfitItem> outfitItems = outfitItemRepository.findAllByOutfitBookId(outfitBook.getId());
         Map<Long, WardrobeClothes> wardrobeClothesByClothesId = findWardrobeClothesByClothesId(userId, outfitItems);
         Map<Long, List<OutfitItemResponse>> itemResponsesByOutfitId = outfitItems.stream()
@@ -238,10 +238,6 @@ public class OutfitService {
                 .collect(Collectors.toMap(
                         item -> item.getClothes().getId(),
                         item -> item,
-                        /*
-                         * 동일 Clothes가 사용자 옷장에 중복 연결된 비정상 데이터가 있어도 코디북 조회는 실패하지 않게 한다.
-                         * 먼저 조회된 활성 WardrobeClothes를 대표 사용자 소유 정보로 사용한다.
-                         */
                         (first, ignored) -> first
                 ));
     }
