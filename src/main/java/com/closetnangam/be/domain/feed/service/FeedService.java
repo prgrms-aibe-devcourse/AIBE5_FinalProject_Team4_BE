@@ -202,7 +202,20 @@ public class FeedService {
         FeedComment saved = feedCommentRepository.save(
                 FeedComment.create(post, author, parent, request.content().trim())
         );
-        return FeedCommentResponse.from(saved, List.of());
+        return FeedCommentResponse.from(saved, List.of(), userId);
+    }
+
+    @Transactional
+    public FeedCommentResponse updateComment(Long postId, Long commentId, Long userId, FeedCommentRequest request) {
+        FeedComment comment = feedCommentRepository.findActiveByIdAndFeedPostId(commentId, postId)
+                .orElseThrow(() -> new EntityNotFoundException("댓글을 찾을 수 없습니다."));
+
+        if (!Objects.equals(comment.getAuthor().getId(), userId)) {
+            throw new AccessDeniedException("댓글을 수정할 권한이 없습니다.");
+        }
+
+        comment.updateContent(request.content().trim());
+        return FeedCommentResponse.from(comment, List.of(), userId);
     }
 
     @Transactional
@@ -228,7 +241,7 @@ public class FeedService {
                 Long parentId = comment.getParent().getId();
                 repliesByParentId
                         .computeIfAbsent(parentId, key -> new ArrayList<>())
-                        .add(FeedCommentResponse.from(comment, List.of()));
+                        .add(FeedCommentResponse.from(comment, List.of(), viewerUserId));
             }
         }
 
@@ -236,7 +249,8 @@ public class FeedService {
                 .filter(comment -> !comment.isReply())
                 .map(comment -> FeedCommentResponse.from(
                         comment,
-                        repliesByParentId.getOrDefault(comment.getId(), List.of())
+                        repliesByParentId.getOrDefault(comment.getId(), List.of()),
+                        viewerUserId
                 ))
                 .toList();
     }

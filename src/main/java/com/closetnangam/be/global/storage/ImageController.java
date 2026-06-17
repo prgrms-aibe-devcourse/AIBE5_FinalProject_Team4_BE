@@ -28,14 +28,15 @@ public class ImageController {
 
     @Operation(
             summary = "의류 사진 조회",
-            description = "업로드된 의류 사진을 소유자 본인에게만 반환합니다. 로그인이 필요합니다."
+            description = """
+                    CLOTHES 공통 옷 이미지를 반환합니다. 로그인한 사용자는 피드·코디 등에 노출된 \
+                    다른 사용자의 옷 사진도 조회할 수 있습니다. path의 userId는 업로드 소유자 ID입니다."""
     )
     @GetMapping("/clothes/{userId}/{filename}")
     public ResponseEntity<byte[]> getClothesImage(
             @PathVariable Long userId,
             @PathVariable String filename
     ) {
-        SecurityUtils.verifyOwnership(userId);
         return serveUserImage(CLOTHES_SUBDIRECTORY, userId, filename);
     }
 
@@ -54,14 +55,15 @@ public class ImageController {
 
     @Operation(
             summary = "피드 사진 조회",
-            description = "업로드된 피드 사진을 소유자 본인에게만 반환합니다. 로그인이 필요합니다."
+            description = """
+                    공개 피드에 포함된 사진을 반환합니다. 로그인한 사용자는 다른 사용자가 업로드한 \
+                    피드 사진도 조회할 수 있습니다. path의 userId는 업로드 소유자 ID입니다."""
     )
     @GetMapping("/feed/{userId}/{filename}")
     public ResponseEntity<byte[]> getFeedImage(
             @PathVariable Long userId,
             @PathVariable String filename
     ) {
-        SecurityUtils.verifyOwnership(userId);
         return serveUserImage(FEED_SUBDIRECTORY, userId, filename);
     }
 

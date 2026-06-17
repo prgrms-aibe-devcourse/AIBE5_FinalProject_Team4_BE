@@ -12,10 +12,12 @@ public record FeedCommentResponse(
         Long parentCommentId,
         String content,
         List<FeedCommentResponse> replies,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        boolean isOwner
 ) {
 
-    public static FeedCommentResponse from(FeedComment comment, List<FeedCommentResponse> replies) {
+    public static FeedCommentResponse from(FeedComment comment, List<FeedCommentResponse> replies, Long viewerUserId) {
+        boolean isOwner = viewerUserId != null && viewerUserId.equals(comment.getAuthor().getId());
         return new FeedCommentResponse(
                 comment.getId(),
                 comment.getFeedPost().getId(),
@@ -23,7 +25,8 @@ public record FeedCommentResponse(
                 comment.getParent() != null ? comment.getParent().getId() : null,
                 comment.getContent(),
                 replies == null ? List.of() : replies,
-                comment.getCreatedAt()
+                comment.getCreatedAt(),
+                isOwner
         );
     }
 }

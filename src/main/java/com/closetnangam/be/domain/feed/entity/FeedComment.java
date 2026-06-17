@@ -72,6 +72,10 @@ public class FeedComment extends BaseEntity {
         return deletedAt != null;
     }
 
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
     public boolean isReply() {
         return parent != null;
     }

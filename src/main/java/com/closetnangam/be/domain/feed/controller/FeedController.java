@@ -137,6 +137,17 @@ public class FeedController {
                 .body(ApiResponse.ok(feedService.createComment(postId, userId, request)));
     }
 
+    @Operation(summary = "댓글 수정", description = "작성자만 댓글 내용을 수정합니다.")
+    @PutMapping("/posts/{postId}/comments/{commentId}")
+    public ResponseEntity<ApiResponse<FeedCommentResponse>> updateComment(
+            @PathVariable @Min(1) Long postId,
+            @PathVariable @Min(1) Long commentId,
+            @Valid @RequestBody FeedCommentRequest request
+    ) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.ok(feedService.updateComment(postId, commentId, userId, request)));
+    }
+
     @Operation(summary = "댓글 삭제", description = "작성자만 댓글을 소프트 삭제합니다.")
     @DeleteMapping("/posts/{postId}/comments/{commentId}")
     public ResponseEntity<ApiResponse<Void>> deleteComment(
