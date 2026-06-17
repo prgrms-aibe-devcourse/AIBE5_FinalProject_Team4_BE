@@ -3,6 +3,8 @@ package com.closetnangam.be.domain.recommendation.service;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
+import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdGeminiOutfitResult;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse.ProductRecommendation;
 import com.closetnangam.be.domain.user.entity.User;
@@ -22,6 +24,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AiMdRecommendationServiceTest {
@@ -114,11 +117,18 @@ class AiMdRecommendationServiceTest {
                 .contains("왜 이 코디가 나에게 어울리는지")
                 .contains("TOP(상의), BOTTOM(하의), SHOES(신발)를 각각 최소 1개")
                 .contains("상의만 여러 개 조합한 결과는 코디로 인정하지 않습니다")
+                .contains("ownershipStatus가 OWNED인 보유 옷과 WISHLIST인 미보유 관심 상품")
                 .contains("전체 분량은 한글 기준 약 180~260자")
-                .contains("선택한 보유 옷과 외부 상품을 빠짐없이 한 번씩 언급")
+                .contains("선택한 옷장 등록 옷과 외부 상품을 빠짐없이 한 번씩 언급")
                 .contains("상의·하의·아우터·신발 등 각 아이템이 코디에서 맡는 역할")
                 .contains("아이템별 설명을 따로 나열하지 말고")
+                .contains("같은 옷장 등록 옷 조합, 같은 외부 상품 조합, 같은 코디 제목과 사유가 반복되지 않도록")
+                .contains("신발 중심, 하의 중심, 아우터 포인트, 상의 레이어드")
                 .contains("태식이 MD가 사용자에게 직접 코디를 제안하는 말투")
+                .contains("태식이 MD라면 네 필드 모두 존댓말 없이 반말")
+                .contains("\"입니다\", \"습니다\", \"해요\", \"이에요\", \"주세요\"")
+                .contains("딱딱한 \"~다\" 평서형으로 끝내지 말고")
+                .contains("\"~야\", \"~해\", \"~좋아\", \"~어울려\"")
                 .contains("\"AI\", \"인공지능\", \"모델\", \"데이터\", \"분석 결과\", \"알고리즘\"")
                 .contains("사용자의 키, 체중, 체형, 신체 비율은 제공되지 않았으므로")
                 .contains("상품명에 체형을 지칭하는 표현이 포함되어 있어도 추천 사유에는 옮겨 쓰지 않습니다")
@@ -126,6 +136,51 @@ class AiMdRecommendationServiceTest {
                 .contains("자연스러운 반말")
                 .contains("가볍게 장난")
                 .contains("사용자를 놀리거나 무례하게 말하지 않고");
+    }
+
+    @Test
+    @DisplayName("AI MD 코디 후보에는 보유 옷과 미보유 관심 상품을 함께 사용한다")
+    void aiMdWardrobeItemsIncludeOwnedAndWishlist() {
+        WardrobeClothesRepository wardrobeClothesRepository = mock(WardrobeClothesRepository.class);
+        WardrobeClothes wardrobeItem = wardrobeItem("TOP");
+        when(wardrobeClothesRepository.findAllActiveByUserIdAndOwnershipStatuses(
+                1L,
+                List.of(OwnershipStatus.OWNED, OwnershipStatus.WISHLIST)
+        )).thenReturn(List.of(wardrobeItem));
+
+        AiMdRecommendationService service = new AiMdRecommendationService(
+                null, wardrobeClothesRepository, null, null, null, null, null, null, null, null, null
+        );
+
+        List<?> result = ReflectionTestUtils.invokeMethod(service, "findAiMdWardrobeItems", 1L);
+
+        assertThat(result).hasSize(1);
+        verify(wardrobeClothesRepository).findAllActiveByUserIdAndOwnershipStatuses(
+                1L,
+                List.of(OwnershipStatus.OWNED, OwnershipStatus.WISHLIST)
+        );
+    }
+
+    @Test
+    @DisplayName("태식이 코디 문구는 서버에서 한 번 더 반말 톤으로 보정한다")
+    void taesikOutfitTextToneRemovesPoliteEndings() {
+        AiMdRecommendationService service = serviceWithUserStyleRepository(null);
+
+        String result = ReflectionTestUtils.invokeMethod(
+                service,
+                "applyOutfitTextTone",
+                AiMdPersona.TAE_SIK,
+                "상의가 중심을 잡아 좋습니다. 하의와 신발도 잘 어울립니다. 그대로 입기 좋은 조합이에요. 전체적으로 좋은 조합이다."
+        );
+
+        assertThat(result)
+                .contains("좋아")
+                .contains("어울려")
+                .contains("조합이야")
+                .doesNotContain("좋습니다")
+                .doesNotContain("어울립니다")
+                .doesNotContain("이에요")
+                .doesNotContain("조합이다");
     }
 
     @Test
@@ -243,6 +298,8 @@ class AiMdRecommendationServiceTest {
         );
 
         assertThat(prompt)
+                .contains("추천 상품 40개")
+                .contains("products 배열은 가능한 한 40개")
                 .contains("[사용자 스타일 가중치]")
                 .contains("가중치가 높은 스타일의 상품은 더 자주")
                 .contains("낮은 양수 스타일도 일부 섞어")

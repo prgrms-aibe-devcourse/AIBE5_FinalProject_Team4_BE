@@ -67,7 +67,7 @@ export interface ApiResponse<T> {
 5-A. 사용자가 원하는 코디를 복수 선택
 6-A. 선택한 코디마다 저장 API를 1회씩 호출
 
-4-B. 상품 추천 요청 → 상품 카드 최대 10개 표시
+4-B. 상품 추천 요청 → 상품 카드 최대 40개 표시
 5-B. 사용자가 원하는 상품을 복수 선택
 6-B. 선택한 상품마다 미보유 옷 저장 API 호출
 ```
@@ -129,10 +129,10 @@ export interface AiMdPersona {
       "id": "junsik",
       "name": "준식이",
       "gender": "MALE",
-      "styleCodes": ["MINIMAL", "CLASSIC", "CITYBOY"],
-      "styleNames": ["미니멀", "클래식", "시티보이"],
+      "styleCodes": ["MINIMAL", "CLASSIC", "CHIC"],
+      "styleNames": ["미니멀", "클래식", "시크"],
       "speechStyle": "댄디한 말투",
-      "description": "정돈된 실루엣과 도시적인 무드를 좋아하는 남자 MD"
+      "description": "정돈된 실루엣과 시크한 도시 무드를 좋아하는 남자 MD"
     }
   ],
   "message": null
@@ -151,12 +151,12 @@ Request body는 없습니다.
 
 ### 동작
 
-- 사용자 보유 옷과 네이버쇼핑 후보를 Gemini에 전달합니다.
+- 사용자 옷장 등록 옷(`OWNED`, `WISHLIST`)과 네이버쇼핑 후보를 Gemini에 전달합니다.
 - 선택한 MD가 코디 후보 4개를 구성합니다.
-- 각 코디에는 사용자 보유 옷이 최소 1개 포함됩니다.
-- 보유 옷과 외부 상품을 합쳐 `TOP`, `BOTTOM`, `SHOES`가 반드시 포함됩니다.
+- 각 코디에는 사용자 옷장 등록 옷이 최소 1개 포함됩니다.
+- 옷장 등록 옷과 외부 상품을 합쳐 `TOP`, `BOTTOM`, `SHOES`가 반드시 포함됩니다.
 - `OUTER`와 외부 상품은 선택 사항입니다.
-- 보유 옷만으로 완성된 코디도 가능합니다.
+- 옷장 등록 옷만으로 완성된 코디도 가능합니다.
 - 이 단계에서는 DB에 아무것도 저장하지 않습니다.
 
 ### 주요 응답 타입
@@ -239,6 +239,8 @@ export interface AiMdOutfitRecommendation {
   season: string;
   reason: string;
   stylingTip: string;
+  // 기존 FE 계약 유지를 위해 필드명은 ownedItems지만,
+  // 각 item의 ownershipStatus는 OWNED 또는 WISHLIST일 수 있습니다.
   ownedItems: Clothes[];
   externalProducts: NaverShoppingProduct[];
 }
@@ -341,7 +343,7 @@ export function toAiMdOutfitSaveRequest(
     stylingTip: outfit.stylingTip,
     wardrobeClothesIds: outfit.ownedItems.map((item) => {
       if (item.wardrobeClothesId == null) {
-        throw new Error("보유 옷 ID가 없는 코디는 저장할 수 없습니다.");
+        throw new Error("옷장 등록 옷 ID가 없는 코디는 저장할 수 없습니다.");
       }
       return item.wardrobeClothesId;
     }),
@@ -356,8 +358,8 @@ export function toAiMdOutfitSaveRequest(
 
 | 조건 | 기준 |
 | --- | --- |
-| 보유 옷 | 현재 사용자의 `wardrobeClothesId` 최소 1개 |
-| 필수 구성 | 보유 옷과 외부 상품을 합쳐 `TOP`, `BOTTOM`, `SHOES` 모두 포함 |
+| 옷장 등록 옷 | 현재 사용자의 `wardrobeClothesId` 최소 1개. `OWNED`, `WISHLIST` 모두 허용 |
+| 필수 구성 | 옷장 등록 옷과 외부 상품을 합쳐 `TOP`, `BOTTOM`, `SHOES` 모두 포함 |
 | 선택 구성 | `OUTER`, 외부 상품 |
 | 외부 상품 없음 | `externalProducts: []` 전송 가능 |
 | title | 필수, 최대 100자 |
@@ -433,7 +435,7 @@ export interface SavedAiMdOutfit {
 GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products
 ```
 
-사용자 스타일 점수, 보유 옷과 선택한 MD 스타일을 기준으로 최대 10개의 네이버쇼핑 상품을 반환합니다.
+사용자 스타일 점수, 보유 옷과 선택한 MD 스타일을 기준으로 최대 40개의 네이버쇼핑 상품을 반환합니다.
 추천 조회만으로 상품이 저장되지는 않습니다.
 
 ### 후보 검색 방식
@@ -441,15 +443,15 @@ GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products
 - `USER_STYLES.combined_weight`가 높은 스타일은 검색어에 더 자주 선택됩니다.
 - 점수가 낮더라도 양수인 스타일은 낮은 빈도로 검색 후보에 포함됩니다.
 - 사용자 스타일 점수가 없으면 선택한 MD의 스타일 순서를 기본 가중치로 사용합니다.
-- 한 번의 요청에서 스타일과 상품 카테고리를 달리한 검색어 6개를 구성합니다.
-- 각 검색은 네이버쇼핑 결과 10개를 조회하며, 1~3페이지 중 하나를 무작위로 사용합니다.
+- 한 번의 요청에서 스타일과 상품 카테고리를 달리한 검색어 8개를 구성합니다.
+- 각 검색은 네이버쇼핑 결과 20개를 조회하며, 여러 검색 페이지 중 하나를 무작위로 사용합니다.
 - 옷장 색상은 일부 검색어에만 무작위로 포함해 특정 색상에 결과가 고정되는 현상을 줄입니다.
-- 최대 60개 원본 결과에서 동일 `productId`와 정규화된 동일 상품명을 제거합니다.
-- 후보를 섞은 뒤 최대 50개를 Gemini에 전달하고 최종 10개를 선택합니다.
+- 최대 160개 원본 결과에서 동일 `productId`와 정규화된 동일 상품명을 제거합니다.
+- 후보를 섞은 뒤 최대 120개를 Gemini에 전달하고 최종 40개를 선택합니다.
 - 재추천 시 검색 페이지, 스타일 조합, 색상 포함 여부와 후보 순서가 달라질 수 있습니다.
 - Gemini에는 동일 모델 반복 방지와 브랜드·카테고리 다양성 조건을 함께 전달합니다.
 - 서버의 1차 선별은 같은 브랜드를 최대 2개, 같은 카테고리를 최대 4개로 제한합니다.
-- 검색 후보가 한쪽에 치우쳐 10개를 채우지 못할 때만 동일 상품 제외를 유지하며 브랜드·카테고리 제한을 완화합니다.
+- 검색 후보가 한쪽에 치우쳐 40개를 채우지 못할 때만 동일 상품 제외를 유지하며 브랜드·카테고리 제한을 완화합니다.
 
 `query`는 실제 네이버쇼핑 검색에 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 사용자 화면에 반드시 노출할 필요는 없습니다.
 
@@ -478,12 +480,12 @@ export interface AiMdProductRecommendationData {
       "id": "junsik",
       "name": "준식이",
       "gender": "MALE",
-      "styleCodes": ["MINIMAL", "CLASSIC", "CITYBOY"],
-      "styleNames": ["미니멀", "클래식", "시티보이"],
+      "styleCodes": ["MINIMAL", "CLASSIC", "CHIC"],
+      "styleNames": ["미니멀", "클래식", "시크"],
       "speechStyle": "댄디한 말투",
-      "description": "정돈된 실루엣과 도시적인 무드를 좋아하는 남자 MD"
+      "description": "정돈된 실루엣과 시크한 도시 무드를 좋아하는 남자 MD"
     },
-    "query": "남성 블랙 미니멀 티셔츠 | 남성 클래식 팬츠 | 남성 시티보이 자켓",
+    "query": "남성 블랙 미니멀 티셔츠 | 남성 클래식 팬츠 | 남성 시크 자켓",
     "products": [
       {
         "product": {
@@ -532,16 +534,16 @@ BE에서 AI MD 추천 상품 전용 저장 API를 추가하는 후속 작업이 
 | `401` | JWT 없음 또는 만료 | 로그인 화면 또는 토큰 갱신 |
 | `403` | JWT 사용자와 path `userId` 불일치 | 접근 불가 안내 |
 | `404` | 사용자 등 리소스 없음 | 이전 화면 이동 또는 데이터 새로고침 |
-| `409` | 보유 옷 없음, Gemini가 유효 코디 4개를 만들지 못함, AI 사용량 초과 | 옷 등록 유도 또는 재시도 UI |
+| `409` | 옷장 등록 옷 없음, Gemini가 유효 코디 4개를 만들지 못함, AI 사용량 초과 | 옷 등록 유도 또는 재시도 UI |
 | `502` | 네이버쇼핑/Gemini 외부 연동 장애 또는 응답 파싱 실패 | 잠시 후 재시도 안내 |
 
 대표 오류 메시지:
 
 ```text
 사용자 성별에 맞지 않는 AI MD입니다.
-AI MD 추천을 받으려면 보유 옷을 먼저 등록해 주세요.
+AI MD 추천을 받으려면 보유 옷 또는 미보유 관심 상품을 먼저 등록해 주세요.
 AI MD가 저장 가능한 코디 4개를 구성하지 못했습니다.
-저장할 코디에는 보유 옷이 최소 1개 포함되어야 합니다.
+저장할 코디에는 옷장 등록 옷이 최소 1개 포함되어야 합니다.
 저장할 코디에는 상의, 하의, 신발이 각각 최소 1개 포함되어야 합니다.
 외부 서비스 연동 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.
 ```
@@ -563,7 +565,7 @@ AI MD 코디 추천은 네이버쇼핑과 Gemini를 순차 호출하므로 응�
 - [ ] persona API 응답 목록만 MD 선택지로 노출
 - [ ] 추천 조회와 저장 동작을 분리
 - [ ] 코디 카드에 `reason`, `stylingTip`, 전체 구성 아이템 표시
-- [ ] 보유 옷과 외부 상품을 시각적으로 구분
+- [ ] 옷장 등록 옷(`OWNED`, `WISHLIST`)과 외부 상품을 시각적으로 구분
 - [ ] 저장 시 `clothesId`가 아닌 `wardrobeClothesId` 사용
 - [ ] 추천 응답의 `externalProducts`를 저장 요청에 그대로 전달
 - [ ] 여러 코디 저장 시 코디별 저장 API 호출

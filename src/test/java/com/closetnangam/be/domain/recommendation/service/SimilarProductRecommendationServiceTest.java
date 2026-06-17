@@ -14,6 +14,7 @@ import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.recommendation.dto.response.SimilarProductRecommendationResponse;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
+import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
 import com.closetnangam.be.global.external.naver.service.NaverApiService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,8 +31,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,17 +68,50 @@ class SimilarProductRecommendationServiceTest {
         );
 
         given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(wardrobeClothes));
-        given(naverApiService.searchShoppingProducts(anyString())).willReturn(List.of());
+        given(naverApiService.searchShoppingProducts(anyString(), anyInt(), anyInt(), anyString()))
+                .willReturn(List.of());
 
         SimilarProductRecommendationResponse response =
                 similarProductRecommendationService.recommendSimilarProducts(1L, 10L);
 
         ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
-        verify(naverApiService).searchShoppingProducts(queryCaptor.capture());
+        ArgumentCaptor<Integer> displayCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(naverApiService, atLeastOnce()).searchShoppingProducts(
+                queryCaptor.capture(),
+                displayCaptor.capture(),
+                anyInt(),
+                anyString()
+        );
 
         assertThat(queryCaptor.getValue()).isEqualTo("남성 블랙 스트라이프 캐주얼 롱슬리브");
+        assertThat(displayCaptor.getValue()).isEqualTo(50);
         assertThat(response.query()).isEqualTo("남성 블랙 스트라이프 캐주얼 롱슬리브");
         assertThat(response.baseClothes().brandName()).isEqualTo("ourselves");
+    }
+
+    @Test
+    @DisplayName("유사상품 추천은 최대 50개까지만 반환한다")
+    void recommendSimilarProductsReturnsUpToFiftyProducts() {
+        WardrobeClothes wardrobeClothes = createWardrobeClothes(
+                1L,
+                User.Gender.MALE,
+                "ourselves",
+                "multi stripe long sleeve",
+                "BLACK",
+                "LONG_SLEEVE",
+                "TOP",
+                StyleCode.CASUAL
+        );
+        List<NaverShoppingProductResponse> products = createProducts(60);
+
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(wardrobeClothes));
+        given(naverApiService.searchShoppingProducts(anyString(), anyInt(), anyInt(), anyString()))
+                .willReturn(products);
+
+        SimilarProductRecommendationResponse response =
+                similarProductRecommendationService.recommendSimilarProducts(1L, 10L);
+
+        assertThat(response.products()).hasSize(50);
     }
 
     @Test
@@ -146,5 +182,26 @@ class SimilarProductRecommendationServiceTest {
         ReflectionTestUtils.setField(wardrobeClothes, "id", 20L);
 
         return wardrobeClothes;
+    }
+
+    private List<NaverShoppingProductResponse> createProducts(int count) {
+        return java.util.stream.IntStream.rangeClosed(1, count)
+                .mapToObj(index -> new NaverShoppingProductResponse(
+                        "product-" + index,
+                        "https://example.com/products/" + index,
+                        "https://example.com/images/" + index + ".jpg",
+                        10000 + index,
+                        null,
+                        "mall",
+                        "product-id-" + index,
+                        "1",
+                        "brand",
+                        "maker",
+                        "패션의류",
+                        "남성의류",
+                        "티셔츠",
+                        "긴팔티셔츠"
+                ))
+                .toList();
     }
 }

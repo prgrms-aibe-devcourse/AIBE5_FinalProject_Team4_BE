@@ -15,7 +15,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 
 /**
@@ -29,6 +34,12 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class SimilarProductRecommendationService {
+
+    private static final int RECOMMENDATION_COUNT = 50;
+    private static final int SEARCH_DISPLAY_COUNT = 50;
+    private static final int SEARCH_PAGE_COUNT = 2;
+    private static final List<Integer> SEARCH_START_INDEXES = List.of(1, 51, 101, 151, 201);
+    private static final List<String> SEARCH_SORT_OPTIONS = List.of("sim", "date");
 
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final NaverApiService naverApiService;
@@ -46,7 +57,7 @@ public class SimilarProductRecommendationService {
 
         Clothes baseClothes = wardrobeClothes.getClothes();
         String query = buildSearchQuery(wardrobeClothes);
-        List<NaverShoppingProductResponse> products = naverApiService.searchShoppingProducts(query);
+        List<NaverShoppingProductResponse> products = searchSimilarProducts(query);
 
         return new SimilarProductRecommendationResponse(
                 ClothesResponse.from(baseClothes, wardrobeClothes),
@@ -80,6 +91,52 @@ public class SimilarProductRecommendationService {
                 .reduce((left, right) -> left + " " + right)
                 // 분류 데이터가 모두 비어 있는 비정상 데이터라도 검색 자체는 시도할 수 있게 상품명을 fallback으로 둔다.
                 .orElse(clothes.getName());
+    }
+
+    /**
+     * 새로고침마다 같은 상품만 반복되지 않도록 네이버 검색 페이지와 정렬 기준을 섞어 후보를 모은다.
+     *
+     * <p>최종 응답도 셔플해 같은 후보군이어도 노출 순서가 고정되지 않게 한다. 네이버 API 기본 검색 개수는
+     * 다른 기능에 영향을 줄 수 있으므로 유사상품 추천에서만 50개를 명시적으로 요청한다.</p>
+     */
+    private List<NaverShoppingProductResponse> searchSimilarProducts(String query) {
+        List<Integer> starts = new ArrayList<>(SEARCH_START_INDEXES);
+        Collections.shuffle(starts);
+
+        Map<String, NaverShoppingProductResponse> productByKey = new LinkedHashMap<>();
+        for (int index = 0; index < Math.min(SEARCH_PAGE_COUNT, starts.size()); index++) {
+            String sort = randomSort();
+            List<NaverShoppingProductResponse> products = naverApiService.searchShoppingProducts(
+                    query,
+                    SEARCH_DISPLAY_COUNT,
+                    starts.get(index),
+                    sort
+            );
+            for (NaverShoppingProductResponse product : products) {
+                productByKey.putIfAbsent(deduplicationKey(product), product);
+            }
+        }
+
+        List<NaverShoppingProductResponse> shuffledProducts = new ArrayList<>(productByKey.values());
+        Collections.shuffle(shuffledProducts);
+        if (shuffledProducts.size() <= RECOMMENDATION_COUNT) {
+            return shuffledProducts;
+        }
+        return shuffledProducts.subList(0, RECOMMENDATION_COUNT);
+    }
+
+    private String randomSort() {
+        return SEARCH_SORT_OPTIONS.get(ThreadLocalRandom.current().nextInt(SEARCH_SORT_OPTIONS.size()));
+    }
+
+    private String deduplicationKey(NaverShoppingProductResponse product) {
+        if (product.productId() != null && !product.productId().isBlank()) {
+            return product.productId().trim();
+        }
+        if (product.link() != null && !product.link().isBlank()) {
+            return product.link().trim();
+        }
+        return product.title() == null ? "" : product.title().trim();
     }
 
     /**

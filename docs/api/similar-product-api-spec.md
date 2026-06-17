@@ -1,20 +1,20 @@
 ---
 doc_type: be_similar_product_api_spec
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-11
+last_updated: 2026-06-16
 ---
 
 # 유사상품 추천 API 명세서
 
-이 문서는 FE에서 사용자의 보유 옷 선택 모달, 유사상품 추천 목록, 외부 구매 링크 및 상품 저장 화면을 구현할 때 사용하는 연동 명세입니다.
+이 문서는 FE에서 사용자의 옷장 등록 옷 선택 모달, 유사상품 추천 목록, 외부 구매 링크 및 상품 저장 화면을 구현할 때 사용하는 연동 명세입니다.
 공통 정책의 원본은 [api-contract.md](./api-contract.md)이며, 공통 옷 응답 타입은 [AI MD API 명세서](./ai-md-api-spec.md)와 동일합니다.
 
 ## 1. 기능 개요
 
-사용자가 자신의 보유 옷 중 하나를 선택하면 BE가 해당 옷의 속성으로 네이버쇼핑 검색어를 구성하고 유사한 상품을 최대 10개 반환합니다.
+사용자가 자신의 옷장에 등록된 옷 중 하나를 선택하면 BE가 해당 옷의 속성으로 네이버쇼핑 검색어를 구성하고 유사한 상품을 최대 50개 반환합니다.
 
 ```text
-보유 옷 목록 조회
+옷장 등록 옷 목록 조회
 → 기준 옷 선택 모달 표시
 → 사용자가 옷 1개 선택
 → 유사상품 추천 API 호출
@@ -52,7 +52,7 @@ export interface ApiResponse<T> {
 }
 ```
 
-## 3. 보유 옷 목록 조회
+## 3. 기준 옷 목록 조회
 
 기준 옷 선택 모달을 열 때 사용합니다.
 
@@ -63,7 +63,7 @@ GET /api/v1/users/{userId}/clothes
 ### 응답
 
 ```ts
-type OwnedClothesResponse = ApiResponse<Clothes[]>;
+type SimilarProductBaseClothesResponse = ApiResponse<Clothes[]>;
 ```
 
 `Clothes`의 전체 타입은 [AI MD API 명세서의 Clothes 타입](./ai-md-api-spec.md#주요-응답-타입)을 참고합니다.
@@ -82,13 +82,14 @@ export interface SimilarProductBaseClothesOption {
   gender: "MALE" | "FEMALE" | "UNISEX";
   primaryColor: string | null;
   styles: StyleTag[];
-  ownershipStatus: "OWNED";
+  ownershipStatus: "OWNED" | "WISHLIST";
 }
 ```
 
 ### FE 처리 기준
 
-- 모달에서는 `ownershipStatus === "OWNED"`인 응답만 사용합니다.
+- 유사상품 추천의 기준 옷은 사용자의 활성 옷장 항목이면 됩니다. `ownershipStatus`가 `OWNED` 또는 `WISHLIST`인 옷을 모두 선택지로 사용할 수 있습니다.
+- `WISHLIST`는 아직 실제 보유하지 않은 관심 상품이지만, 비슷한 상품을 찾는 기준 옷으로는 유효합니다.
 - 추천 요청에는 `wardrobeClothesId`가 아니라 `clothesId`를 사용합니다.
 - 목록이 비어 있으면 옷 등록 화면으로 유도합니다.
 - 옷 이미지, 이름, 브랜드, 카테고리 정도를 선택 카드에 표시하는 것을 권장합니다.
@@ -104,7 +105,7 @@ GET /api/v1/users/{userId}/clothes/{clothesId}/similar-products
 | 이름 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | `userId` | `number` | Y | 로그인 사용자 ID |
-| `clothesId` | `number` | Y | 보유 옷 목록 응답의 `clothesId` |
+| `clothesId` | `number` | Y | 기준 옷 목록 응답의 `clothesId`. 해당 사용자의 활성 `OWNED` 또는 `WISHLIST` 옷장 항목이어야 함 |
 
 Request body와 query parameter는 없습니다.
 
@@ -234,7 +235,7 @@ BE는 동일 브랜드나 동일 상품 재검색을 줄이기 위해 브랜드�
 
 ## 6. 결과 목록 처리
 
-- 네이버쇼핑 기본 검색 결과는 최대 10개입니다.
+- 유사상품 추천 결과는 최대 50개입니다.
 - 별도 pagination 또는 더보기 parameter는 현재 제공하지 않습니다.
 - 결과가 없으면 `200 OK`와 `products: []`가 반환될 수 있습니다.
 - 상품 카드에는 이미지, 상품명, 브랜드 또는 쇼핑몰, 최저가를 표시합니다.
@@ -355,10 +356,10 @@ const results = await Promise.allSettled(
 
 ## 9. 로딩 및 빈 상태
 
-### 보유 옷 없음
+### 기준 옷 없음
 
 ```text
-유사한 상품을 찾으려면 먼저 옷장에 옷을 등록해 주세요.
+유사한 상품을 찾으려면 먼저 보유 옷 또는 미보유 관심 상품을 옷장에 등록해 주세요.
 ```
 
 옷 등록 화면으로 이동하는 버튼을 제공합니다.

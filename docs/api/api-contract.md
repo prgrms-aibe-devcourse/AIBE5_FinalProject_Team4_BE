@@ -311,6 +311,10 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save` | 선택한 AI MD 코디 후보 저장 |
 
+#### 유사 상품 추천 (`GET .../similar-products`)
+
+JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해당 사용자의 활성 옷장 항목이어야 하며, `WARDROBE_CLOTHES.ownership_status`가 `OWNED` 또는 `WISHLIST`인 옷을 모두 기준 옷으로 사용할 수 있습니다. 응답의 `products`는 네이버쇼핑 후보를 정리한 유사상품 목록이며 최대 50개입니다. 이 단계에서는 추천 상품을 저장하지 않습니다.
+
 #### 옷장 기반 어울리는 옷 추천 (`GET .../recommendations`)
 
 옷장에 등록한 보유 옷 1벌을 기준으로 **같은 카테고리를 제외한 `EXTERNAL_SHOPPING` 공용 DB 후보**를 점수화해 카테고리별로 반환합니다. `PHOTO`·`PURCHASE_HISTORY` 등 다른 사용자 개인 등록 마스터는 후보에 포함하지 않습니다. 옷장에 이미 등록된 `clothesId`(본인 보유)는 후보에서 제외됩니다.
@@ -554,7 +558,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색을 여러 번 수행하고, 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 10개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 10개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 사용자가 상품 카드에서 저장 버튼을 누르면 `POST /api/users/{userId}/wishlist-clothes`로 미보유 옷을 저장합니다. 유사 상품 추천 결과도 같은 저장 API를 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
+> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색을 여러 번 수행하고, 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 40개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 40개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 사용자가 상품 카드에서 저장 버튼을 누르면 `POST /api/users/{userId}/wishlist-clothes`로 미보유 옷을 저장합니다. 유사 상품 추천 결과도 같은 저장 API를 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
 
 #### AI MD 코디 추천 응답 (AiMdOutfitRecommendationResponse)
 
@@ -604,7 +608,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 보유 옷을 최소 1개 포함해야 하며, 보유 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부 상품은 필수가 아니므로 보유 옷만으로 필수 세 카테고리가 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
+> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 옷장 등록 옷을 최소 1개 포함해야 하며, `OWNED`와 `WISHLIST` 옷장 항목을 모두 코디 구성에 사용할 수 있습니다. 옷장 등록 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부 상품은 필수가 아니므로 옷장 등록 옷만으로 필수 세 카테고리가 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
 
 #### AI MD 추천 코디 저장 요청/응답
 
@@ -621,7 +625,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-위 예시의 `wardrobeClothesIds`는 각각 `TOP`, `BOTTOM`, `SHOES`인 보유 옷을 의미합니다. 저장 요청도 추천 후보와 동일하게 사용자 보유 옷을 최소 1개 포함하고, `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부 상품 없이 보유 옷만으로 완성할 수 있으며, 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
+위 예시의 `wardrobeClothesIds`는 각각 `TOP`, `BOTTOM`, `SHOES`인 사용자 옷장 등록 옷을 의미합니다. 저장 요청도 추천 후보와 동일하게 사용자 옷장 등록 옷을 최소 1개 포함하고, `OWNED`와 `WISHLIST` 옷장 항목을 모두 사용할 수 있습니다. `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부 상품 없이 옷장 등록 옷만으로 완성할 수 있으며, 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
 
 저장 성공 시에는 선택된 코디 1개가 `OUTFITS`, `OUTFIT_ITEMS`에 저장되고, 응답은 저장된 `outfit`과 구성 옷 목록을 포함합니다. 저장된 구성 옷은 코디북 조회 응답의 `outfits[].items`에서도 다시 조회할 수 있습니다.
 
