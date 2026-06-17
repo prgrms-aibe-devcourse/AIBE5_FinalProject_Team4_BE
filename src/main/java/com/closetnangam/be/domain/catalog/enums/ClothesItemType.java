@@ -70,6 +70,9 @@ public enum ClothesItemType {
         try {
             return ClothesItemType.valueOf(code.toUpperCase().replace(" ", "_"));
         } catch (IllegalArgumentException e) {
+            for (ClothesItemType type : values()) {
+                if (type.getLabel().equals(code)) return type;
+            }
             return LONG_SLEEVE;
         }
     }

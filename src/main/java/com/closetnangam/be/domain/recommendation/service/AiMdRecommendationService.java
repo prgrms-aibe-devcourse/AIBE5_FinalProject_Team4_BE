@@ -1181,7 +1181,7 @@ public class AiMdRecommendationService {
 
     private String toItemTypeLabel(String itemType) {
         try {
-            return ClothesItemType.fromCode(itemType).getLabel();
+            return ClothesItemType.fromCodeOrDefault(itemType).getLabel();
         } catch (IllegalArgumentException exception) {
             return defaultIfBlank(itemType, "UNKNOWN");
         }
