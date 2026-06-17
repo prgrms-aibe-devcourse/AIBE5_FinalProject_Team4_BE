@@ -2,7 +2,6 @@ package com.closetnangam.be.domain.user.support;
 
 import java.text.Normalizer;
 import java.util.Locale;
-import java.util.UUID;
 import java.util.regex.Pattern;
 
 public final class NicknamePolicy {
@@ -48,39 +47,4 @@ public final class NicknamePolicy {
         return !nickname.contains("..");
     }
 
-    public static String generateUniqueCandidate(String rawName, NicknameExistsChecker existsChecker) {
-        String base = normalize(rawName)
-                .replaceAll("[^a-z0-9._]", "")
-                .replaceAll("\\.{2,}", ".")
-                .replaceAll("^[._]+", "")
-                .replaceAll("[._]+$", "");
-
-        if (base.length() < MIN_LENGTH) {
-            base = "user";
-        }
-        if (base.length() > MAX_LENGTH) {
-            base = base.substring(0, MAX_LENGTH).replaceAll("[._]+$", "");
-        }
-        if (!isValid(base)) {
-            base = "user";
-        }
-
-        String candidate = base;
-        while (existsChecker.exists(candidate)) {
-            String suffix = "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 4);
-            int baseMaxLength = MAX_LENGTH - suffix.length();
-            String trimmedBase = base.length() > baseMaxLength ? base.substring(0, baseMaxLength) : base;
-            trimmedBase = trimmedBase.replaceAll("[._]+$", "");
-            if (trimmedBase.length() < MIN_LENGTH) {
-                trimmedBase = "user";
-            }
-            candidate = trimmedBase + suffix;
-        }
-        return candidate;
-    }
-
-    @FunctionalInterface
-    public interface NicknameExistsChecker {
-        boolean exists(String nickname);
-    }
 }
