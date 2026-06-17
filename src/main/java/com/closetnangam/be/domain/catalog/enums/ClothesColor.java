@@ -25,6 +25,12 @@ public enum ClothesColor {
     private final String hex;
 
     public static ClothesColor fromCode(String code) {
-        return ClothesColor.valueOf(code);
+        if (code == null || code.isBlank()) return WHITE;
+        try {
+            return ClothesColor.valueOf(code.toUpperCase().replace(" ", "_"));
+        } catch (IllegalArgumentException e) {
+            // 한글이나 알 수 없는 코드는 기본값으로 처리
+            return WHITE;
+        }
     }
 }

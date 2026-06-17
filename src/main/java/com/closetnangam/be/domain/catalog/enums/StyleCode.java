@@ -22,6 +22,11 @@ public enum StyleCode {
     private final String description;
 
     public static StyleCode fromCode(String code) {
-        return StyleCode.valueOf(code);
+        if (code == null || code.isBlank()) return CASUAL;
+        try {
+            return StyleCode.valueOf(code.toUpperCase().replace(" ", "_"));
+        } catch (IllegalArgumentException e) {
+            return CASUAL;
+        }
     }
 }

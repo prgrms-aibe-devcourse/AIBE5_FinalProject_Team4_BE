@@ -15,6 +15,11 @@ public enum ClothesCategory {
     private final String label;
 
     public static ClothesCategory fromCode(String code) {
-        return ClothesCategory.valueOf(code);
+        if (code == null || code.isBlank()) return TOP;
+        try {
+            return ClothesCategory.valueOf(code.toUpperCase().replace(" ", "_"));
+        } catch (IllegalArgumentException e) {
+            return TOP;
+        }
     }
 }
