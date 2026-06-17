@@ -317,7 +317,9 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 
 #### 유사 상품 추천 (`GET .../similar-products`)
 
-JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해당 사용자의 활성 옷장 항목이어야 하며, `WARDROBE_CLOTHES.ownership_status`가 `OWNED` 또는 `WISHLIST`인 옷을 모두 기준 옷으로 사용할 수 있습니다. 응답의 `products`는 네이버쇼핑 후보를 정리한 유사상품 목록이며 최대 50개입니다. 이 단계에서는 추천 상품을 저장하지 않습니다.
+JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해당 사용자의 활성 옷장 항목이어야 하며, `WARDROBE_CLOTHES.ownership_status`가 `OWNED` 또는 `WISHLIST`인 옷을 모두 기준 옷으로 사용할 수 있습니다. 응답의 `products`는 네이버쇼핑 후보와 `EXTERNAL_SHOPPING` 공용 `CLOTHES` 후보를 함께 정리한 유사상품 목록이며 최대 50개입니다. 이 단계에서는 추천 상품을 저장하지 않습니다.
+
+`products[]`는 기존 `NaverShoppingProduct` 형태를 유지하지만, 내부 DB 후보를 구분하기 위해 `clothesId`와 `candidateSource`를 함께 반환합니다. `candidateSource=NAVER`인 후보는 `clothesId=null`일 수 있고, `candidateSource=INTERNAL`인 후보는 피드백·위시리스트 연결에 사용할 수 있는 `clothesId`를 포함합니다. 내부 후보는 가격 정보가 없어 `lowestPrice`/`highestPrice`가 `null`일 수 있고, 구매 링크가 없는 데이터는 `link=""`로 내려올 수 있으므로 FE는 가격·구매 버튼을 nullable 기준으로 렌더링해야 합니다.
 
 #### 옷장 기반 어울리는 옷 추천 (`GET .../recommendations`)
 
@@ -552,7 +554,9 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
           "category1": "패션의류",
           "category2": "남성의류",
           "category3": "티셔츠",
-          "category4": ""
+          "category4": "",
+          "clothesId": null,
+          "candidateSource": "NAVER"
         },
         "reason": "MD 말투가 반영된 추천 이유"
       }

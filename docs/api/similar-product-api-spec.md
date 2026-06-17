@@ -123,7 +123,7 @@ export interface NaverShoppingProduct {
   title: string;
   link: string;
   image: string;
-  lowestPrice: number;
+  lowestPrice: number | null;
   highestPrice: number | null;
   mallName: string;
   productId: string;
@@ -134,6 +134,8 @@ export interface NaverShoppingProduct {
   category2: string;
   category3: string;
   category4: string;
+  clothesId: number | null;
+  candidateSource: "NAVER" | "INTERNAL";
 }
 
 export interface SimilarProductRecommendation {
@@ -192,7 +194,27 @@ export type SimilarProductRecommendationResponse =
         "category1": "패션의류",
         "category2": "남성의류",
         "category3": "티셔츠",
-        "category4": ""
+        "category4": "",
+        "clothesId": null,
+        "candidateSource": "NAVER"
+      },
+      {
+        "title": "공용 DB 스트라이프 롱슬리브",
+        "link": "",
+        "image": "https://cdn.example.com/clothes/502.jpg",
+        "lowestPrice": null,
+        "highestPrice": null,
+        "mallName": "NAVER",
+        "productId": "CLOTHES_502",
+        "productType": "INTERNAL",
+        "brand": "브랜드",
+        "maker": "브랜드",
+        "category1": "패션의류",
+        "category2": "남성의류",
+        "category3": "TOP",
+        "category4": "롱슬리브",
+        "clothesId": 502,
+        "candidateSource": "INTERNAL"
       }
     ]
   },
@@ -201,6 +223,12 @@ export type SimilarProductRecommendationResponse =
 ```
 
 실제 `baseClothes`에는 `Clothes` 타입의 전체 필드가 포함됩니다. 위 예시는 화면 구현에 필요한 주요 필드만 표시했습니다.
+
+`products`에는 네이버쇼핑 실시간 후보와 내부 `CLOTHES` 공용 후보가 함께 포함됩니다.
+
+- `candidateSource="NAVER"`: 네이버쇼핑 API에서 온 후보입니다. `clothesId`는 `null`일 수 있습니다. 위시리스트 저장은 기존 네이버 상품 저장 플로우를 사용하고, 저장 전 추천 피드백은 보낼 수 없습니다.
+- `candidateSource="INTERNAL"`: `CLOTHES.clothes_info_source=EXTERNAL_SHOPPING`인 내부 공용 후보입니다. `clothesId`가 있으므로 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`와 `POST /api/v1/users/{userId}/recommendations/feedback`에 바로 사용할 수 있습니다.
+- 내부 후보는 가격 정보가 없어 `lowestPrice`/`highestPrice`가 `null`일 수 있고, 구매 링크가 없는 경우 `link=""`일 수 있습니다. FE는 가격 미표시와 구매 버튼 비활성화를 처리해야 합니다.
 
 ## 5. 추천 기준
 

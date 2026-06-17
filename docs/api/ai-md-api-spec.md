@@ -219,7 +219,7 @@ export interface NaverShoppingProduct {
   title: string;
   link: string;
   image: string;
-  lowestPrice: number;
+  lowestPrice: number | null;
   highestPrice: number | null;
   mallName: string;
   productId: string;
@@ -230,6 +230,8 @@ export interface NaverShoppingProduct {
   category2: string;
   category3: string;
   category4: string;
+  clothesId: number | null;
+  candidateSource: "NAVER" | "INTERNAL";
 }
 
 export interface AiMdOutfitRecommendation {
@@ -435,7 +437,7 @@ export interface SavedAiMdOutfit {
 GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products
 ```
 
-사용자 스타일 점수, 보유 옷과 선택한 MD 스타일을 기준으로 최대 40개의 네이버쇼핑 상품을 반환합니다.
+사용자 스타일 점수, 보유 옷과 선택한 MD 스타일을 기준으로 최대 40개의 추천 상품을 반환합니다. 상품 후보는 네이버쇼핑 실시간 검색 결과와 `EXTERNAL_SHOPPING` 공용 `CLOTHES` 내부 후보를 함께 사용합니다.
 추천 조회만으로 상품이 저장되지는 않습니다.
 
 ### 후보 검색 방식
@@ -445,6 +447,7 @@ GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products
 - 사용자 스타일 점수가 없으면 선택한 MD의 스타일 순서를 기본 가중치로 사용합니다.
 - 한 번의 요청에서 스타일과 상품 카테고리를 달리한 검색어 8개를 구성합니다.
 - 각 검색은 네이버쇼핑 결과 20개를 조회하며, 여러 검색 페이지 중 하나를 무작위로 사용합니다.
+- 네이버 후보와 별도로 사용자의 현재 옷장 및 추천 제외 피드백에 없는 내부 `EXTERNAL_SHOPPING` 후보를 함께 섞습니다.
 - 옷장 색상은 일부 검색어에만 무작위로 포함해 특정 색상에 결과가 고정되는 현상을 줄입니다.
 - 최대 160개 원본 결과에서 동일 `productId`와 정규화된 동일 상품명을 제거합니다.
 - 후보를 섞은 뒤 최대 120개를 Gemini에 전달하고 최종 40개를 선택합니다.
@@ -502,7 +505,9 @@ export interface AiMdProductRecommendationData {
           "category1": "패션의류",
           "category2": "남성의류",
           "category3": "재킷",
-          "category4": ""
+          "category4": "",
+          "clothesId": null,
+          "candidateSource": "NAVER"
         },
         "reason": "정돈된 실루엣을 유지하면서 도시적인 분위기를 더하기 좋은 상품입니다."
       }
@@ -514,7 +519,13 @@ export interface AiMdProductRecommendationData {
 
 ### 상품 저장 연동 주의사항
 
-현재 AI MD 상품 추천 API에는 전용 저장 endpoint가 없습니다. 미보유 옷 저장은 아래 API를 사용합니다.
+AI MD 상품 추천의 `product`는 `candidateSource`에 따라 액션 기준이 다릅니다.
+
+- `candidateSource="INTERNAL"`: `product.clothesId`가 있으므로 기존 공용 옷 위시리스트 연결 API와 추천 피드백 API를 바로 사용할 수 있습니다.
+- `candidateSource="NAVER"`: `product.clothesId`가 `null`일 수 있습니다. 이 경우 먼저 네이버 상품 저장 플로우로 미보유 옷을 생성해야 하며, 저장 전에는 `clothesId` 기반 추천 피드백을 보낼 수 없습니다.
+- 내부 후보는 가격 정보가 없어 `lowestPrice`/`highestPrice`가 `null`일 수 있고, 구매 링크가 없는 경우 `link=""`일 수 있습니다.
+
+현재 AI MD 상품 추천 API에는 전용 저장 endpoint가 없습니다. 네이버 후보의 미보유 옷 저장은 아래 API를 사용합니다.
 
 ```http
 POST /api/users/{userId}/wishlist-clothes
