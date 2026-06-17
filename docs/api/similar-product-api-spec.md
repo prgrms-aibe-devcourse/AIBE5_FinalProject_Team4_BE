@@ -266,20 +266,49 @@ BE는 동일 브랜드나 동일 상품 재검색을 줄이기 위해 브랜드�
 - 유사상품 추천 결과는 최대 50개입니다.
 - 별도 pagination 또는 더보기 parameter는 현재 제공하지 않습니다.
 - 결과가 없으면 `200 OK`와 `products: []`가 반환될 수 있습니다.
-- 상품 카드에는 이미지, 상품명, 브랜드 또는 쇼핑몰, 최저가를 표시합니다.
-- 구매 버튼은 `product.link`로 이동합니다.
+- 상품 카드에는 이미지, 상품명, 브랜드 또는 쇼핑몰을 표시합니다.
+- `lowestPrice`가 `number`이면 최저가를 통화 형식으로 표시하고, `null`이면 가격 영역을 숨기거나 "가격 정보 없음"으로 처리합니다.
+- 구매 버튼은 `product.link`가 비어 있지 않을 때만 노출하거나 활성화합니다.
 - 외부 링크는 새 창 또는 인앱 브라우저로 여는 것을 권장합니다.
-- 가격은 숫자이므로 FE에서 통화 형식으로 변환합니다.
+- `candidateSource="INTERNAL"`이고 `clothesId`가 있으면 위시리스트 연결, 추천 싫어요, 추천 제외 액션을 바로 수행할 수 있습니다.
 
 ```ts
-const formattedPrice = new Intl.NumberFormat("ko-KR").format(
-  product.lowestPrice,
-);
+const formattedPrice =
+  product.lowestPrice == null
+    ? null
+    : new Intl.NumberFormat("ko-KR").format(product.lowestPrice);
+
+const canPurchase = product.link.trim().length > 0;
+const canSubmitFeedback = product.candidateSource === "INTERNAL" && product.clothesId != null;
 ```
 
 ## 7. 추천 상품 선택 및 저장
 
 추천 상품은 자유롭게 복수 선택할 수 있습니다. 다만 유사상품 추천 API는 조회만 담당하며 저장 API는 별도입니다.
+
+### 내부 후보 저장
+
+`candidateSource="INTERNAL"`이고 `clothesId`가 있는 후보는 이미 공용 `CLOTHES`에 존재하므로 신규 생성 API를 호출하지 않습니다. 기존 옷 연결 API를 사용합니다.
+
+```http
+POST /api/users/{userId}/wishlist-clothes/{clothesId}
+```
+
+이 후보는 추천 피드백 API에도 같은 `clothesId`를 사용할 수 있습니다.
+
+```http
+POST /api/v1/users/{userId}/recommendations/feedback
+Content-Type: application/json
+
+{
+  "clothesId": 502,
+  "feedbackType": "DISLIKE"
+}
+```
+
+### 네이버 후보 저장
+
+`candidateSource="NAVER"`이고 `clothesId=null`인 후보는 아직 공용 `CLOTHES`가 없을 수 있으므로 기존 네이버 상품 신규 저장 플로우를 사용합니다.
 
 ```http
 POST /api/users/{userId}/wishlist-clothes

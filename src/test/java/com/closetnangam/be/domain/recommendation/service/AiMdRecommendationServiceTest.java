@@ -3,7 +3,9 @@ package com.closetnangam.be.domain.recommendation.service;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
+import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdGeminiOutfitResult;
 import com.closetnangam.be.domain.recommendation.dto.response.AiMdProductRecommendationResponse.ProductRecommendation;
@@ -33,9 +35,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -172,6 +176,46 @@ class AiMdRecommendationServiceTest {
                 1L,
                 List.of(OwnershipStatus.OWNED, OwnershipStatus.WISHLIST)
         );
+    }
+
+    @Test
+    @DisplayName("AI MD 코디 저장은 공용 외부 쇼핑 후보가 아닌 clothesId를 외부 상품으로 연결하지 않는다")
+    void getOrCreateExternalClothesRejectsNonExternalShoppingClothesId() {
+        ClothesRepository clothesRepository = mock(ClothesRepository.class);
+        Clothes privateClothes = mock(Clothes.class);
+        when(privateClothes.getClothesInfoSource()).thenReturn(ClothesInfoSource.PHOTO);
+        when(clothesRepository.findById(999L)).thenReturn(Optional.of(privateClothes));
+
+        AiMdRecommendationService service = new AiMdRecommendationService(
+                null, null, null, null, null, clothesRepository, null, null, null, null, null, null, null
+        );
+        NaverShoppingProductResponse forgedProduct = new NaverShoppingProductResponse(
+                "개인 옷",
+                "",
+                "",
+                null,
+                null,
+                "",
+                "CLOTHES_999",
+                "INTERNAL",
+                "",
+                "",
+                "패션의류",
+                "남성의류",
+                "TOP",
+                "티셔츠",
+                999L,
+                "INTERNAL"
+        );
+
+        assertThatThrownBy(() -> ReflectionTestUtils.invokeMethod(
+                service,
+                "getOrCreateExternalClothes",
+                AiMdPersona.TAE_SIK,
+                forgedProduct
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("공용 외부 쇼핑 후보만 외부 상품으로 저장할 수 있습니다.");
     }
 
     @Test

@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
 import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.StyleRole;
@@ -368,8 +369,15 @@ public class AiMdRecommendationService {
 
     private Clothes getOrCreateExternalClothes(AiMdPersona persona, NaverShoppingProductResponse product) {
         if (product.clothesId() != null) {
-            return clothesRepository.findById(product.clothesId())
+            if (!"INTERNAL".equals(product.candidateSource())) {
+                throw new IllegalArgumentException("내부 추천 후보가 아닌 clothesId는 외부 상품으로 저장할 수 없습니다.");
+            }
+            Clothes clothes = clothesRepository.findById(product.clothesId())
                     .orElseThrow(() -> new EntityNotFoundException("추천 상품을 찾을 수 없습니다."));
+            if (clothes.getClothesInfoSource() != ClothesInfoSource.EXTERNAL_SHOPPING) {
+                throw new IllegalArgumentException("공용 외부 쇼핑 후보만 외부 상품으로 저장할 수 있습니다.");
+            }
+            return clothes;
         }
         if (StringUtils.hasText(product.productId())) {
             var existing = clothesRepository.findByExternalProductId(product.productId());

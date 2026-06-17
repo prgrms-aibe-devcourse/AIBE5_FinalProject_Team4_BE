@@ -42,9 +42,7 @@ public interface ClothesRepository extends JpaRepository<Clothes, Long> {
      * <p>다른 사용자의 개인 사진/옷장 연결 정보는 노출하지 않고, 공용 Clothes 마스터 정보만 사용합니다.</p>
      */
     @Query("""
-            select distinct c from Clothes c
-            left join fetch c.styleTags st
-            left join fetch st.style
+            select c from Clothes c
             where c.clothesInfoSource = com.closetnangam.be.domain.clothes.enums.ClothesInfoSource.EXTERNAL_SHOPPING
               and c.id <> :baseClothesId
               and c.id not in :excludedClothesIds
@@ -62,9 +60,7 @@ public interface ClothesRepository extends JpaRepository<Clothes, Long> {
      * AI MD 추천 내부 후보 — 공용 외부 쇼핑 마스터 중 사용자의 현재 옷장에 없는 후보를 조회합니다.
      */
     @Query("""
-            select distinct c from Clothes c
-            left join fetch c.styleTags st
-            left join fetch st.style
+            select c from Clothes c
             where c.clothesInfoSource = com.closetnangam.be.domain.clothes.enums.ClothesInfoSource.EXTERNAL_SHOPPING
               and c.id not in :excludedClothesIds
             order by c.createdAt desc
@@ -78,9 +74,7 @@ public interface ClothesRepository extends JpaRepository<Clothes, Long> {
      * AI MD 코디 보강 후보 — 공용 외부 쇼핑 마스터 중 카테고리가 맞고 사용자의 현재 옷장에 없는 후보를 조회합니다.
      */
     @Query("""
-            select distinct c from Clothes c
-            left join fetch c.styleTags st
-            left join fetch st.style
+            select c from Clothes c
             where c.clothesInfoSource = com.closetnangam.be.domain.clothes.enums.ClothesInfoSource.EXTERNAL_SHOPPING
               and c.id not in :excludedClothesIds
               and c.category = :category
