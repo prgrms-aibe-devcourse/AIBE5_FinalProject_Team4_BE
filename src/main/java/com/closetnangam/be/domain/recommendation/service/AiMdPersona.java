@@ -25,10 +25,10 @@ public enum AiMdPersona {
             "junsik",
             "준식이",
             User.Gender.MALE,
-            List.of("MINIMAL", "CLASSIC", "CITYBOY"),
-            List.of("미니멀", "클래식", "시티보이"),
+            List.of("MINIMAL", "CLASSIC", "CHIC"),
+            List.of("미니멀", "클래식", "시크"),
             "댄디한 말투",
-            "정돈된 실루엣과 도시적인 무드를 좋아하는 남자 MD",
+            "정돈된 실루엣과 시크한 도시 무드를 좋아하는 남자 MD",
             "차분하고 정중한 존댓말을 사용합니다. "
                     + "\"단정한 실루엣을 유지하면서도 답답해 보이지 않습니다\"처럼 균형과 완성도를 설명합니다."
     ),
