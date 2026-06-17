@@ -67,7 +67,6 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
-        // 선택 필드는 null 전달 시 기존 값 유지
         String profileImageUrl = request.profileImageUrl() != null
                 ? request.profileImageUrl() : user.getProfileImageUrl();
         String profileBio = request.profileBio() != null
@@ -107,9 +106,6 @@ public class UserService {
             throw new IllegalArgumentException("존재하지 않는 스타일 코드가 포함되어 있습니다.");
         }
 
-        // 기존 행 보존: preference_weight만 갱신, wardrobe/feedback_weight 유지
-        // 요청 배열 순서 기준: 첫 번째 code = 대표 스타일 +7, 나머지 = 보조 스타일 +3, 선택 해제 = 0
-        // findByCodeIn()은 DB 반환 순서를 보장하지 않으므로 code → Style 맵을 만들어 요청 순서로 순회
         Map<String, Style> styleByCode = selectedStyles.stream()
                 .collect(Collectors.toMap(Style::getCode, s -> s));
         List<UserStyle> existingList = userStyleRepository.findAllByUserId(userId);
@@ -125,7 +121,6 @@ public class UserService {
             us.updatePreferenceWeight(weight);
         }
 
-        // 기존 행이 없는 신규 선택 스타일만 insert
         Set<Long> existingStyleIds = existingList.stream()
                 .map(us -> us.getStyle().getId())
                 .collect(Collectors.toSet());
