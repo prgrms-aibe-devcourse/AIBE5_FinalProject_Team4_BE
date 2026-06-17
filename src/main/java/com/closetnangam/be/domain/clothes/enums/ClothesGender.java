@@ -47,4 +47,15 @@ public enum ClothesGender {
         }
         return valueOf(userGender.name());
     }
+
+    /** 사용자 프로필 성별과 착용 가능한 옷 성별인지 판별합니다. UNISEX·OTHER는 모두 허용합니다. */
+    public boolean matchesUserGender(User.Gender userGender) {
+        if (userGender == null || userGender == User.Gender.OTHER) {
+            return true;
+        }
+        if (this == UNISEX) {
+            return true;
+        }
+        return name().equals(userGender.name());
+    }
 }

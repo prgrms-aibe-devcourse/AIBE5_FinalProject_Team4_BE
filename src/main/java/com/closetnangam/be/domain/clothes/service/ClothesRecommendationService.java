@@ -7,12 +7,16 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResp
 import com.closetnangam.be.domain.clothes.dto.response.ClothesRecommendationResponse.RecommendedItem;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
 import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher;
 import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher.WardrobeExclusionIndex;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
+import com.closetnangam.be.domain.user.entity.User;
+import com.closetnangam.be.domain.user.repository.UserRepository;
+import com.closetnangam.be.global.external.naver.support.BrandGenderCorrector;
 import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot.WeightedColor;
 import com.closetnangam.be.domain.clothes.scoring.ColorCompatibilityTable;
 import com.closetnangam.be.domain.clothes.scoring.ItemTypeCompatibilityTable;
@@ -97,6 +101,7 @@ public class ClothesRecommendationService {
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final ClothesRepository clothesRepository;
     private final WardrobeExclusionMatcher wardrobeExclusionMatcher;
+    private final UserRepository userRepository;
 
     /**
      * 기준 옷({clothesId})와 어울리는 상품을 카테고리별로 추천합니다.
@@ -128,10 +133,19 @@ public class ClothesRecommendationService {
         String excludeCategory = anchorClothes.getCategory();
         WardrobeExclusionIndex exclusionIndex = wardrobeExclusionMatcher.buildActiveExclusionIndex(userId);
 
+        User.Gender userGender = userRepository.findById(userId)
+                .map(User::getGender)
+                .orElse(null);
+
         List<ScoringCandidate> candidates = loadCandidates(excludeCategory, exclusionIndex);
 
         AnchorScoringContext anchorContext = AnchorScoringContext.from(anchor);
-        Map<String, List<RecommendedItem>> recommendations = scoredAndGrouped(anchorContext, candidates, limitPerCategory);
+        Map<String, List<RecommendedItem>> recommendations = scoredAndGrouped(
+                anchorContext,
+                candidates,
+                limitPerCategory,
+                userGender
+        );
 
         return new ClothesRecommendationResponse(toAnchorItem(anchor, anchorClothes, anchorContext.tagSnapshot()), recommendations);
     }
@@ -177,7 +191,8 @@ public class ClothesRecommendationService {
     private Map<String, List<RecommendedItem>> scoredAndGrouped(
             AnchorScoringContext anchorContext,
             List<ScoringCandidate> candidates,
-            int limit
+            int limit,
+            User.Gender userGender
     ) {
         Map<String, List<ScoringCandidate>> candidatesByCategory = new HashMap<>();
         for (ScoringCandidate candidate : candidates) {
@@ -193,7 +208,13 @@ public class ClothesRecommendationService {
                 log.debug("Clothes(id={})의 태그 스냅샷을 생성할 수 없습니다 — 후보에서 제외합니다.", clothes.getId());
                 continue;
             }
-            if (isSummerWinterSeasonClash(anchorContext.season(), candidate.season(), clothes.getItemType())) {
+            if (!matchesUserGender(clothes, userGender)) {
+                continue;
+            }
+            // 신발은 시즌 점수(soft)만 반영하고, 여름↔겨울 hard exclude는 적용하지 않습니다.
+            // DB에 겨울 부츠만 있어도 카테고리 전체가 비는 현상을 방지합니다.
+            if (!"SHOES".equals(category)
+                    && isSummerWinterSeasonClash(anchorContext.season(), candidate.season(), clothes.getItemType())) {
                 continue;
             }
             candidatesByCategory
@@ -344,8 +365,19 @@ public class ClothesRecommendationService {
         return SCORE_SEASON_MISMATCH;
     }
 
+    private boolean matchesUserGender(Clothes clothes, User.Gender userGender) {
+        if (userGender == null || userGender == User.Gender.OTHER) {
+            return true;
+        }
+        String correctedGender = BrandGenderCorrector.correctGender(
+                clothes.getGender().name(),
+                clothes.getBrandName()
+        );
+        return ClothesGender.fromCodeOrDefault(correctedGender).matchesUserGender(userGender);
+    }
+
     /**
-     * 여름 ↔ 겨울 조합은 추천 후보에서 제외합니다.
+     * 여름 ↔ 겨울 조합은 추천 후보에서 제외합니다. (SHOES 카테고리는 제외 — 시즌 점수만 반영)
      */
     private boolean isSummerWinterSeasonClash(String anchorSeason, String candidateSeason, String candidateItemType) {
         ClothesSeason anchor = ClothesSeason.fromCode(anchorSeason);
