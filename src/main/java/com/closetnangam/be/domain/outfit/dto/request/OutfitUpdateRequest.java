@@ -20,9 +20,8 @@ public class OutfitUpdateRequest {
     @NotBlank
     private String description;
 
-    @NotBlank
     @Size(max = 500)
-    private String thumbnailUrl;
+    private String thumbnailUrl = "";
 
     @NotBlank
     @Size(max = 50)

@@ -3,6 +3,7 @@ package com.closetnangam.be.domain.outfit.service;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.StyleRole;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.outfit.dto.request.OutfitCreateRequest;
@@ -14,9 +15,11 @@ import com.closetnangam.be.domain.outfit.dto.response.OutfitResponse;
 import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitBook;
 import com.closetnangam.be.domain.outfit.entity.OutfitItem;
+import com.closetnangam.be.domain.outfit.entity.OutfitStyles;
 import com.closetnangam.be.domain.outfit.repository.OutfitBookRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitItemRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitRepository;
+import com.closetnangam.be.domain.outfit.repository.OutfitStyleRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -24,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.util.Collections;
 import java.util.List;
@@ -41,6 +45,7 @@ public class OutfitService {
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final ClothesRepository clothesRepository;
     private final UserRepository userRepository;
+    private final OutfitStyleRepository outfitStyleRepository;
 
     @Transactional
     public OutfitBookResponse createBook(Long userId) {
@@ -65,11 +70,11 @@ public class OutfitService {
         List<OutfitItem> savedItems = Collections.emptyList();
         if (request.getItems() != null && !request.getItems().isEmpty()) {
             savedItems = saveOutfitItems(outfit, userId, request.getItems());
+            saveOutfitStyles(outfit, savedItems);  // 추가
         }
 
         return toOutfitResponse(outfit, userId, savedItems);
     }
-
     @Transactional
     public OutfitResponse updateOutfit(Long bookId, Long outfitId, Long userId, OutfitUpdateRequest request) {
         outfitBookRepository.findByIdAndUserId(bookId, userId)
@@ -90,10 +95,12 @@ public class OutfitService {
         List<OutfitItem> currentItems;
         if (request.getItems() != null) {
             outfitItemRepository.deleteAllByOutfit_OutfitId(outfitId);
+            outfitStyleRepository.deleteAllByOutfit_OutfitId(outfitId);
             if (request.getItems().isEmpty()) {
                 currentItems = Collections.emptyList();
             } else {
                 currentItems = saveOutfitItems(outfit, userId, request.getItems());
+                saveOutfitStyles(outfit, currentItems);
             }
         } else {
             // items가 null인 경우 기존 구성 유지
@@ -101,6 +108,27 @@ public class OutfitService {
         }
 
         return toOutfitResponse(outfit, userId, currentItems);
+    }
+    private void saveOutfitStyles(Outfit outfit, List<OutfitItem> items) {
+        // 구성 옷들의 스타일 태그 수집 — PRIMARY 먼저, SECONDARY 나중
+        // 동일 style_id 중복 방지를 위해 Map으로 집계
+        java.util.Map<Long, OutfitStyles> styleMap = new java.util.LinkedHashMap<>();
+
+        for (OutfitItem item : items) {
+            item.getClothes().getSortedStyleTags().forEach(tag -> {
+                Long styleId = tag.getStyle().getId();
+                // 이미 PRIMARY로 등록된 스타일은 SECONDARY로 덮어쓰지 않음
+                styleMap.merge(styleId,
+                        OutfitStyles.create(outfit, tag.getStyle(), tag.getStyleRole(), tag.getSortOrder()),
+                        (existing, incoming) -> {
+                            if (existing.getStyleRole() == StyleRole.PRIMARY) return existing;
+                            return incoming;
+                        }
+                );
+            });
+        }
+
+        outfitStyleRepository.saveAll(styleMap.values());
     }
 
     private OutfitResponse toOutfitResponse(Outfit outfit, Long userId, List<OutfitItem> items) {
