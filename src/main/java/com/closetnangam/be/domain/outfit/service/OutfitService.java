@@ -169,7 +169,8 @@ public class OutfitService {
                 .build());
 
         if (!resolvableItems.isEmpty()) {
-            saveOutfitItems(clone, userId, resolvableItems, true);
+            List<OutfitItem> savedItems = saveOutfitItems(clone, userId, resolvableItems, true);
+            outfitStyleService.saveOutfitStyles(clone, savedItems);
         }
         return clone;
     }
