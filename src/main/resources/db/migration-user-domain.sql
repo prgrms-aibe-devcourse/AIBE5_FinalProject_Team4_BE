@@ -23,6 +23,9 @@ ALTER TABLE users
     MODIFY COLUMN profile_image_url VARCHAR(500) NOT NULL DEFAULT '';
 
 ALTER TABLE users
+    MODIFY COLUMN nickname VARCHAR(50) NULL;
+
+ALTER TABLE users
     ADD COLUMN region_name VARCHAR(50) NOT NULL DEFAULT '' AFTER gender;
 
 ALTER TABLE users
@@ -32,7 +35,7 @@ ALTER TABLE users
     ADD COLUMN marketing_agreed TINYINT(1) NOT NULL DEFAULT 0 AFTER region_code;
 
 ALTER TABLE users
-    ADD COLUMN marketing_agreed_at DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00' AFTER marketing_agreed;
+    ADD COLUMN marketing_agreed_at DATETIME NULL DEFAULT NULL AFTER marketing_agreed;
 
 ALTER TABLE users
     ADD COLUMN status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE' AFTER marketing_agreed_at;
@@ -42,18 +45,8 @@ SET status = 'WITHDRAWN'
 WHERE withdrawn = 1;
 
 UPDATE users
-SET withdrawn_at = '1970-01-01 00:00:00'
-WHERE withdrawn_at IS NULL;
-
-UPDATE users
-SET withdrawn_at = '1970-01-01 00:00:00'
+SET withdrawn_at = NULL
 WHERE withdrawn = 0;
-
--- OAuth 등으로 비어 있던 기존 row backfill (@PrePersist는 신규 insert에만 적용)
-UPDATE users
-SET birth_date = '2000-01-01'
-WHERE birth_date IS NULL
-   OR TRIM(CAST(birth_date AS CHAR)) = '';
 
 UPDATE users
 SET gender = 'OTHER'
@@ -61,13 +54,13 @@ WHERE gender IS NULL
    OR TRIM(gender) = '';
 
 ALTER TABLE users
-    MODIFY COLUMN birth_date DATE NOT NULL;
+    MODIFY COLUMN birth_date DATE NULL;
 
 ALTER TABLE users
     MODIFY COLUMN gender VARCHAR(20) NOT NULL;
 
 ALTER TABLE users
-    MODIFY COLUMN withdrawn_at DATETIME NOT NULL;
+    MODIFY COLUMN withdrawn_at DATETIME NULL;
 
 ALTER TABLE users
     DROP COLUMN withdrawn;

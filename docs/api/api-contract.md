@@ -67,11 +67,12 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 - Refresh Token은 `refresh_token` HttpOnly 쿠키로 전달되며 `/api/v1/auth` 경로에서만 전송됩니다.
 - Access Token이 만료(401)되면 `POST /api/v1/auth/refresh`를 호출해 재발급합니다.
 - 로그아웃 시 `POST /api/v1/auth/logout`을 호출해 서버에서 Refresh Token을 삭제합니다.
+- 탈퇴 후 30일 이내 계정으로 OAuth 로그인을 시도하면 자동 로그인하지 않고 FE에 복구 확인 상태를 전달합니다. 사용자가 복구를 확정하면 `POST /api/v1/auth/restore-withdrawn`으로 계정을 복구하고 인증 쿠키를 발급합니다.
 - 사용자별 리소스는 JWT의 사용자 ID와 path의 `userId`가 일치해야 합니다.
 
 ## 이미지 업로드 기준
 
-- 옷 사진과 구매내역 캡처는 multipart form-data로 업로드합니다.
+- 옷 사진, 구매내역 캡처, 피드 이미지, 프로필 이미지는 multipart form-data로 업로드합니다.
 - 요청 part 이름은 `file`입니다.
 - 이미지 파일 크기는 10MB 이하입니다.
 - 이미지 저장은 AWS S3 기준으로 관리합니다.
@@ -85,14 +86,18 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | GET    | `/oauth2/authorization/{provider}` | OAuth 로그인 시작    |
 | POST   | `/api/v1/auth/refresh`             | Access Token 재발급 |
 | POST   | `/api/v1/auth/logout`              | 로그아웃            |
+| POST   | `/api/v1/auth/restore-withdrawn`   | 탈퇴 계정 복구 확정 |
 
 ### 사용자
 | Method | Path | 설명 |
 | --- | --- | --- |
-| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 프로필 반환 (응답 필드는 아래 표 참고) |
+| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 본인 프로필 반환 (응답 필드는 아래 표 참고) |
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
-| PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 응답 필드는 아래 표 참고 |
-| POST | `/api/v1/users/styles` | 스타일 선호도 저장 (기존 row 보존, preference_weight만 갱신) |
+| GET | `/api/v1/users/nickname/check` | 닉네임 규칙 및 중복 여부 확인 |
+| PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 본인 프로필 반환 |
+| POST | `/api/v1/users/profile/image` | 프로필 이미지 업로드 (`multipart/form-data`, field: `file`) |
+| POST | `/api/v1/users/onboarding` | 온보딩 완료 저장. 프로필, 선호 스타일, 마케팅 동의 여부를 하나의 트랜잭션으로 저장 |
+| POST | `/api/v1/users/styles` | 스타일 선호도 저장 (사용자별 전체 스타일 row 보장, preference_weight만 갱신) |
 | DELETE | `/api/v1/users/me` | 회원 탈퇴 (소프트 삭제, 쿠키 만료) |
 
 #### GET /api/v1/users/profile 응답 필드
@@ -100,18 +105,37 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
 | `userId` | Long | 사용자 ID |
-| `nickname` | String | 카카오 닉네임 또는 온보딩에서 설정한 닉네임 |
-| `onboarded` | boolean | 온보딩 완료 여부. birthDate가 기본값(2000-01-01)이면 false, 실제 날짜이면 true |
-| `regionName` | String | 사용자 지역명 (예: 서울특별시) |
-| `gender` | String | 성별. `MALE` / `FEMALE` / `OTHER` |
+| `email` | String | 사용자 계정 이메일. 소셜 로그인에서 확인된 이메일을 조회용으로 반환 |
+| `nickname` | String? | 온보딩/마이페이지에서 사용자가 설정한 닉네임. 온보딩 완료 전에는 `null`일 수 있음 |
+| `onboarded` | boolean | 온보딩 완료 여부. 닉네임, 사용자 성별, 생년월일, 지역 코드, 선호 스타일이 모두 저장되면 true |
+| `birthDate` | Date? | 생년월일. 온보딩 완료 전에는 `null`일 수 있음 |
+| `gender` | String | 사용자 성별. `MALE` / `FEMALE` / `OTHER` |
+| `regionName` | String | 지역명 |
+| `regionCode` | String | 지역 코드 |
+| `profileImageUrl` | String | 프로필 이미지 URL |
+| `profileBio` | String | 한 줄 소개 |
+| `externalLinkUrl` | String | 외부 링크 URL |
+| `styleCodes` | String[] | 선호 스타일 code 배열 |
+| `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
+| `socialAccounts` | Object[] | 연결된 소셜 로그인 제공자와 제공자 이메일 목록. 조회 전용 |
+
+#### GET /api/v1/users/nickname/check 응답 필드
+
+닉네임은 룩피드 프로필 식별에도 사용하므로 전체 회원 기준으로 중복될 수 없습니다. 영문 소문자, 숫자, 마침표(`.`), 밑줄(`_`)만 3~30자로 사용할 수 있으며 처음과 끝은 영문 또는 숫자여야 합니다.
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `nickname` | String | 정규화된 닉네임 |
+| `available` | boolean | 사용 가능 여부 |
+| `message` | String | 사용 가능 또는 오류 안내 문구 |
 
 #### PATCH /api/v1/users/profile 요청 필드
 
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
-| `nickname` | Y | 닉네임 (50자 이하) |
+| `nickname` | Y | 닉네임. 영문 소문자, 숫자, 마침표(`.`), 밑줄(`_`)만 3~30자 |
 | `birthDate` | Y | 생년월일 (yyyy-MM-dd) |
-| `gender` | Y | `MALE` / `FEMALE` / `OTHER` |
+| `gender` | Y | `MALE` / `FEMALE` |
 | `regionName` | Y | 지역명 (예: 서울) |
 | `regionCode` | Y | 지역 코드 |
 | `profileImageUrl` | N | 프로필 이미지 URL. 생략 시 기존 값 유지 |
@@ -123,16 +147,67 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
 | `userId` | Long | 사용자 ID |
+| `email` | String | 사용자 계정 이메일. 소셜 로그인에서 확인된 이메일을 조회용으로 반환 |
 | `nickname` | String | 저장된 닉네임 |
-| `onboarded` | boolean | 온보딩 완료 여부. 저장 후 true이면 메인 페이지로 이동 |
-| `regionName` | String | 사용자 지역명 (예: 서울특별시) |
-| `gender` | String | 저장된 성별. `MALE` / `FEMALE` / `OTHER` |
+| `onboarded` | boolean | 온보딩 완료 여부. 프로필과 선호 스타일 저장 상태를 함께 기준으로 판단 |
+| `birthDate` | Date | 저장된 생년월일 |
+| `gender` | String | 저장된 사용자 성별 |
+| `regionName` | String | 저장된 지역명 |
+| `regionCode` | String | 저장된 지역 코드 |
+| `profileImageUrl` | String | 저장된 프로필 이미지 URL |
+| `profileBio` | String | 저장된 한 줄 소개 |
+| `externalLinkUrl` | String | 저장된 외부 링크 URL |
+| `styleCodes` | String[] | 선호 스타일 code 배열 |
+| `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
+| `socialAccounts` | Object[] | 연결된 소셜 로그인 제공자와 제공자 이메일 목록. 조회 전용 |
+
+#### POST /api/v1/users/profile/image
+
+프로필 이미지 파일을 업로드하고 프로필 저장에 사용할 이미지 URL을 반환합니다.
+반환된 `imageUrl`은 `PATCH /api/v1/users/profile` 요청의 `profileImageUrl`에 전달해 저장합니다.
+
+요청:
+
+```text
+Content-Type: multipart/form-data
+field: file
+```
+
+응답:
+
+```json
+{
+  "success": true,
+  "data": {
+    "imageUrl": "http://localhost:8080/api/v1/images/profile/1/sample.jpg"
+  },
+  "message": null
+}
+```
+
+#### POST /api/v1/users/onboarding 요청 필드
+
+온보딩 마지막 단계에서 한 번 호출합니다. 프로필, 선호 스타일, 마케팅 정보 수신 동의 여부는 같은 트랜잭션에서 함께 저장되며, 일부 정보만 저장된 상태를 남기지 않습니다.
+
+| 필드 | 필수 | 설명 |
+| --- | --- | --- |
+| `nickname` | Y | 닉네임. 영문 소문자, 숫자, 마침표(`.`), 밑줄(`_`)만 3~30자 |
+| `birthDate` | Y | 생년월일 (yyyy-MM-dd) |
+| `gender` | Y | 사용자 성별: `MALE` / `FEMALE` |
+| `regionName` | Y | 지역명 |
+| `regionCode` | Y | 지역 코드 |
+| `styleCodes` | Y | 선호 스타일 code 배열 (2~10개). 배열 순서 기준 첫 번째는 대표 스타일(+7), 나머지는 보조 스타일(+3), 선택하지 않은 스타일은 0점으로 반영합니다. |
+| `marketingAgreed` | Y | 마케팅 정보 수신 동의 여부. 선택 동의이므로 `false` 저장 가능 |
+
+#### POST /api/v1/users/onboarding 응답 필드
+
+`GET /api/v1/users/profile` 응답 필드와 동일한 본인 프로필 정보를 반환합니다.
 
 #### POST /api/v1/users/styles 요청 필드
 
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
-| `styleCodes` | Y | 스타일 코드 배열 (1~3개, 예: `["CASUAL", "MINIMAL"]`). 배열 순서 기준 첫 번째가 대표 스타일(+7), 나머지가 보조 스타일(+3)로 반영됩니다. |
+| `styleCodes` | Y | 스타일 코드 배열 (2~10개, 예: `["CASUAL", "MINIMAL"]`). 저장 시 사용자별 전체 스타일 row를 보장하고, 배열 순서 기준 첫 번째는 대표 스타일(+7), 나머지는 보조 스타일(+3), 선택하지 않은 스타일은 0점으로 반영합니다. |
 
 허용 스타일 코드: `CASUAL`, `STREET`, `MINIMAL`, `SPORTY`, `CLASSIC`, `CHIC`, `WORKWEAR`, `CITYBOY`, `GORPCORE`, `RETRO`
 
@@ -145,7 +220,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 
 #### 마케팅 정보 수신 동의 변경
 
-필수 약관인 이용약관과 개인정보 처리방침은 회원가입 시 자동 동의 기준으로 처리하며, 사용자별 약관 버전/동의 시각은 별도로 저장하지 않습니다. 선택 동의인 마케팅 정보 수신 동의는 `USERS.marketing_agreed`, `USERS.marketing_agreed_at` 기준으로 관리합니다.
+필수 약관인 이용약관과 개인정보 처리방침은 회원가입 시 자동 동의 기준으로 처리하며, 사용자별 약관 버전/동의 시각은 별도로 저장하지 않습니다. 선택 동의인 마케팅 정보 수신 동의는 `USERS.marketing_agreed`, `USERS.marketing_agreed_at` 기준으로 관리합니다. `marketing_agreed_at`은 동의 상태일 때 실제 동의 시각을 저장하고, 미동의 또는 철회 상태에서는 `NULL`로 관리합니다.
 
 **PATCH** `/api/v1/users/{userId}/marketing-consent`
 
@@ -164,6 +239,32 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
   "success": true,
   "data": {
     "marketingAgreed": true
+  },
+  "message": null
+}
+```
+
+### 약관
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| GET | `/api/v1/legal/terms` | 서비스 이용약관 markdown 원문 조회 |
+| GET | `/api/v1/legal/privacy-policy` | 개인정보 처리방침 markdown 원문 조회 |
+| GET | `/api/v1/legal/marketing-consent` | 마케팅 정보 수신 동의 markdown 원문 조회 |
+
+약관 원본은 BE `docs/legal/`에 두고, 실제 적용된 버전은 `docs/legal/versions/`에 보관합니다. API는 최신본의 frontmatter를 metadata로 분리하고 markdown 본문을 `content`로 반환합니다.
+
+응답 예시:
+
+```json
+{
+  "success": true,
+  "data": {
+    "policyType": "terms",
+    "version": "2026.06.15",
+    "effectiveDate": "2026-06-15",
+    "lastUpdated": "2026-06-15",
+    "content": "# 서비스 이용약관\n\n..."
   },
   "message": null
 }
@@ -419,7 +520,12 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "reason": "Style Match: 0.9, Weather Match: 1.0",
       "brandName": "브랜드명",
       "category": "카테고리",
-      "primaryColor": "대표 색상",
+      "primaryColor": "GRAY",
+      "primaryColorDisplay": {
+        "code": "GRAY",
+        "name": "그레이",
+        "hex": "#9E9E9E"
+      },
       "primaryStyle": "스타일",
       "clothesId": 123
     }
@@ -759,6 +865,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/images/clothes/{userId}/{filename}` | 옷 이미지 조회 |
 | GET | `/api/v1/images/purchase-captures/{userId}/{filename}` | 구매내역 캡처 이미지 조회 |
 | GET | `/api/v1/images/feed/{userId}/{filename}` | 피드 이미지 조회 |
+| GET | `/api/v1/images/profile/{userId}/{filename}` | 프로필 이미지 조회 |
 
 ### 룩피드 (FEED-001~008)
 

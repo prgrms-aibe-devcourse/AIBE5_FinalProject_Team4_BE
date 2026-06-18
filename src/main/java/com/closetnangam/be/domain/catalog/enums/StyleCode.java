@@ -24,4 +24,13 @@ public enum StyleCode {
     public static StyleCode fromCode(String code) {
         return StyleCode.valueOf(code);
     }
+
+    public static StyleCode fromCodeOrDefault(String code) {
+        if (code == null || code.isBlank()) return CASUAL;
+        try {
+            return StyleCode.valueOf(code.toUpperCase().replace(" ", "_"));
+        } catch (IllegalArgumentException e) {
+            return CASUAL;
+        }
+    }
 }

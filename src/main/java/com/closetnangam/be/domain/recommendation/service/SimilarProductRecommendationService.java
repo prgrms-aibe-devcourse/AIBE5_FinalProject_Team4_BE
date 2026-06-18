@@ -372,7 +372,7 @@ public class SimilarProductRecommendationService {
                 .orElse("");
 
         try {
-            return ClothesColor.fromCode(primaryColorCode).getLabel();
+            return ClothesColor.fromCodeOrDefault(primaryColorCode).getLabel();
         } catch (IllegalArgumentException e) {
             return normalize(primaryColorCode);
         }
@@ -446,7 +446,7 @@ public class SimilarProductRecommendationService {
      */
     private String getItemTypeLabel(Clothes clothes) {
         try {
-            return ClothesItemType.fromCode(clothes.getItemType()).getLabel();
+            return ClothesItemType.fromCodeOrDefault(clothes.getItemType()).getLabel();  // 수정
         } catch (IllegalArgumentException e) {
             return normalize(clothes.getItemType());
         }

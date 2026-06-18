@@ -24,7 +24,22 @@ public enum ClothesColor {
     private final String label;
     private final String hex;
 
+    // 기존 유지
     public static ClothesColor fromCode(String code) {
         return ClothesColor.valueOf(code);
+    }
+
+    // 표시용 fallback 추가
+    public static ClothesColor fromCodeOrDefault(String code) {
+        if (code == null || code.isBlank()) return WHITE;
+        // 영문 코드 시도
+        try {
+            return ClothesColor.valueOf(code.toUpperCase().replace(" ", "_"));
+        } catch (IllegalArgumentException ignored) {}
+        // 한글 label로 역매핑 시도
+        for (ClothesColor color : values()) {
+            if (color.getLabel().equals(code)) return color;
+        }
+        return WHITE;
     }
 }

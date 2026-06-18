@@ -37,11 +37,12 @@ last_updated: 2026-06-14
 | 옷장 통계 범위 | `/statistics` API가 `OWNED` 상태의 보유 옷만 계산하고 `totalOwnedCount`를 반환 | 옷장 전체 요약은 `OWNED`와 `WISHLIST`를 함께 고려 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | `USER_STYLES.wardrobe_weight` 산정 범위 | `/statistics` API 호출 시 보유 옷 기준 스타일 가중치를 계산해 `USER_STYLES.wardrobe_weight`에 동기화 | `wardrobe_weight`는 사용자의 옷장에 등록된 옷 스타일 기반 점수라는 기준을 따름 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | `CLOTHES.season` 수정 범위와 계절 기준 | 현재 `season`은 `CLOTHES`에 저장되지만 옷 수정 요청에서 변경 가능. 일부 Swagger/OpenAPI 설명은 `season`을 옷장 정보처럼 설명함. `GET /api/v1/categories` 일반 응답은 계절 목록을 별도 필드로 제공하지 않고, 추천/날씨 계산은 `ClothesSeason` 기준으로 통합됨 | `season`은 `CLOTHES` 공통 정보이며 옷 등록 시 1개 선택하고 생성 후 변경하지 않음 | [requirements-definition.md](../requirements/requirements-definition.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [invariants.md](../domain/invariants.md), [api-contract.md](../api/api-contract.md) |
-| 이미지 저장 방식 | 현재 이미지 업로드/조회 구현은 로컬 파일 저장소와 `/api/v1/images/**` 조회 endpoint를 사용 | 운영 기준은 AWS S3 저장과 이미지 URL 관리 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md) |
+| 이미지 저장 방식 | 현재 이미지 업로드/조회 구현은 로컬 파일 저장소, `/api/v1/images/**` 조회 endpoint, 프로필 이미지 업로드 API를 사용 | 운영 기준은 AWS S3 저장과 이미지 URL 관리 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md) |
 | 배포/인프라 목표 구조 | GitHub Actions는 테스트/빌드 CI를 수행하고, Docker Compose는 로컬 MySQL/Redis 개발 인프라를 실행. AWS 배포와 CD 자동화는 진행 예정 | 시스템 아키텍처는 AWS EC2/RDS/S3와 GitHub Actions 기반 배포까지 포함한 목표 구조 | [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) |
 | 추천 응답 형식 | `RECO-002` 추천 응답의 `price`는 "0" 고정, `score`는 0~1 문자열, `reason`은 기술적 매칭 결과 반환 | 실제 가격, 백분율 점수, 사용자 친화적 자연어 추천 이유 제공 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | AI MD 추천 검증 범위 | `RECO-006` API는 완성형 코디 검증과 스타일 가중 상품 후보 구성을 구현했지만, 외부 상품 포함 저장·저장 실패 및 다중 네이버 검색 조합 경로 테스트가 부족 | 외부 상품 혼합 코디 저장, 4개 미만 응답, 저장 실패/롤백, 다중 검색 결과 병합 경로를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | 개발/임시 API 경계 | local mock token API가 코드에 존재 | 공식 서비스 API는 [api-contract.md](../api/api-contract.md)의 엔드포인트 인덱스를 기준으로 판단 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) |
+| 탈퇴 30일 경과 후 개인정보 삭제/익명화 | 회원탈퇴 시 `withdrawn_at`을 기록하고 30일 이내 복구 가능한 상태로 관리하지만, 30일 경과 후 개인정보 삭제/익명화 자동 처리는 별도 구현 없음 | 탈퇴 철회 기간이 지나면 약관과 개인정보 처리방침 기준에 따라 개인정보를 삭제하거나 식별할 수 없게 처리 | [data-lifecycle.md](../database/data-lifecycle.md), [legal/README.md](../legal/README.md), [api-contract.md](../api/api-contract.md) |
 
 ## 요구사항 ID 연결표
 
@@ -51,13 +52,29 @@ last_updated: 2026-06-14
 | `STYLE-002` | `USER_STYLES.wardrobe_weight` | `WardrobeStatisticsService`, `UserStyle.syncWardrobeWeight`, `WardrobeStatisticsResponse.userStylePayloads` | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [erd.md](../database/erd.md) | 통계 API 호출 시 보유 옷 기준 스타일 가중치를 저장. 옷장 전체 등록 기준 반영 여부 확인 필요 |
 | `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` | 옷 계절 수정 기준 | `Clothes`, `ClothesService`, `ClothesUpdateRequest`, `PhotoClothesRegistrationController`, `PurchaseCaptureRegistrationController`, `CategoryCatalogService`, `ClothesSeason` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [api-contract.md](../api/api-contract.md) | `CLOTHES.season` 저장과 AI 분석 필드 반영은 완료. 옷 수정 요청의 `season` 변경 가능성, 일부 OpenAPI 설명, 카탈로그 일반 응답/계절 호환 계산 기준 확인 필요 |
 | `RECO-005` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 시 `brandName != UNKNOWN` 우선 |
-| `DEPLOY-004` | 이미지 저장과 조회 | `LocalImageStorageService`, `ImageController`, `StorageProperties` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md) | 현재 로컬 저장소 기반. 운영 기준인 AWS S3 전환 여부 확인 필요 |
+| `DEPLOY-004` | 이미지 저장과 조회 | `LocalImageStorageService`, `ImageController`, `StorageProperties`, `UserController`, `UserService` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md) | 현재 로컬 저장소 기반. 프로필 이미지 업로드도 같은 로컬 저장소를 사용하며, 운영 기준인 AWS S3 전환 여부 확인 필요 |
 | `DEPLOY-001`~`DEPLOY-005` | 배포/인프라 목표 구조 | `.github/workflows/ci.yml`, `docker-compose.yml` | [requirements-definition.md](../requirements/requirements-definition.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) | 시스템 아키텍처는 목표 구조 기준. 현재 GitHub Actions는 CI, Docker Compose는 로컬 MySQL/Redis 실행, AWS 배포/CD 자동화는 진행 예정 |
 | `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | `price` placeholder("0"), 0~1 점수 형식, 기술적 추천 이유 제공. 기준 문서와 응답 형식 차이 존재 |
 | `RECO-006` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 다중 상품 검색, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
 | 개발/임시 API | `GET /api/v1/auth/mock-token` | `MockAuthController` | [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) | 공식 사용자 기능으로 보지 않음. local 개발 경계 확인 필요 |
+| 회원탈퇴 | 탈퇴 후 데이터 보존/삭제 | `UserController`, `UserService`, `User` | [data-lifecycle.md](../database/data-lifecycle.md), [legal/README.md](../legal/README.md), [api-contract.md](../api/api-contract.md) | 탈퇴 시 `withdrawn_at` 기록과 30일 이내 복구 흐름은 구현. 30일 경과 후 개인정보 삭제/익명화 자동 처리 기준은 후속 구현 필요 |
 
 ## BE 코드와 공식 기준 확인 필요
+
+### 회원탈퇴 30일 경과 후 개인정보 삭제/익명화
+
+회원탈퇴 시 계정은 탈퇴 상태가 되고 `withdrawn_at`에 탈퇴 시각을 기록합니다. 탈퇴한 적이 없는 회원의 `withdrawn_at`은 `null`입니다.
+
+현재 구현은 30일 이내 복구 가능한 탈퇴 상태를 관리하는 데 초점이 있습니다. 다만 약관과 개인정보 처리방침 기준상 탈퇴 철회 기간이 지나면 개인정보를 삭제하거나 식별할 수 없게 처리하는 후속 작업이 필요합니다.
+
+후속 구현에서는 아래 기준을 확인합니다.
+
+- 30일 경과 회원을 찾는 기준
+- 이메일, 닉네임, 프로필 이미지, 자기소개, 외부 링크, 소셜 계정 연결 등 개인정보성 필드 삭제 또는 익명화 범위
+- 옷, 코디, 피드, 추천 학습 데이터처럼 서비스 품질을 위해 보존할 수 있는 비식별 데이터 범위
+- 자동 배치, 스케줄러, 관리자 수동 처리 중 운영 방식
+
+이 작업은 현재 로그인/온보딩/마이페이지 보완 범위에서는 구현하지 않고, 후속 이슈에서 처리합니다.
 
 ### `WARDROBE-002` 옷장 통계
 
@@ -156,7 +173,7 @@ src/main/java/com/closetnangam/be/domain/purchase/controller/PurchaseCaptureRegi
 
 ### `DEPLOY-004` 이미지 저장 방식
 
-공식 기준 문서에서 옷 사진, 구매내역 캡처, 피드 이미지는 AWS S3 저장 기준으로 관리합니다.
+공식 기준 문서에서 옷 사진, 구매내역 캡처, 피드 이미지, 프로필 이미지는 AWS S3 저장 기준으로 관리합니다.
 
 현재 BE 구현은 로컬 파일 저장소를 사용합니다.
 
@@ -164,6 +181,8 @@ src/main/java/com/closetnangam/be/domain/purchase/controller/PurchaseCaptureRegi
 src/main/java/com/closetnangam/be/global/storage/LocalImageStorageService.java
 - storeClothesPhoto(...)
 - storePurchaseCapture(...)
+- storeFeedPhoto(...)
+- storeProfileImage(...)
 
 src/main/java/com/closetnangam/be/global/config/StorageProperties.java
 - app.storage.local.basePath
@@ -172,9 +191,14 @@ src/main/java/com/closetnangam/be/global/config/StorageProperties.java
 src/main/java/com/closetnangam/be/global/storage/ImageController.java
 - GET /api/v1/images/clothes/{userId}/{filename}
 - GET /api/v1/images/purchase-captures/{userId}/{filename}
+- GET /api/v1/images/feed/{userId}/{filename}
+- GET /api/v1/images/profile/{userId}/{filename}
+
+src/main/java/com/closetnangam/be/domain/user/controller/UserController.java
+- POST /api/v1/users/profile/image
 ```
 
-따라서 현재 코드의 이미지 저장 방식은 운영 기준인 AWS S3가 아니라 로컬 개발 저장소 기준으로 이해합니다. S3 저장소로 전환하거나 로컬 저장소를 공식 기준으로 확정한다면 [api-contract.md](../api/api-contract.md), [domain/invariants.md](../domain/invariants.md), [garment-registration.md](../features/garment-registration.md), [data-lifecycle.md](../database/data-lifecycle.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md)를 같은 PR에서 함께 수정합니다.
+따라서 현재 코드의 이미지 저장 방식은 운영 기준인 AWS S3가 아니라 로컬 개발 저장소 기준으로 이해합니다. 프로필 이미지 업로드 API는 현재 로컬 이미지 URL을 반환하지만, S3 저장소로 전환하면 같은 API에서 S3 또는 CDN URL을 반환하는 방식으로 이어가는 것을 기준으로 합니다. S3 저장소로 전환하거나 로컬 저장소를 공식 기준으로 확정한다면 [api-contract.md](../api/api-contract.md), [domain/invariants.md](../domain/invariants.md), [garment-registration.md](../features/garment-registration.md), [data-lifecycle.md](../database/data-lifecycle.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md)를 같은 PR에서 함께 수정합니다.
 
 ### `DEPLOY-001`~`DEPLOY-005` 목표 배포 구조와 현재 로컬/CI 상태
 
