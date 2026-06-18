@@ -75,7 +75,7 @@ app:
   recommendation:
     complementary:
       # 동기 Gemini 분류(importComplementaryRecommendationCandidate) 사용 여부. false면 규칙 기반 fallback만 사용.
-      ai-classification-enabled: true 
+      ai-classification-enabled: true
       batch:
         # Gemini Batch API 대량 분류·적재. local에서 enabled=true 시 기동 후 자동 실행.
         enabled: false

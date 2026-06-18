@@ -52,7 +52,7 @@ last_updated: 2026-06-14
 | `STYLE-002` | `USER_STYLES.wardrobe_weight` | `WardrobeStatisticsService`, `UserStyle.syncWardrobeWeight`, `WardrobeStatisticsResponse.userStylePayloads` | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [erd.md](../database/erd.md) | 통계 API 호출 시 보유 옷 기준 스타일 가중치를 저장. 옷장 전체 등록 기준 반영 여부 확인 필요 |
 | `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` | 옷 계절 수정 기준 | `Clothes`, `ClothesService`, `ClothesUpdateRequest`, `PhotoClothesRegistrationController`, `PurchaseCaptureRegistrationController`, `CategoryCatalogService`, `ClothesSeason` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [api-contract.md](../api/api-contract.md) | `CLOTHES.season` 저장과 AI 분석 필드 반영은 완료. 옷 수정 요청의 `season` 변경 가능성, 일부 OpenAPI 설명, 카탈로그 일반 응답/계절 호환 계산 기준 확인 필요 |
 | `RECO-005` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 시 `brandName != UNKNOWN` 우선 |
-| `DEPLOY-004` | 이미지 저장과 조회 | `LocalImageStorageService`, `ImageController`, `StorageProperties`, `UserController`, `UserService` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md) | 현재 로컬 저장소 기반. 프로필 이미지 업로드도 같은 로컬 저장소를 사용하며, 운영 기준인 AWS S3 전환 여부 확인 필요 |
+| `DEPLOY-004` | 이미지 저장과 조회 | `ImageStorageService`, `S3ImageStorageService`, `LocalImageStorageService`, `ImageController`, `StorageProperties`, `UserController`, `UserService`, `FeedService` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md) | `STORAGE_BACKEND=s3`(운영 기본) 시 S3, `local`(로컬 기본) 시 디스크 저장. 옷·구매캡처·피드·프로필 이미지 모두 `ImageStorageService` 인터페이스로 추상화 완료. 브라우저 조회는 환경 무관하게 `/api/v1/images/**` 인증 API 경유 |
 | `DEPLOY-001`~`DEPLOY-005` | 배포/인프라 목표 구조 | `.github/workflows/ci.yml`, `docker-compose.yml` | [requirements-definition.md](../requirements/requirements-definition.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) | 시스템 아키텍처는 목표 구조 기준. 현재 GitHub Actions는 CI, Docker Compose는 로컬 MySQL/Redis 실행, AWS 배포/CD 자동화는 진행 예정 |
 | `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | `price` placeholder("0"), 0~1 점수 형식, 기술적 추천 이유 제공. 기준 문서와 응답 형식 차이 존재 |
 | `RECO-006` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 다중 상품 검색, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
@@ -175,30 +175,23 @@ src/main/java/com/closetnangam/be/domain/purchase/controller/PurchaseCaptureRegi
 
 공식 기준 문서에서 옷 사진, 구매내역 캡처, 피드 이미지, 프로필 이미지는 AWS S3 저장 기준으로 관리합니다.
 
-현재 BE 구현은 로컬 파일 저장소를 사용합니다.
+**S3 전환 완료.** `ImageStorageService` 인터페이스 아래 `S3ImageStorageService`(운영)와 `LocalImageStorageService`(로컬)가 `app.storage.backend` 프로퍼티로 전환됩니다. 옷·구매캡처·피드·프로필 이미지 네 가지 업로드 경로 모두 인터페이스로 추상화되어 있으며, `FeedService`·`UserService`는 구체 타입 대신 인터페이스를 주입합니다.
 
 ```text
-src/main/java/com/closetnangam/be/global/storage/LocalImageStorageService.java
+app.storage.backend=s3   → S3ImageStorageService  (운영 기본, STORAGE_BACKEND=s3)
+app.storage.backend=local → LocalImageStorageService (로컬 기본, matchIfMissing=true)
+
+ImageStorageService 계약:
 - storeClothesPhoto(...)
 - storePurchaseCapture(...)
+- storePurchaseCaptureThumbnail(...)
 - storeFeedPhoto(...)
 - storeProfileImage(...)
 
-src/main/java/com/closetnangam/be/global/config/StorageProperties.java
-- app.storage.local.basePath
-- app.storage.local.baseUrl
-
-src/main/java/com/closetnangam/be/global/storage/ImageController.java
-- GET /api/v1/images/clothes/{userId}/{filename}
-- GET /api/v1/images/purchase-captures/{userId}/{filename}
-- GET /api/v1/images/feed/{userId}/{filename}
-- GET /api/v1/images/profile/{userId}/{filename}
-
-src/main/java/com/closetnangam/be/domain/user/controller/UserController.java
-- POST /api/v1/users/profile/image
+브라우저 조회는 환경 무관하게 ImageController /api/v1/images/** 인증 API 경유
 ```
 
-따라서 현재 코드의 이미지 저장 방식은 운영 기준인 AWS S3가 아니라 로컬 개발 저장소 기준으로 이해합니다. 프로필 이미지 업로드 API는 현재 로컬 이미지 URL을 반환하지만, S3 저장소로 전환하면 같은 API에서 S3 또는 CDN URL을 반환하는 방식으로 이어가는 것을 기준으로 합니다. S3 저장소로 전환하거나 로컬 저장소를 공식 기준으로 확정한다면 [api-contract.md](../api/api-contract.md), [domain/invariants.md](../domain/invariants.md), [garment-registration.md](../features/garment-registration.md), [data-lifecycle.md](../database/data-lifecycle.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md)를 같은 PR에서 함께 수정합니다.
+남은 확인 사항: CloudFront 연동 시 `S3_PUBLIC_BASE_URL` 설정, EC2 IAM Role S3 권한 부여. 관련 배포 절차는 [docs/deploy/aws-setup.md](../../deploy/aws-setup.md)를 참고합니다.
 
 ### `DEPLOY-001`~`DEPLOY-005` 목표 배포 구조와 현재 로컬/CI 상태
 
@@ -209,7 +202,7 @@ src/main/java/com/closetnangam/be/domain/user/controller/UserController.java
 - GitHub Actions는 테스트와 빌드 CI를 수행합니다.
 - EC2 자동 배포 CD workflow는 아직 구현되지 않았습니다.
 - Docker Compose는 BE 애플리케이션 실행이 아니라 로컬 MySQL/Redis 개발 인프라 실행에 사용합니다.
-- AWS S3는 운영 기준 이미지 저장소이며, 현재 구현은 로컬 이미지 저장소를 사용합니다.
+- AWS S3는 운영 기준 이미지 저장소이며, `STORAGE_BACKEND=s3`(운영 기본) / `local`(로컬 기본)으로 전환 가능합니다.
 
 자동 코드리뷰와 문서 검토 시 `system-architecture.md`만 보고 현재 구현이 누락되었다고 판단하지 않고, 이 문서의 gap 항목을 함께 확인합니다.
 
