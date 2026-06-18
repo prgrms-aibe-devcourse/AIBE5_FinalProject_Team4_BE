@@ -48,6 +48,16 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         CustomOAuth2User principal = (CustomOAuth2User) authentication.getPrincipal();
         Long userId = principal.getUserId();
 
+        if (principal.isWithdrawnRestoreRequired()) {
+            request.getSession(true)
+                    .setAttribute(OAuth2SessionAttributes.WITHDRAWN_RESTORE_USER_ID, userId);
+            expireAuthCookies(request, response);
+            requestCache.removeRequest(request, response);
+            clearAuthenticationAttributes(request);
+            getRedirectStrategy().sendRedirect(request, response, appendQuery(redirectUri, "withdrawn=restore_required"));
+            return;
+        }
+
         String accessToken = jwtTokenProvider.createAccessToken(userId);
         String refreshToken = jwtTokenProvider.createRefreshToken(userId);
 
@@ -77,5 +87,30 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         clearAuthenticationAttributes(request);
 
         getRedirectStrategy().sendRedirect(request, response, redirectUri);
+    }
+
+    private void expireAuthCookies(HttpServletRequest request, HttpServletResponse response) {
+        ResponseCookie accessCookie = ResponseCookie.from("access_token", "")
+                .httpOnly(true)
+                .secure(request.isSecure())
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(0)
+                .build();
+
+        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", "")
+                .httpOnly(true)
+                .secure(request.isSecure())
+                .sameSite("Lax")
+                .path("/api/v1/auth")
+                .maxAge(0)
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+    }
+
+    private String appendQuery(String uri, String query) {
+        return uri + (uri.contains("?") ? "&" : "?") + query;
     }
 }

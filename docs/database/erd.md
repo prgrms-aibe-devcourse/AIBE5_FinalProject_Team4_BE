@@ -92,6 +92,8 @@ erd_version: v2.3
 
 ### `USER_STYLES`
 
+사용자별 전체 스타일 row를 보장하고, 선택하지 않은 스타일의 `preference_weight`는 0으로 둡니다.
+
 | 컬럼 | 의미 |
 | --- | --- |
 | `preference_weight` | 온보딩/마이페이지에서 사용자가 선택한 스타일 점수 |
@@ -123,6 +125,8 @@ erd_version: v2.3
 | --- | --- |
 | `profile_bio` | 프로필 소개 문구 |
 | `external_link_url` | 대표 외부 링크 URL (단일) |
+| `status` | 계정 상태: `ACTIVE`, `WITHDRAWN` |
+| `withdrawn_at` | 회원 탈퇴 시각. 탈퇴 이력이 없는 활성 계정은 `NULL` |
 
 ### `SOCIAL_ACCOUNTS`
 
