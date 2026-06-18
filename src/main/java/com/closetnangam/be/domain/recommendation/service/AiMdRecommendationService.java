@@ -1177,7 +1177,7 @@ public class AiMdRecommendationService {
 
     private String toColorLabel(String colorCode) {
         try {
-            return ClothesColor.fromCode(colorCode).getLabel();
+            return ClothesColor.fromCodeOrDefault(colorCode).getLabel();
         } catch (IllegalArgumentException exception) {
             return defaultIfBlank(colorCode, "UNKNOWN");
         }
@@ -1185,7 +1185,7 @@ public class AiMdRecommendationService {
 
     private String toItemTypeLabel(String itemType) {
         try {
-            return ClothesItemType.fromCode(itemType).getLabel();
+            return ClothesItemType.fromCodeOrDefault(itemType).getLabel();
         } catch (IllegalArgumentException exception) {
             return defaultIfBlank(itemType, "UNKNOWN");
         }

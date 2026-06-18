@@ -11,7 +11,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -42,30 +41,20 @@ public class WeatherService {
         String baseDate = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String baseTime = now.format(DateTimeFormatter.ofPattern("HH00"));
 
-        try {
-            // 3. 안전한 파라미터들만 먼저 빌더로 주조 (한글/공백 안전하게 인코딩됨)
-            String urlTemplate = UriComponentsBuilder.fromHttpUrl(apiUrl)
-                    .queryParam("pageNo", "1")
-                    .queryParam("numOfRows", "60")
-                    .queryParam("dataType", "JSON")
-                    .queryParam("base_date", baseDate)
-                    .queryParam("base_time", baseTime)
-                    .queryParam("nx", nx)
-                    .queryParam("ny", ny)
-                    .toUriString();
+        URI uri = UriComponentsBuilder.fromHttpUrl(apiUrl)
+                .queryParam("pageNo", "1")
+                .queryParam("numOfRows", "60")
+                .queryParam("dataType", "JSON")
+                .queryParam("base_date", baseDate)
+                .queryParam("base_time", baseTime)
+                .queryParam("nx", nx)
+                .queryParam("ny", ny)
+                .queryParam("serviceKey", apiKey)
+                .build(true)
+                .toUri();
 
-            // 4. 작동이 검증된 방식대로 인증키를 우회 접합하여 순수 URI 객체 생성
-            URI uri = new URI(urlTemplate + "&serviceKey=" + apiKey);
-
-            // 5. API 호출
-            String jsonResult = restTemplate.getForObject(uri, String.class);
-
-            // 6. 결과 파싱하여 리스트 반환
-            return parseWeatherData(jsonResult);
-
-        } catch (URISyntaxException e) {
-            throw new RuntimeException("URI 생성 중 오류가 발생했습니다.", e);
-        }
+        String jsonResult = restTemplate.getForObject(uri, String.class);
+        return parseWeatherData(jsonResult);
     }
 
     /**
