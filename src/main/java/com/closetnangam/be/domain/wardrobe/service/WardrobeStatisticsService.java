@@ -80,7 +80,8 @@ public class WardrobeStatisticsService {
         }
 
         List<UserStyleWardrobePayload> stylePayloads = toUserStylePayloads(styleAccumulators);
-        syncUserStyles(userId, stylePayloads);
+        boolean hasWardrobeData = !ownedClothes.isEmpty();
+        syncUserStyles(userId, stylePayloads, hasWardrobeData);
 
         return new WardrobeStatisticsResponse(
                 userId,
@@ -91,7 +92,7 @@ public class WardrobeStatisticsService {
         );
     }
 
-    private void syncUserStyles(Long userId, List<UserStyleWardrobePayload> payloads) {
+    private void syncUserStyles(Long userId, List<UserStyleWardrobePayload> payloads, boolean hasWardrobeData) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
@@ -105,7 +106,7 @@ public class WardrobeStatisticsService {
                             .style(style)
                             .build());
 
-            userStyle.syncWardrobeWeight(payload.wardrobeWeight());
+            userStyle.syncWardrobeWeight(payload.wardrobeWeight(), hasWardrobeData);
             userStyleRepository.save(userStyle);
         }
         userStyleRepository.flush(); // 즉시 반영하여 추천 서비스에서 최신 가중치를 읽을 수 있도록 함

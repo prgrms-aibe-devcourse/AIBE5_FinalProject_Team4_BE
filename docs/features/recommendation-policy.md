@@ -27,12 +27,14 @@ last_updated: 2026-06-11
 | `feedback_weight` | 추천 싫어요/추천 제외 기반 마이너스 점수 |
 | `combined_weight` | 세 점수를 결합한 최종 스타일 점수 (온보딩 30% + 옷장 70% + 피드백) |
 
-최종 점수는 아래 기준으로 계산합니다.
+최종 점수는 아래 기준으로 계산하며, 사용자의 옷장 데이터 보유 여부를 기준으로 전략을 선택합니다.
 
 - **신규 사용자 (옷장 비어있음)**:
   `combined_weight = preference_weight + feedback_weight`
 - **기존 사용자 (옷장 데이터 있음)**:
-  `combined_weight = (preference_weight * 0.3) + (wardrobe_weight * 0.7) + feedback_weight`
+  `combined_weight = round(preference_weight * 0.3 + wardrobe_weight * 0.7) + feedback_weight`
+
+> **판단 기준**: 사용자가 소유 중인(`OWNED`) 옷장 아이템이 1개 이상 존재하면 '기존 사용자'로 간주합니다. 특정 스타일의 `wardrobe_weight`가 0이더라도, 전체 옷장에 데이터가 있다면 30/70 결합 전략을 유지합니다.
 
 ## 점수 부여 기준
 

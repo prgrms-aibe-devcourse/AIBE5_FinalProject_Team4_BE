@@ -2,8 +2,10 @@ package com.closetnangam.be.domain.recommendation.service;
 
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
+import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.StyleRole;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
+import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.recommendation.dto.request.RecommendationFeedbackRequest;
 import com.closetnangam.be.domain.recommendation.entity.RecommendationFeedback;
 import com.closetnangam.be.domain.recommendation.enums.FeedbackType;
@@ -28,6 +30,7 @@ public class RecommendationFeedbackService {
     private final UserRepository userRepository;
     private final ClothesRepository clothesRepository;
     private final UserStyleRepository userStyleRepository;
+    private final WardrobeClothesRepository wardrobeClothesRepository;
 
     @Transactional
     public void submitFeedback(Long userId, RecommendationFeedbackRequest request) {
@@ -84,6 +87,8 @@ public class RecommendationFeedbackService {
 
     private void updateUserStyleWeights(User user, Clothes clothes, int delta) {
         List<ClothesStyleTag> styleTags = clothes.getSortedStyleTags();
+        boolean hasWardrobeData = wardrobeClothesRepository.existsByUserIdAndOwnershipStatus(user.getId(), OwnershipStatus.OWNED);
+
         for (ClothesStyleTag tag : styleTags) {
             UserStyle userStyle = userStyleRepository.findByUserIdAndStyleId(user.getId(), tag.getStyle().getId())
                     .orElseGet(() -> userStyleRepository.save(UserStyle.builder()
@@ -93,7 +98,7 @@ public class RecommendationFeedbackService {
 
             int amount = (tag.getStyleRole() == StyleRole.PRIMARY) ? 7 : 3;
             int newWeight = userStyle.getFeedbackWeight() + (amount * delta);
-            userStyle.updateFeedbackWeight(newWeight);
+            userStyle.updateFeedbackWeight(newWeight, hasWardrobeData);
         }
     }
 }

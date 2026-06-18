@@ -64,35 +64,33 @@ public class UserStyle extends BaseEntity {
         this.combinedWeight = 0;
     }
 
-    public void updatePreferenceWeight(int weight) {
+    public void updatePreferenceWeight(int weight, boolean hasWardrobeData) {
         this.preferenceWeight = weight;
-        calculateCombinedWeight();
+        calculateCombinedWeight(hasWardrobeData);
     }
 
-    public void updateWardrobeWeight(int weight) {
+    public void updateWardrobeWeight(int weight, boolean hasWardrobeData) {
         this.wardrobeWeight = weight;
-        calculateCombinedWeight();
+        calculateCombinedWeight(hasWardrobeData);
     }
 
-    public void syncWardrobeWeight(int weight) {
+    public void syncWardrobeWeight(int weight, boolean hasWardrobeData) {
         this.wardrobeWeight = weight;
-        calculateCombinedWeight();
+        calculateCombinedWeight(hasWardrobeData);
     }
 
-    public void updateFeedbackWeight(int weight) {
+    public void updateFeedbackWeight(int weight, boolean hasWardrobeData) {
         this.feedbackWeight = weight;
-        calculateCombinedWeight();
+        calculateCombinedWeight(hasWardrobeData);
     }
 
-    private void calculateCombinedWeight() {
-        // 옷장 통계가 있는 경우 (wardrobeWeight > 0)
+    private void calculateCombinedWeight(boolean hasWardrobeData) {
+        // 옷장 통계가 있는 경우 (hasWardrobeData == true)
         // 보유 옷 비율 70% + 온보딩 가중치 30% 배분 전략 적용
-        // 온보딩 가중치(preferenceWeight)는 1.0~5.0 범위라고 하셨으나 DB에는 Integer(예: 100~500 또는 1~5)로 저장될 수 있음.
-        // 여기서는 기존 combinedWeight가 단순히 합산이었으므로, 비율로 재계산.
-        if (this.wardrobeWeight > 0) {
+        if (hasWardrobeData) {
             // (preferenceWeight * 0.3) + (wardrobeWeight * 0.7) + (feedbackWeight)
-            double combined = (this.preferenceWeight * 0.3) + (this.wardrobeWeight * 0.7) + this.feedbackWeight;
-            this.combinedWeight = (int) Math.round(combined);
+            double combined = (this.preferenceWeight * 0.3) + (this.wardrobeWeight * 0.7);
+            this.combinedWeight = (int) Math.round(combined) + this.feedbackWeight;
         } else {
             // 신규 사용자(옷장 비어있음): 온보딩 가중치 100% 반영
             this.combinedWeight = this.preferenceWeight + this.feedbackWeight;

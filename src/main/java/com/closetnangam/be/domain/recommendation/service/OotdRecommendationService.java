@@ -250,7 +250,7 @@ public class OotdRecommendationService {
 
     private double score(Clothes c, WardrobeClothes wc, double temp, ClothesSeason currentSeason, Map<String, Integer> styleWeights) {
         double weatherScore = WeatherCompatibilityTable.getWeatherScore(temp, c.getItemType());
-        
+
         // 날씨 점수가 0이면 추천 후보에서 사실상 배제 (매우 낮은 점수 부여)
         if (weatherScore <= 0.0) {
             return -100.0;
