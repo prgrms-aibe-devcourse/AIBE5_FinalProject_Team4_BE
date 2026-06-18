@@ -266,12 +266,13 @@ class AiMdRecommendationServiceTest {
                 .contains("왜 이 코디가 나에게 어울리는지")
                 .contains("TOP(상의), BOTTOM(하의), SHOES(신발)를 각각 최소 1개")
                 .contains("wardrobeClothesIds는 비어 있어도 됩니다")
+                .contains("\"wardrobeClothesIds\": []")
                 .contains("룩 전체의 조화, 색상 연결, 실루엣 균형, 소재감, 상황 적합성")
                 .contains("후보 목록에서 매번 서로 다른 중심 아이템을 랜덤하게 고르되")
                 .contains("상의만 여러 개 조합한 결과는 코디로 인정하지 않습니다")
                 .contains("ownershipStatus가 OWNED인 보유 옷과 WISHLIST인 미보유 관심 상품")
                 .contains("전체 분량은 한글 기준 약 180~260자")
-                .contains("선택한 옷장 등록 옷과 외부 상품을 빠짐없이 한 번씩 언급")
+                .contains("선택한 옷장 등록 옷이 있다면 빠짐없이 언급")
                 .contains("상의·하의·아우터·신발 등 각 아이템이 코디에서 맡는 역할")
                 .contains("아이템별 설명을 따로 나열하지 말고")
                 .contains("같은 옷장 등록 옷 조합, 같은 외부 상품 조합, 같은 코디 제목과 사유가 반복되지 않도록")
@@ -785,6 +786,42 @@ class AiMdRecommendationServiceTest {
                 ""
         );
     }
+
+    private NaverShoppingProductResponse internalProduct(
+            Long clothesId,
+            String productId,
+            String title,
+            String category3
+    ) {
+        return new NaverShoppingProductResponse(
+                title,
+                "https://example.com/" + productId,
+                "https://example.com/" + productId + ".jpg",
+                10000,
+                null,
+                "INTERNAL",
+                productId,
+                "INTERNAL",
+                "테스트브랜드",
+                "테스트제조사",
+                "패션의류",
+                "남성의류",
+                category3,
+                "",
+                clothesId,
+                "INTERNAL"
+        );
+    }
+
+    private Clothes externalShoppingClothes(String category) {
+        Clothes clothes = mock(Clothes.class);
+        when(clothes.getClothesInfoSource()).thenReturn(ClothesInfoSource.EXTERNAL_SHOPPING);
+        when(clothes.getCategory()).thenReturn(category);
+        when(clothes.getSortedColorTags()).thenReturn(List.of());
+        when(clothes.getSortedStyleTags()).thenReturn(List.of());
+        return clothes;
+    }
+
     @Test
     @DisplayName("AI MD 코디 저장 시 outfitStyleService.saveOutfitStyles가 호출된다")
     void saveRecommendedOutfit_호출시_outfitStyles_저장된다() {
@@ -866,5 +903,95 @@ class AiMdRecommendationServiceTest {
 
         // then
         verify(outfitStyleService, times(1)).saveOutfitStyles(any(), anyList());
+    }
+
+    @Test
+    @DisplayName("AI MD 코디 저장은 옷장 등록 옷 없이 외부 후보만으로 완성형 코디를 저장할 수 있다")
+    void saveRecommendedOutfitAllowsExternalOnlyCompleteOutfit() {
+        UserRepository userRepository = mock(UserRepository.class);
+        WardrobeClothesRepository wardrobeClothesRepository = mock(WardrobeClothesRepository.class);
+        OutfitBookRepository outfitBookRepository = mock(OutfitBookRepository.class);
+        OutfitRepository outfitRepository = mock(OutfitRepository.class);
+        OutfitItemRepository outfitItemRepository = mock(OutfitItemRepository.class);
+        ClothesRepository clothesRepository = mock(ClothesRepository.class);
+        OutfitStyleService outfitStyleService = mock(OutfitStyleService.class);
+
+        User user = mock(User.class);
+        when(user.getGender()).thenReturn(User.Gender.MALE);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(wardrobeClothesRepository.findAllActiveByUserIdAndOwnershipStatuses(
+                1L,
+                List.of(OwnershipStatus.OWNED, OwnershipStatus.WISHLIST)
+        )).thenReturn(List.of());
+
+        OutfitBook outfitBook = mock(OutfitBook.class);
+        when(outfitBook.getId()).thenReturn(1L);
+        when(outfitBookRepository.findByUser_Id(1L)).thenReturn(Optional.of(outfitBook));
+
+        Outfit outfit = mock(Outfit.class);
+        when(outfit.getOutfitBook()).thenReturn(outfitBook);
+        when(outfit.getOutfitId()).thenReturn(10L);
+        when(outfitRepository.save(any())).thenReturn(outfit);
+        when(outfitItemRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Clothes top = externalShoppingClothes("TOP");
+        Clothes bottom = externalShoppingClothes("BOTTOM");
+        Clothes shoes = externalShoppingClothes("SHOES");
+        when(clothesRepository.findById(101L)).thenReturn(Optional.of(top));
+        when(clothesRepository.findById(102L)).thenReturn(Optional.of(bottom));
+        when(clothesRepository.findById(103L)).thenReturn(Optional.of(shoes));
+
+        AiMdRecommendationService service = new AiMdRecommendationService(
+                userRepository, wardrobeClothesRepository, outfitBookRepository,
+                outfitRepository, outfitItemRepository,
+                clothesRepository, null, null, null, null, null, null,
+                outfitStyleService
+        );
+        AiMdOutfitSaveRequest request = new AiMdOutfitSaveRequest(
+                "외부 후보 코디", "설명", "DAILY", "ALL_SEASON",
+                "reason", "tip",
+                List.of(),
+                List.of(
+                        internalProduct(101L, "CLOTHES_101", "추천 상의", "TOP"),
+                        internalProduct(102L, "CLOTHES_102", "추천 하의", "BOTTOM"),
+                        internalProduct(103L, "CLOTHES_103", "추천 신발", "SHOES")
+                )
+        );
+
+        ReflectionTestUtils.invokeMethod(service, "saveRecommendedOutfit", 1L, "taesik", request);
+
+        verify(outfitItemRepository).saveAll(any());
+        verify(outfitStyleService).saveOutfitStyles(any(), anyList());
+    }
+
+    @Test
+    @DisplayName("AI MD 코디 저장은 현재 사용자 옷장에 없는 wardrobeClothesId를 허용하지 않는다")
+    void saveRecommendedOutfitRejectsUnknownWardrobeClothesId() {
+        UserRepository userRepository = mock(UserRepository.class);
+        WardrobeClothesRepository wardrobeClothesRepository = mock(WardrobeClothesRepository.class);
+
+        User user = mock(User.class);
+        when(user.getGender()).thenReturn(User.Gender.MALE);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(wardrobeClothesRepository.findAllActiveByUserIdAndOwnershipStatuses(
+                1L,
+                List.of(OwnershipStatus.OWNED, OwnershipStatus.WISHLIST)
+        )).thenReturn(List.of());
+
+        AiMdRecommendationService service = new AiMdRecommendationService(
+                userRepository, wardrobeClothesRepository, null,
+                null, null, null, null, null, null, null, null, null,
+                null
+        );
+        AiMdOutfitSaveRequest request = new AiMdOutfitSaveRequest(
+                "외부 후보 코디", "설명", "DAILY", "ALL_SEASON",
+                "reason", "tip",
+                List.of(999L),
+                List.of()
+        );
+
+        assertThatThrownBy(() -> ReflectionTestUtils.invokeMethod(service, "saveRecommendedOutfit", 1L, "taesik", request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("현재 사용자의 옷장 등록 옷만 저장할 수 있습니다.");
     }
 }

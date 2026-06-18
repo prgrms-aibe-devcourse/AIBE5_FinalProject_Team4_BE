@@ -175,6 +175,9 @@ public class AiMdRecommendationService {
                 .map(wardrobeById::get)
                 .filter(Objects::nonNull)
                 .toList();
+        if (selectedWardrobeItems.size() != requestedWardrobeClothesIds.size()) {
+            throw new IllegalArgumentException("현재 사용자의 옷장 등록 옷만 저장할 수 있습니다.");
+        }
 
         OutfitBook outfitBook = outfitBookRepository.findByUser_Id(userId)
                 .orElseGet(() -> outfitBookRepository.save(OutfitBook.create(user)));
@@ -997,7 +1000,7 @@ public class AiMdRecommendationService {
                 - 추천할 때마다 같은 옷장 등록 옷 조합, 같은 외부 상품 조합, 같은 코디 제목과 사유가 반복되지 않도록 4개 코디의 중심 아이템과 분위기를 서로 다르게 구성합니다.
                 - 가능한 경우 4개 코디가 서로 다른 카테고리 보강 방식(신발 중심, 하의 중심, 아우터 포인트, 상의 레이어드 등)을 갖도록 구성합니다.
                 - reason은 사용자가 "왜 이 코디가 나에게 어울리는지" 바로 이해할 수 있도록 2~3개의 짧은 문장으로 작성하며, 전체 분량은 한글 기준 약 180~260자로 제한합니다.
-                - reason에는 선택한 옷장 등록 옷과 외부 상품을 빠짐없이 한 번씩 언급합니다. 상품명이 길면 브랜드나 핵심 상품명으로 자연스럽게 줄여 씁니다.
+                - reason에는 선택한 옷장 등록 옷이 있다면 빠짐없이 언급하고, 외부 상품도 빠짐없이 한 번씩 언급합니다. 상품명이 길면 브랜드나 핵심 상품명으로 자연스럽게 줄여 씁니다.
                 - 상의·하의·아우터·신발 등 각 아이템이 코디에서 맡는 역할을 색상, 핏, 소재, 실루엣 중 확인 가능한 특징과 연결해 짧게 설명합니다.
                 - 아이템별 설명을 따로 나열하지 말고, "상의가 중심을 잡고 하의가 균형을 맞추며 신발이 마무리한다"처럼 코디 전체의 조합 이유로 자연스럽게 이어 씁니다.
                 - reason은 %s MD가 사용자에게 직접 코디를 제안하는 말투로 작성하며, 페르소나의 스타일 취향과 추천 사유 화법을 일관되게 반영합니다.
@@ -1024,8 +1027,8 @@ public class AiMdRecommendationService {
                       "season": "ALL_SEASON",
                       "reason": "string",
                       "stylingTip": "string",
-                      "wardrobeClothesIds": [1],
-                      "externalProductIds": ["123"]
+                      "wardrobeClothesIds": [],
+                      "externalProductIds": ["top-1", "bottom-1", "shoes-1"]
                     }
                   ]
                 }
