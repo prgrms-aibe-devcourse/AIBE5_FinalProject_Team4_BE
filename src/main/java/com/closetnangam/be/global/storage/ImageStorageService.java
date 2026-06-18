@@ -12,6 +12,10 @@ public interface ImageStorageService {
 
     StoredImage storePurchaseCaptureThumbnail(Long userId, Long captureId, int itemIndex, byte[] jpegBytes);
 
+    StoredImage storeFeedPhoto(Long userId, MultipartFile file);
+
+    StoredImage storeProfileImage(Long userId, MultipartFile file);
+
     byte[] readStoredImage(String storedPath);
 
     byte[] readStoredImage(Path storedPath);

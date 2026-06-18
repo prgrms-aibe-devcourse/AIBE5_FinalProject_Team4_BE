@@ -20,7 +20,7 @@ import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.domain.user.support.NicknamePolicy;
 import com.closetnangam.be.global.auth.jwt.RefreshTokenService;
-import com.closetnangam.be.global.storage.LocalImageStorageService;
+import com.closetnangam.be.global.storage.ImageStorageService;
 import com.closetnangam.be.global.storage.StoredImage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -45,7 +45,7 @@ public class UserService {
     private final SocialAccountRepository socialAccountRepository;
     private final StyleRepository styleRepository;
     private final RefreshTokenService refreshTokenService;
-    private final LocalImageStorageService localImageStorageService;
+    private final ImageStorageService localImageStorageService;
 
     @Transactional(readOnly = true)
     public MyProfileResponse getMyProfile(Long userId) {

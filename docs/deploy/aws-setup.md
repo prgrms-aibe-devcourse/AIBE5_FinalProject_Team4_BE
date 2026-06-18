@@ -1,6 +1,6 @@
 # AWS 배포 가이드 (EC2 + RDS + S3)
 
-옷장난감 BE를 AWS에 올릴 때 필요한 리소스와 설정 순서입니다.  
+옷장난감 BE를 AWS에 올릴 때 필요한 리소스와 설정 순서입니다.
 운영(`prod`)은 `STORAGE_BACKEND=s3`로 S3에 원본을 저장하고, `imageUrl`은 인증된 `/api/v1/images/**` 프록시 URL로 저장합니다. 로컬 개발은 `local` 기본값으로 디스크 + `/api/v1/images/**`를 사용합니다.
 
 ## 아키텍처
@@ -94,8 +94,12 @@ curl -sf http://127.0.0.1:8080/actuator/health
 ## 4. HTTPS / 도메인
 
 - Route53 + ACM 인증서
-- ALB에서 SSL 종료 후 EC2:8080 forwarding  
-  또는 EC2 Nginx reverse proxy + Let's Encrypt
+- EC2 Nginx reverse proxy + Let's Encrypt, 또는 ALB + ACM 인증서
+
+> **주의**: `docker-compose.prod.yml`의 app 포트는 `127.0.0.1:8080:8080`(loopback)으로만 바인딩됩니다.
+> ALB target group을 EC2 private IP:8080으로 직접 연결하면 도달 불가합니다.
+> 반드시 EC2 내 Nginx가 loopback으로 프록시하거나, compose 포트를 `0.0.0.0:8080:8080`으로 변경하고
+> 보안 그룹을 ALB SG로만 제한한 후 사용하세요.
 
 `application-prod.yml`에 `server.forward-headers-strategy: framework`가 설정되어 있어 OAuth 쿠키 `Secure` 플래그가 HTTPS에서 동작합니다.
 
@@ -129,7 +133,7 @@ curl -sf http://127.0.0.1:8080/actuator/health
 
 ## 7. Redis
 
-MVP: `deploy/docker-compose.prod.yml`의 Redis 컨테이너 사용.  
+MVP: `deploy/docker-compose.prod.yml`의 Redis 컨테이너 사용.
 트래픽 증가 시 ElastiCache Redis로 교체하고 `REDIS_HOST`만 변경.
 
 ## 8. 로컬 vs 운영 차이

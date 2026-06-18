@@ -27,6 +27,8 @@ public class S3ImageStorageService implements ImageStorageService {
 
     private static final String CLOTHES_PREFIX = "clothes";
     private static final String PURCHASE_CAPTURES_PREFIX = "purchase-captures";
+    private static final String FEED_PREFIX = "feed";
+    private static final String PROFILE_PREFIX = "profile";
 
     private final StorageProperties storageProperties;
     private final S3Client s3Client;
@@ -57,6 +59,22 @@ public class S3ImageStorageService implements ImageStorageService {
         ImageUploadValidator.validateFile(file, storageProperties);
         String extension = ImageUploadValidator.extractExtension(file.getOriginalFilename(), storageProperties);
         String objectKey = PURCHASE_CAPTURES_PREFIX + "/" + userId + "/" + UUID.randomUUID() + "." + extension;
+        return uploadMultipart(objectKey, file, file.getContentType(), file.getOriginalFilename());
+    }
+
+    @Override
+    public StoredImage storeFeedPhoto(Long userId, MultipartFile file) {
+        ImageUploadValidator.validateFile(file, storageProperties);
+        String extension = ImageUploadValidator.extractExtension(file.getOriginalFilename(), storageProperties);
+        String objectKey = FEED_PREFIX + "/" + userId + "/" + UUID.randomUUID() + "." + extension;
+        return uploadMultipart(objectKey, file, file.getContentType(), file.getOriginalFilename());
+    }
+
+    @Override
+    public StoredImage storeProfileImage(Long userId, MultipartFile file) {
+        ImageUploadValidator.validateFile(file, storageProperties);
+        String extension = ImageUploadValidator.extractExtension(file.getOriginalFilename(), storageProperties);
+        String objectKey = PROFILE_PREFIX + "/" + userId + "/" + UUID.randomUUID() + "." + extension;
         return uploadMultipart(objectKey, file, file.getContentType(), file.getOriginalFilename());
     }
 

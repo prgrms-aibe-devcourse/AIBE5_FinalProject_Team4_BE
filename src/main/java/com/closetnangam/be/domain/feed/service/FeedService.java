@@ -30,7 +30,7 @@ import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
-import com.closetnangam.be.global.storage.LocalImageStorageService;
+import com.closetnangam.be.global.storage.ImageStorageService;
 import com.closetnangam.be.global.storage.StoredImage;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -66,7 +66,7 @@ public class FeedService {
     private final OutfitRepository outfitRepository;
     private final OutfitItemRepository outfitItemRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
-    private final LocalImageStorageService localImageStorageService;
+    private final ImageStorageService localImageStorageService;
     private final OutfitService outfitService;
 
     @Transactional
