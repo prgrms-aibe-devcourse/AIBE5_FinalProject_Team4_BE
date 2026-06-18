@@ -77,6 +77,6 @@ app:
 weather:
   api:
     key: ${WEATHER_API_KEY:}
-    url: ${WEATHER_API_URL:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
+    url: ${WEATHER_API_URL:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst}
 
 kind: Application
