@@ -96,19 +96,39 @@ public class WardrobeStatisticsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
+        Map<Long, Integer> wardrobeWeights = new HashMap<>();
         for (UserStyleWardrobePayload payload : payloads) {
-            Style style = styleRepository.findById(payload.styleId())
-                    .orElseThrow(() -> new IllegalArgumentException("스타일을 찾을 수 없습니다. styleId=" + payload.styleId()));
+            wardrobeWeights.put(payload.styleId(), payload.wardrobeWeight());
+        }
 
-            UserStyle userStyle = userStyleRepository.findByUserIdAndStyleId(userId, style.getId())
-                    .orElseGet(() -> UserStyle.builder()
-                            .user(user)
-                            .style(style)
-                            .build());
+        List<UserStyle> existingStyles = userStyleRepository.findAllByUserId(userId);
+        Map<Long, UserStyle> existingStyleMap = new HashMap<>();
+        for (UserStyle us : existingStyles) {
+            existingStyleMap.put(us.getStyle().getId(), us);
+        }
 
+        // 1. 현재 옷장 통계(payloads)에 있는 스타일들 처리 (기존 데이터 업데이트 또는 신규 생성)
+        for (UserStyleWardrobePayload payload : payloads) {
+            UserStyle userStyle = existingStyleMap.get(payload.styleId());
+            if (userStyle == null) {
+                Style style = styleRepository.findById(payload.styleId())
+                        .orElseThrow(() -> new IllegalArgumentException("스타일을 찾을 수 없습니다. styleId=" + payload.styleId()));
+                userStyle = UserStyle.builder()
+                        .user(user)
+                        .style(style)
+                        .build();
+            }
             userStyle.syncWardrobeWeight(payload.wardrobeWeight(), hasWardrobeData);
             userStyleRepository.save(userStyle);
+            existingStyleMap.remove(payload.styleId()); // 처리됨 표시
         }
+
+        // 2. 현재 옷장에는 없지만 DB에는 남아있는 스타일들 처리 (wardrobeWeight = 0으로 초기화)
+        for (UserStyle remainingStyle : existingStyleMap.values()) {
+            remainingStyle.syncWardrobeWeight(0, hasWardrobeData);
+            userStyleRepository.save(remainingStyle);
+        }
+
         userStyleRepository.flush(); // 즉시 반영하여 추천 서비스에서 최신 가중치를 읽을 수 있도록 함
     }
 
