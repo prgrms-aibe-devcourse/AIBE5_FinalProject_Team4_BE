@@ -9,6 +9,7 @@ import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
 import com.closetnangam.be.domain.recommendation.dto.response.SimilarProductRecommendationResponse;
 import com.closetnangam.be.domain.recommendation.entity.RecommendationFeedback;
 import com.closetnangam.be.domain.recommendation.repository.RecommendationFeedbackRepository;
@@ -181,6 +182,7 @@ public class SimilarProductRecommendationService {
         String productId = StringUtils.hasText(clothes.getExternalProductId()) && !"NONE".equalsIgnoreCase(clothes.getExternalProductId())
                 ? clothes.getExternalProductId()
                 : "CLOTHES_" + clothes.getId();
+        ClothesTagSnapshot tagSnapshot = clothes.getRecommendationTagSnapshot();
         return new NaverShoppingProductResponse(
                 clothes.getName(),
                 normalize(clothes.getExternalProductUrl()),
@@ -197,7 +199,9 @@ public class SimilarProductRecommendationService {
                 normalize(clothes.getCategory()),
                 getItemTypeLabel(clothes),
                 clothes.getId(),
-                "INTERNAL"
+                "INTERNAL",
+                tagSnapshot.primaryColor(),
+                tagSnapshot.primaryStyleCode()
         );
     }
 
