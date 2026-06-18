@@ -85,6 +85,13 @@ tasks.named('bootRun') {
 	loadDotEnvInto(it)
 }
 
+tasks.named('processResources') {
+	from('docs/legal') {
+		into 'legal'
+		include '**/*.md'
+	}
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
 	loadDotEnvInto(it)

@@ -40,7 +40,8 @@ public class SecurityConfig {
             "/api/weather/**",
             "/api/v1/auth/**",
             "/actuator/health",
-            "/actuator/health/**"
+            "/actuator/health/**",
+            "/api/v1/legal/**"
     };
 
     private final OAuth2UserService oAuth2UserService;
@@ -74,6 +75,24 @@ public class SecurityConfig {
                         .bearerTokenResolver(cookieBearerTokenResolver)
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                );
+
+        return http.build();
+    }
+
+    /**
+     * 비-local 프로파일 탈퇴 계정 복구 체인 (@Order 0): OAuth 세션의 복구 대기 정보를 읽습니다.
+     */
+    @Bean
+    @Profile("!local")
+    @Order(0)
+    public SecurityFilterChain authRestoreSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/api/v1/auth/restore-withdrawn")
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().permitAll()
                 );
 
         return http.build();

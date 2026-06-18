@@ -22,6 +22,7 @@ public class ImageController {
     private static final String CLOTHES_SUBDIRECTORY = "clothes";
     private static final String PURCHASE_CAPTURES_SUBDIRECTORY = "purchase-captures";
     private static final String FEED_SUBDIRECTORY = "feed";
+    private static final String PROFILE_SUBDIRECTORY = "profile";
 
     private final ImageStorageService imageStorageService;
 
@@ -64,6 +65,20 @@ public class ImageController {
             @PathVariable String filename
     ) {
         return serveUserImage(FEED_SUBDIRECTORY, userId, filename);
+    }
+
+    @Operation(
+            summary = "프로필 이미지 조회",
+            description = """
+                    사용자 프로필 이미지를 반환합니다. 룩피드와 마이페이지에서 노출되는 공개 프로필 이미지이며, \
+                    path의 userId는 업로드 소유자 ID입니다."""
+    )
+    @GetMapping("/profile/{userId}/{filename}")
+    public ResponseEntity<byte[]> getProfileImage(
+            @PathVariable Long userId,
+            @PathVariable String filename
+    ) {
+        return serveUserImage(PROFILE_SUBDIRECTORY, userId, filename);
     }
 
     private ResponseEntity<byte[]> serveUserImage(String subdirectory, Long userId, String filename) {

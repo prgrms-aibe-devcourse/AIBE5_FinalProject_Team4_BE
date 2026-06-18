@@ -10,14 +10,24 @@ public class CustomOAuth2User implements OAuth2User {
 
     private final OAuth2User delegate;
     private final Long userId;
+    private final boolean withdrawnRestoreRequired;
 
     public CustomOAuth2User(OAuth2User delegate, Long userId) {
+        this(delegate, userId, false);
+    }
+
+    public CustomOAuth2User(OAuth2User delegate, Long userId, boolean withdrawnRestoreRequired) {
         this.delegate = delegate;
         this.userId = userId;
+        this.withdrawnRestoreRequired = withdrawnRestoreRequired;
     }
 
     public Long getUserId() {
         return userId;
+    }
+
+    public boolean isWithdrawnRestoreRequired() {
+        return withdrawnRestoreRequired;
     }
 
     @Override

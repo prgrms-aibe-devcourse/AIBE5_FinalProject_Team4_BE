@@ -114,7 +114,26 @@ public class LocalImageStorageService implements ImageStorageService {
         return new StoredImage(publicUrl, targetPath.toString(), "image/jpeg", fileName);
     }
 
-    @Override
+    public StoredImage storeProfileImage(Long userId, MultipartFile file) {
+        ImageUploadValidator.validateFile(file, storageProperties);
+
+        String extension = ImageUploadValidator.extractExtension(file.getOriginalFilename(), storageProperties);
+        String storedFileName = UUID.randomUUID() + "." + extension;
+        Path targetDirectory = Paths.get(storageProperties.getLocal().getBasePath(), "profile", String.valueOf(userId));
+        Path targetPath = targetDirectory.resolve(storedFileName);
+
+        try {
+            Files.createDirectories(targetDirectory);
+            file.transferTo(targetPath);
+        } catch (IOException exception) {
+            throw new IllegalStateException("이미지 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        }
+
+        String publicUrl = storageProperties.getLocal().getBaseUrl()
+                + "/profile/" + userId + "/" + storedFileName;
+
+        return new StoredImage(publicUrl, targetPath.toString(), file.getContentType(), file.getOriginalFilename());
+    }
 
     public byte[] readStoredImage(String storedPath) {
         return readStoredImage(Paths.get(storedPath));
