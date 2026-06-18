@@ -21,6 +21,7 @@ import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.domain.user.support.NicknamePolicy;
 import com.closetnangam.be.global.auth.jwt.RefreshTokenService;
 import com.closetnangam.be.global.storage.LocalImageStorageService;
+import com.closetnangam.be.global.storage.StoredImage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -117,7 +118,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public ProfileImageUploadResponse uploadProfileImage(Long userId, MultipartFile file) {
         getUser(userId);
-        LocalImageStorageService.StoredImage storedImage = localImageStorageService.storeProfileImage(userId, file);
+        StoredImage storedImage = localImageStorageService.storeProfileImage(userId, file);
         return new ProfileImageUploadResponse(storedImage.publicUrl());
     }
 
