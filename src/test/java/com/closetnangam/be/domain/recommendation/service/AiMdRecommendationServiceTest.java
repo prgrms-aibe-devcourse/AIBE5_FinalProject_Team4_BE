@@ -1,11 +1,16 @@
 package com.closetnangam.be.domain.recommendation.service;
 
 import com.closetnangam.be.domain.catalog.entity.Style;
+import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
+import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesInfoSource;
+import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
+import com.closetnangam.be.domain.clothes.enums.ColorRole;
 import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
+import com.closetnangam.be.domain.clothes.enums.StyleRole;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.outfit.entity.Outfit;
@@ -121,6 +126,40 @@ class AiMdRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("옷장 등록 옷 없이 외부 후보만으로도 완성형 코디를 확정할 수 있다")
+    void savableOutfitsAllowExternalOnlyCompleteOutfit() {
+        AiMdRecommendationService service = serviceWithUserStyleRepository(null);
+        AiMdGeminiOutfitResult aiResult = new AiMdGeminiOutfitResult(List.of(
+                new AiMdGeminiOutfitResult.OutfitCandidate(
+                        "외부 후보 풀착장",
+                        "description",
+                        "DAILY",
+                        "ALL_SEASON",
+                        "reason",
+                        "tip",
+                        List.of(),
+                        List.of("top-1", "bottom-1", "shoes-1")
+                )
+        ));
+
+        List<AiMdGeminiOutfitResult.OutfitCandidate> result = ReflectionTestUtils.invokeMethod(
+                service,
+                "savableOutfits",
+                aiResult,
+                Map.of(),
+                Map.of(
+                        "top-1", product("top-1", "스트릿 반팔 티셔츠", "티셔츠"),
+                        "bottom-1", product("bottom-1", "와이드 카고 팬츠", "바지"),
+                        "shoes-1", product("shoes-1", "블랙 스니커즈", "운동화")
+                )
+        );
+
+        assertThat(result)
+                .extracting(AiMdGeminiOutfitResult.OutfitCandidate::title)
+                .containsExactly("외부 후보 풀착장");
+    }
+
+    @Test
     @DisplayName("AI MD 코디 후보 검증은 내부 후보의 DB 카테고리 코드를 우선 사용한다")
     void savableOutfitsUseInternalProductCategoryCode() {
         AiMdRecommendationService service = serviceWithUserStyleRepository(null);
@@ -226,6 +265,9 @@ class AiMdRecommendationServiceTest {
                 .contains("추천 사유 화법:")
                 .contains("왜 이 코디가 나에게 어울리는지")
                 .contains("TOP(상의), BOTTOM(하의), SHOES(신발)를 각각 최소 1개")
+                .contains("wardrobeClothesIds는 비어 있어도 됩니다")
+                .contains("룩 전체의 조화, 색상 연결, 실루엣 균형, 소재감, 상황 적합성")
+                .contains("후보 목록에서 매번 서로 다른 중심 아이템을 랜덤하게 고르되")
                 .contains("상의만 여러 개 조합한 결과는 코디로 인정하지 않습니다")
                 .contains("ownershipStatus가 OWNED인 보유 옷과 WISHLIST인 미보유 관심 상품")
                 .contains("전체 분량은 한글 기준 약 180~260자")
@@ -451,6 +493,8 @@ class AiMdRecommendationServiceTest {
                 .contains("추천 상품 40개")
                 .contains("products 배열은 가능한 한 40개")
                 .contains("[사용자 스타일 가중치]")
+                .contains("source가 INTERNAL인 상품")
+                .contains("INTERNAL 상품을 우선 추천")
                 .contains("가중치가 높은 스타일의 상품은 더 자주")
                 .contains("낮은 양수 스타일도 일부 섞어")
                 .contains("같은 상품, 이름만 조금 다른 동일 모델")
@@ -472,12 +516,16 @@ class AiMdRecommendationServiceTest {
                 clothesRepository, recommendationFeedbackRepository,
                 null, null, null, null, null, null
         );
+        when(clothesRepository.findExternalShoppingRecommendationCandidates(anyList(), anyList(), any(Pageable.class)))
+                .thenReturn(List.of());
 
         ReflectionTestUtils.invokeMethod(
                 service,
                 "searchProductCandidates",
                 1L,
-                User.Gender.FEMALE,
+                AiMdPersona.GA_HYUN,
+                List.of(),
+                List.of(),
                 List.of()
         );
 
@@ -489,6 +537,75 @@ class AiMdRecommendationServiceTest {
                 any(Pageable.class)
         );
         assertThat(genderCaptor.getValue()).containsExactly(ClothesGender.FEMALE, ClothesGender.UNISEX);
+    }
+
+    @Test
+    @DisplayName("AI MD 상품 후보는 내부 상품을 우선하고 MD 스타일 적합도가 높은 상품을 앞에 둔다")
+    void aiMdProductCandidatesPreferInternalProductsByPersonaFit() {
+        ClothesRepository clothesRepository = mock(ClothesRepository.class);
+        WardrobeClothesRepository wardrobeClothesRepository = mock(WardrobeClothesRepository.class);
+        RecommendationFeedbackRepository recommendationFeedbackRepository = mock(RecommendationFeedbackRepository.class);
+        when(wardrobeClothesRepository.findOwnedClothesIdsByUserId(1L, OwnershipStatus.OWNED)).thenReturn(List.of());
+        when(wardrobeClothesRepository.findOwnedClothesIdsByUserId(1L, OwnershipStatus.WISHLIST)).thenReturn(List.of());
+        when(recommendationFeedbackRepository.findAllByUserId(1L)).thenReturn(List.of());
+
+        Clothes weakCandidate = externalClothes(
+                101L,
+                "미니멀 셔츠",
+                "WHITE",
+                "MINIMAL",
+                "TOP",
+                "SHIRT"
+        );
+        Clothes strongCandidate = externalClothes(
+                102L,
+                "스트릿 블랙 롱슬리브",
+                "BLACK",
+                "STREET",
+                "TOP",
+                "LONG_SLEEVE"
+        );
+        when(clothesRepository.findExternalShoppingRecommendationCandidates(anyList(), anyList(), any(Pageable.class)))
+                .thenReturn(List.of(weakCandidate, strongCandidate));
+
+        AiMdRecommendationService service = new AiMdRecommendationService(
+                null, wardrobeClothesRepository, null, null, null,
+                clothesRepository, recommendationFeedbackRepository,
+                null, null, null, null, null, null
+        );
+        WardrobeClothes wardrobeItem = wardrobeItemWithClothes(externalClothes(
+                201L,
+                "내 블랙 티셔츠",
+                "BLACK",
+                "CASUAL",
+                "TOP",
+                "SHORT_SLEEVE"
+        ));
+        UserStyleRepository userStyleRepository = mock(UserStyleRepository.class);
+        when(userStyleRepository.findAllByUserId(1L)).thenReturn(List.of(userStyle("STREET", "스트릿", 20)));
+        List<?> styleProfiles = ReflectionTestUtils.invokeMethod(
+                serviceWithUserStyleRepository(userStyleRepository),
+                "buildStyleSearchProfiles",
+                1L,
+                AiMdPersona.TAE_SIK
+        );
+
+        @SuppressWarnings("unchecked")
+        List<NaverShoppingProductResponse> result = ReflectionTestUtils.invokeMethod(
+                service,
+                "searchProductCandidates",
+                1L,
+                AiMdPersona.TAE_SIK,
+                List.of(wardrobeItem),
+                styleProfiles,
+                List.of()
+        );
+
+        assertThat(result)
+                .extracting(NaverShoppingProductResponse::clothesId)
+                .containsExactly(102L, 101L);
+        assertThat(result)
+                .allMatch(product -> "INTERNAL".equals(product.candidateSource()));
     }
 
     @Test
@@ -573,6 +690,47 @@ class AiMdRecommendationServiceTest {
         WardrobeClothes wardrobeClothes = mock(WardrobeClothes.class);
         when(wardrobeClothes.getClothes()).thenReturn(clothes);
         return wardrobeClothes;
+    }
+
+    private WardrobeClothes wardrobeItemWithClothes(Clothes clothes) {
+        WardrobeClothes wardrobeClothes = mock(WardrobeClothes.class);
+        when(wardrobeClothes.getClothes()).thenReturn(clothes);
+        return wardrobeClothes;
+    }
+
+    private Clothes externalClothes(
+            Long id,
+            String name,
+            String colorCode,
+            String styleCode,
+            String category,
+            String itemType
+    ) {
+        Clothes clothes = Clothes.builder()
+                .name(name)
+                .brandName("테스트브랜드")
+                .productCode("PRODUCT-" + id)
+                .imageUrl("https://example.com/" + id + ".jpg")
+                .category(category)
+                .itemType(itemType)
+                .gender(ClothesGender.MALE)
+                .season(ClothesSeason.ALL_SEASON)
+                .clothesInfoSource(ClothesInfoSource.EXTERNAL_SHOPPING)
+                .externalSource("NAVER")
+                .externalProductId("EXTERNAL-" + id)
+                .externalProductUrl("https://example.com/products/" + id)
+                .isVerified(true)
+                .build();
+        ReflectionTestUtils.setField(clothes, "id", id);
+        clothes.addColorTag(ClothingColor.create(clothes, colorCode, ColorRole.PRIMARY, (byte) 1));
+        Style style = Style.builder()
+                .code(styleCode)
+                .name(styleCode)
+                .description(styleCode + " 스타일")
+                .build();
+        ReflectionTestUtils.setField(style, "id", id);
+        clothes.addStyleTag(ClothesStyleTag.create(clothes, style, StyleRole.PRIMARY, (byte) 1));
+        return clothes;
     }
 
     private UserStyle userStyle(String code, String name, int combinedWeight) {

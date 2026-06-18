@@ -24,9 +24,12 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 
@@ -43,7 +46,9 @@ import java.util.stream.Stream;
 public class SimilarProductRecommendationService {
 
     private static final int RECOMMENDATION_COUNT = 50;
-    private static final int INTERNAL_CANDIDATE_COUNT = 80;
+    private static final int INTERNAL_CANDIDATE_COUNT = 300;
+    private static final int INTERNAL_RECOMMENDATION_LIMIT = 40;
+    private static final int NAVER_RECOMMENDATION_LIMIT = 10;
     private static final int SEARCH_DISPLAY_COUNT = 50;
     private static final int SEARCH_PAGE_COUNT = 2;
     private static final List<Integer> SEARCH_START_INDEXES = List.of(1, 51, 101, 151, 201);
@@ -123,7 +128,7 @@ public class SimilarProductRecommendationService {
         List<Integer> starts = new ArrayList<>(SEARCH_START_INDEXES);
         Collections.shuffle(starts);
 
-        Map<String, NaverShoppingProductResponse> productByKey = new LinkedHashMap<>();
+        Map<String, NaverShoppingProductResponse> internalProductByKey = new LinkedHashMap<>();
         List<Long> excludedClothesIds = findExcludedClothesIds(userId);
         clothesRepository.findSimilarProductInternalCandidates(
                         baseClothes.getId(),
@@ -132,9 +137,18 @@ public class SimilarProductRecommendationService {
                         allowedClothesGenders(userGender),
                         PageRequest.of(0, INTERNAL_CANDIDATE_COUNT)
                 ).stream()
+                .map(candidate -> new InternalSimilarityCandidate(candidate, calculateInternalSimilarityScore(baseClothes, candidate)))
+                .filter(candidate -> candidate.score() > 0)
+                .sorted(Comparator
+                        .comparingInt(InternalSimilarityCandidate::score).reversed()
+                        .thenComparing(candidate -> candidate.clothes().getCreatedAt(), Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(candidate -> candidate.clothes().getId(), Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(INTERNAL_RECOMMENDATION_LIMIT)
+                .map(InternalSimilarityCandidate::clothes)
                 .map(this::toInternalProductResponse)
-                .forEach(product -> productByKey.putIfAbsent(deduplicationKey(product), product));
+                .forEach(product -> internalProductByKey.putIfAbsent(deduplicationKey(product), product));
 
+        Map<String, NaverShoppingProductResponse> naverProductByKey = new LinkedHashMap<>();
         for (int index = 0; index < Math.min(SEARCH_PAGE_COUNT, starts.size()); index++) {
             String sort = randomSort();
             List<NaverShoppingProductResponse> products = naverApiService.searchShoppingProducts(
@@ -144,16 +158,121 @@ public class SimilarProductRecommendationService {
                     sort
             );
             for (NaverShoppingProductResponse product : products) {
-                productByKey.putIfAbsent(deduplicationKey(product), product);
+                String key = deduplicationKey(product);
+                if (!internalProductByKey.containsKey(key)) {
+                    naverProductByKey.putIfAbsent(key, product);
+                }
             }
         }
 
-        List<NaverShoppingProductResponse> shuffledProducts = new ArrayList<>(productByKey.values());
-        Collections.shuffle(shuffledProducts);
-        if (shuffledProducts.size() <= RECOMMENDATION_COUNT) {
-            return shuffledProducts;
+        List<NaverShoppingProductResponse> products = new ArrayList<>(RECOMMENDATION_COUNT);
+        products.addAll(internalProductByKey.values().stream()
+                .limit(INTERNAL_RECOMMENDATION_LIMIT)
+                .toList());
+        products.addAll(naverProductByKey.values().stream()
+                .limit(NAVER_RECOMMENDATION_LIMIT)
+                .toList());
+
+        if (products.size() < RECOMMENDATION_COUNT) {
+            Set<String> selectedKeys = new HashSet<>();
+            products.forEach(product -> selectedKeys.add(deduplicationKey(product)));
+            Stream.concat(internalProductByKey.values().stream(), naverProductByKey.values().stream())
+                    .filter(product -> selectedKeys.add(deduplicationKey(product)))
+                    .limit(RECOMMENDATION_COUNT - products.size())
+                    .forEach(products::add);
         }
-        return shuffledProducts.subList(0, RECOMMENDATION_COUNT);
+        return products;
+    }
+
+    private int calculateInternalSimilarityScore(Clothes baseClothes, Clothes candidate) {
+        int score = 0;
+
+        if (equalsNormalized(baseClothes.getItemType(), candidate.getItemType())) {
+            score += 30;
+        }
+
+        List<String> baseColors = sortedColorCodes(baseClothes);
+        List<String> candidateColors = sortedColorCodes(candidate);
+        if (!baseColors.isEmpty() && !candidateColors.isEmpty()) {
+            if (baseColors.get(0).equals(candidateColors.get(0))) {
+                score += 20;
+            }
+            score += 8 * intersectionCount(
+                    new HashSet<>(baseColors.subList(Math.min(1, baseColors.size()), baseColors.size())),
+                    new HashSet<>(candidateColors.subList(Math.min(1, candidateColors.size()), candidateColors.size()))
+            );
+        }
+
+        List<String> baseStyles = sortedStyleCodes(baseClothes);
+        List<String> candidateStyles = sortedStyleCodes(candidate);
+        if (!baseStyles.isEmpty() && !candidateStyles.isEmpty()) {
+            if (baseStyles.get(0).equals(candidateStyles.get(0))) {
+                score += 20;
+            }
+            score += 10 * intersectionCount(
+                    new HashSet<>(baseStyles.subList(Math.min(1, baseStyles.size()), baseStyles.size())),
+                    new HashSet<>(candidateStyles.subList(Math.min(1, candidateStyles.size()), candidateStyles.size()))
+            );
+        }
+
+        if (baseClothes.getSeason() != null
+                && candidate.getSeason() != null
+                && baseClothes.getSeason() == candidate.getSeason()) {
+            score += 8;
+        }
+
+        score += 10 * intersectionCount(
+                extractDesignKeywordSet(baseClothes),
+                extractDesignKeywordSet(candidate)
+        );
+
+        if (equalsNormalized(baseClothes.getBrandName(), candidate.getBrandName())) {
+            score += 3;
+        }
+
+        return score;
+    }
+
+    private List<String> sortedColorCodes(Clothes clothes) {
+        return clothes.getSortedColorTags().stream()
+                .map(ClothingColor::getColorCode)
+                .map(this::normalizeComparisonValue)
+                .filter(value -> !value.isBlank())
+                .toList();
+    }
+
+    private List<String> sortedStyleCodes(Clothes clothes) {
+        return clothes.getSortedStyleTags().stream()
+                .map(styleTag -> styleTag.getStyle().getCode())
+                .map(this::normalizeComparisonValue)
+                .filter(value -> !value.isBlank())
+                .toList();
+    }
+
+    private Set<String> extractDesignKeywordSet(Clothes clothes) {
+        String keywords = extractDesignKeywords(clothes);
+        if (!StringUtils.hasText(keywords)) {
+            return Set.of();
+        }
+        return Set.of(keywords.split("\\s+"));
+    }
+
+    private int intersectionCount(Set<String> left, Set<String> right) {
+        if (left.isEmpty() || right.isEmpty()) {
+            return 0;
+        }
+        Set<String> copied = new HashSet<>(left);
+        copied.retainAll(right);
+        return copied.size();
+    }
+
+    private boolean equalsNormalized(String left, String right) {
+        String normalizedLeft = normalizeComparisonValue(left);
+        return !normalizedLeft.isBlank() && normalizedLeft.equals(normalizeComparisonValue(right));
+    }
+
+    private String normalizeComparisonValue(String value) {
+        return normalize(value).toUpperCase();
     }
 
     private List<ClothesGender> allowedClothesGenders(User.Gender userGender) {
@@ -342,5 +461,8 @@ public class SimilarProductRecommendationService {
             return "";
         }
         return value.trim();
+    }
+
+    private record InternalSimilarityCandidate(Clothes clothes, int score) {
     }
 }
