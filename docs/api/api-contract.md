@@ -103,6 +103,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `nickname` | String | 카카오 닉네임 또는 온보딩에서 설정한 닉네임 |
 | `onboarded` | boolean | 온보딩 완료 여부. birthDate가 기본값(2000-01-01)이면 false, 실제 날짜이면 true |
 | `regionName` | String | 사용자 지역명 (예: 서울특별시) |
+| `gender` | String | 성별. `MALE` / `FEMALE` / `OTHER` |
 
 #### PATCH /api/v1/users/profile 요청 필드
 
@@ -125,6 +126,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `nickname` | String | 저장된 닉네임 |
 | `onboarded` | boolean | 온보딩 완료 여부. 저장 후 true이면 메인 페이지로 이동 |
 | `regionName` | String | 사용자 지역명 (예: 서울특별시) |
+| `gender` | String | 저장된 성별. `MALE` / `FEMALE` / `OTHER` |
 
 #### POST /api/v1/users/styles 요청 필드
 
@@ -312,6 +314,12 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/products` | 선택한 AI MD 기준 외부 상품 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save` | 선택한 AI MD 코디 후보 저장 |
+
+#### 유사 상품 추천 (`GET .../similar-products`)
+
+JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해당 사용자의 활성 옷장 항목이어야 하며, `WARDROBE_CLOTHES.ownership_status`가 `OWNED` 또는 `WISHLIST`인 옷을 모두 기준 옷으로 사용할 수 있습니다. 응답의 `products`는 네이버쇼핑 후보와 `EXTERNAL_SHOPPING` 공용 `CLOTHES` 후보를 함께 정리한 유사상품 목록이며 최대 50개입니다. 내부 공용 후보는 기준 사용자의 성별과 `UNISEX` 상품만 포함하되, 사용자 성별이 `OTHER`이거나 없으면 내부 후보 성별을 제한하지 않습니다. 이 단계에서는 추천 상품을 저장하지 않습니다.
+
+`products[]`는 기존 `NaverShoppingProduct` 형태를 유지하지만, 내부 DB 후보를 구분하기 위해 `clothesId`와 `candidateSource`를 함께 반환합니다. `candidateSource=NAVER`인 후보는 `clothesId=null`일 수 있고, `candidateSource=INTERNAL`인 후보는 피드백·위시리스트 연결에 사용할 수 있는 `clothesId`를 포함합니다. 내부 후보는 가격 정보가 없어 `lowestPrice`/`highestPrice`가 `null`일 수 있고, 구매 링크가 없는 데이터는 `link=""`로 내려올 수 있으므로 FE는 가격·구매 버튼을 nullable 기준으로 렌더링해야 합니다.
 
 #### 옷장 기반 어울리는 옷 추천 (`GET .../recommendations`)
 
@@ -546,7 +554,9 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
           "category1": "패션의류",
           "category2": "남성의류",
           "category3": "티셔츠",
-          "category4": ""
+          "category4": "",
+          "clothesId": null,
+          "candidateSource": "NAVER"
         },
         "reason": "MD 말투가 반영된 추천 이유"
       }
@@ -556,7 +566,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색을 여러 번 수행하고, 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 10개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 10개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 사용자가 상품 카드에서 저장 버튼을 누르면 `POST /api/users/{userId}/wishlist-clothes`로 미보유 옷을 저장합니다. 유사 상품 추천 결과도 같은 저장 API를 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
+> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색과 내부 `EXTERNAL_SHOPPING` 공용 후보를 함께 사용하고, 내부 후보는 선택한 MD 성별과 `UNISEX` 상품만 포함합니다. 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 40개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 40개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 상품 카드 액션은 `candidateSource` 기준으로 분기합니다. `candidateSource=INTERNAL`이고 `clothesId`가 있으면 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`로 기존 공용 옷을 위시리스트에 연결하고, 같은 `clothesId`로 `POST /api/v1/users/{userId}/recommendations/feedback`에 저장/싫어요/추천 제외 피드백을 제출할 수 있습니다. `candidateSource=NAVER`이고 `clothesId=null`인 후보만 `POST /api/users/{userId}/wishlist-clothes` 신규 생성 플로우를 사용합니다. `link=""`이면 구매 버튼을 숨기거나 비활성화합니다. 유사 상품 추천 결과도 동일한 `candidateSource` 분기 기준을 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
 
 #### AI MD 코디 추천 응답 (AiMdOutfitRecommendationResponse)
 
@@ -606,7 +616,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 보유 옷을 최소 1개 포함해야 하며, 보유 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부 상품은 필수가 아니므로 보유 옷만으로 필수 세 카테고리가 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
+> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 옷장 등록 옷을 최소 1개 포함해야 하며, `OWNED`와 `WISHLIST` 옷장 항목을 모두 코디 구성에 사용할 수 있습니다. 옷장 등록 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부 상품은 필수가 아니므로 옷장 등록 옷만으로 필수 세 카테고리가 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
 
 #### AI MD 추천 코디 저장 요청/응답
 
@@ -623,7 +633,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-위 예시의 `wardrobeClothesIds`는 각각 `TOP`, `BOTTOM`, `SHOES`인 보유 옷을 의미합니다. 저장 요청도 추천 후보와 동일하게 사용자 보유 옷을 최소 1개 포함하고, `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부 상품 없이 보유 옷만으로 완성할 수 있으며, 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
+위 예시의 `wardrobeClothesIds`는 각각 `TOP`, `BOTTOM`, `SHOES`인 사용자 옷장 등록 옷을 의미합니다. 저장 요청도 추천 후보와 동일하게 사용자 옷장 등록 옷을 최소 1개 포함하고, `OWNED`와 `WISHLIST` 옷장 항목을 모두 사용할 수 있습니다. `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부 상품 없이 옷장 등록 옷만으로 완성할 수 있으며, 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
 
 저장 성공 시에는 선택된 코디 1개가 `OUTFITS`, `OUTFIT_ITEMS`에 저장되고, 응답은 저장된 `outfit`과 구성 옷 목록을 포함합니다. 저장된 구성 옷은 코디북 조회 응답의 `outfits[].items`에서도 다시 조회할 수 있습니다.
 
@@ -748,6 +758,124 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | --- | --- | --- |
 | GET | `/api/v1/images/clothes/{userId}/{filename}` | 옷 이미지 조회 |
 | GET | `/api/v1/images/purchase-captures/{userId}/{filename}` | 구매내역 캡처 이미지 조회 |
+| GET | `/api/v1/images/feed/{userId}/{filename}` | 피드 이미지 조회 |
+
+### 룩피드 (FEED-001~008)
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| POST | `/api/v1/feed/posts` | FEED-001 피드 업로드 |
+| GET | `/api/v1/feed/posts` | FEED-002 공개 피드 목록 |
+| GET | `/api/v1/feed/posts/{postId}` | FEED-003 피드 상세 |
+| PUT | `/api/v1/feed/posts/{postId}` | 피드 수정 |
+| DELETE | `/api/v1/feed/posts/{postId}` | 피드 삭제 |
+| GET | `/api/v1/feed/users/{userId}/posts` | 사용자 공유 피드 목록 |
+| POST | `/api/v1/feed/images` | 피드 이미지 업로드 (`multipart/form-data`, field: `file`) |
+| POST | `/api/v1/feed/posts/{postId}/likes` | FEED-004 좋아요 토글 |
+| POST | `/api/v1/feed/posts/{postId}/saves` | FEED-005 저장 토글 |
+| GET | `/api/v1/feed/posts/{postId}/comments` | FEED-006/007 댓글·대댓글 목록 |
+| POST | `/api/v1/feed/posts/{postId}/comments` | FEED-006/007 댓글·대댓글 작성 |
+| PUT | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 수정 (작성자 본인만) |
+| DELETE | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 삭제 |
+| POST | `/api/v1/feed/users/{followeeId}/follows` | FEED-008 팔로우 토글 |
+
+#### POST /api/v1/feed/posts — 피드 업로드
+
+```json
+{
+  "outfitId": 1,
+  "caption": "오늘의 데일리룩",
+  "imageUrls": [
+    "http://localhost:8080/api/v1/images/feed/1/sample.jpg"
+  ]
+}
+```
+
+- `outfitId`는 선택. 본인 코디북의 활성 코디만 연결 가능
+- `imageUrls`는 최소 1장, 최대 10장
+
+#### GET /api/v1/feed/posts — 피드 목록
+
+Query: `page`(default 0), `size`(default 20, max 50)
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "feedPostId": 1,
+        "author": {
+          "userId": 1,
+          "nickname": "closet",
+          "profileImageUrl": "https://..."
+        },
+        "outfit": { "...": "OutfitResponse 또는 null" },
+        "caption": "오늘의 데일리룩",
+        "images": [
+          {
+            "feedPostImageId": 1,
+            "imageUrl": "http://localhost:8080/api/v1/images/feed/1/sample.jpg",
+            "sortOrder": 0
+          }
+        ],
+        "likeCount": 3,
+        "commentCount": 1,
+        "likedByMe": false,
+        "savedByMe": false,
+        "hidden": false,
+        "mine": false,
+        "createdAt": "2026-06-09T12:00:00",
+        "updatedAt": "2026-06-09T12:00:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "hasNext": false
+  }
+}
+```
+
+> **Note**: FEED-009 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
+
+#### PUT /api/v1/feed/posts/{postId}/comments/{commentId} — 댓글 수정
+
+작성자 본인만 수정 가능. `parentCommentId`는 수정 시 무시됩니다.
+
+요청:
+
+```json
+{
+  "content": "수정된 댓글 내용 (최대 1000자)"
+}
+```
+
+응답:
+
+```json
+{
+  "success": true,
+  "data": {
+    "feedCommentId": 1,
+    "feedPostId": 10,
+    "author": {
+      "userId": 1,
+      "nickname": "closet",
+      "profileImageUrl": "https://..."
+    },
+    "parentCommentId": null,
+    "content": "수정된 댓글 내용",
+    "replies": [],
+    "createdAt": "2026-06-09T12:00:00",
+    "isOwner": true
+  }
+}
+```
+
+- 본인이 아니면 403 반환
+- 존재하지 않는 댓글이면 404 반환
 
 ## API 변경 규칙
 
