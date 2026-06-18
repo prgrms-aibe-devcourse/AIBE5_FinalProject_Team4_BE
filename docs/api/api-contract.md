@@ -520,7 +520,12 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "reason": "Style Match: 0.9, Weather Match: 1.0",
       "brandName": "브랜드명",
       "category": "카테고리",
-      "primaryColor": "대표 색상",
+      "primaryColor": "GRAY",
+      "primaryColorDisplay": {
+        "code": "GRAY",
+        "name": "그레이",
+        "hex": "#9E9E9E"
+      },
       "primaryStyle": "스타일",
       "clothesId": 123
     }
