@@ -2,24 +2,37 @@ package com.closetnangam.be.domain.user.service;
 
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
+import com.closetnangam.be.domain.user.dto.request.CompleteOnboardingRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateProfileRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
 import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
 import com.closetnangam.be.domain.user.dto.response.MyProfileResponse;
+import com.closetnangam.be.domain.user.dto.response.NicknameAvailabilityResponse;
+import com.closetnangam.be.domain.user.dto.response.ProfileImageUploadResponse;
+import com.closetnangam.be.domain.user.dto.response.SocialAccountResponse;
 import com.closetnangam.be.domain.user.dto.response.UserProfileResponse;
+import com.closetnangam.be.domain.user.entity.SocialAccount;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.entity.UserStyle;
+import com.closetnangam.be.domain.user.enums.UserStatus;
+import com.closetnangam.be.domain.user.repository.SocialAccountRepository;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.user.repository.UserStyleRepository;
+import com.closetnangam.be.domain.user.support.NicknamePolicy;
 import com.closetnangam.be.global.auth.jwt.RefreshTokenService;
+import com.closetnangam.be.global.storage.LocalImageStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,21 +41,17 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserStyleRepository userStyleRepository;
+    private final SocialAccountRepository socialAccountRepository;
     private final StyleRepository styleRepository;
     private final RefreshTokenService refreshTokenService;
+    private final LocalImageStorageService localImageStorageService;
 
     @Transactional(readOnly = true)
     public MyProfileResponse getMyProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
-        return new MyProfileResponse(
-                user.getId(),
-                user.getNickname(),
-                user.isOnboarded(),
-                user.getRegionName(),
-                user.getGender()
-        );
+        return toMyProfileResponse(user);
     }
 
     @Transactional(readOnly = true)
@@ -59,37 +68,57 @@ public class UserService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public NicknameAvailabilityResponse checkNicknameAvailability(Long userId, String nickname) {
+        String normalizedNickname = NicknamePolicy.normalize(nickname);
+        if (!NicknamePolicy.isValid(normalizedNickname)) {
+            return new NicknameAvailabilityResponse(
+                    normalizedNickname,
+                    false,
+                    NicknamePolicy.RULE_MESSAGE
+            );
+        }
+
+        boolean duplicated = userRepository.existsByNicknameAndIdNot(normalizedNickname, userId);
+        if (duplicated) {
+            return new NicknameAvailabilityResponse(
+                    normalizedNickname,
+                    false,
+                    "이미 사용 중인 닉네임입니다."
+            );
+        }
+        return new NicknameAvailabilityResponse(
+                normalizedNickname,
+                true,
+                "사용 가능한 닉네임입니다."
+        );
+    }
+
     @Transactional
     public MyProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
-        // 선택 필드는 null 전달 시 기존 값 유지
-        String profileImageUrl = request.profileImageUrl() != null
-                ? request.profileImageUrl() : user.getProfileImageUrl();
-        String profileBio = request.profileBio() != null
-                ? request.profileBio() : user.getProfileBio();
-        String externalLinkUrl = request.externalLinkUrl() != null
-                ? request.externalLinkUrl() : user.getExternalLinkUrl();
-
-        user.updateProfile(
+        updateUserProfile(
+                user,
                 request.nickname(),
-                profileImageUrl,
-                profileBio,
-                externalLinkUrl,
-                request.gender(),
                 request.birthDate(),
+                request.gender(),
                 request.regionName(),
-                request.regionCode()
+                request.regionCode(),
+                request.profileImageUrl(),
+                request.profileBio(),
+                request.externalLinkUrl()
         );
 
-        return new MyProfileResponse(
-                user.getId(),
-                user.getNickname(),
-                user.isOnboarded(),
-                user.getRegionName(),
-                user.getGender()
-        );
+        return toMyProfileResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public ProfileImageUploadResponse uploadProfileImage(Long userId, MultipartFile file) {
+        getUser(userId);
+        LocalImageStorageService.StoredImage storedImage = localImageStorageService.storeProfileImage(userId, file);
+        return new ProfileImageUploadResponse(storedImage.publicUrl());
     }
 
     @Transactional
@@ -97,42 +126,106 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
-        List<Style> selectedStyles = styleRepository.findByCodeIn(request.styleCodes());
-        if (selectedStyles.size() != request.styleCodes().size()) {
+        updateUserStyles(user, request.styleCodes());
+    }
+
+    @Transactional
+    public MyProfileResponse completeOnboarding(Long userId, CompleteOnboardingRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
+
+        updateUserProfile(
+                user,
+                request.nickname(),
+                request.birthDate(),
+                request.gender(),
+                request.regionName(),
+                request.regionCode(),
+                null,
+                null,
+                null
+        );
+        updateUserStyles(user, request.styleCodes());
+        user.updateMarketingAgreement(request.marketingAgreed());
+
+        return toMyProfileResponse(user);
+    }
+
+    private void updateUserProfile(
+            User user,
+            String nickname,
+            LocalDate birthDate,
+            User.Gender gender,
+            String regionName,
+            String regionCode,
+            String profileImageUrl,
+            String profileBio,
+            String externalLinkUrl
+    ) {
+        if (gender == User.Gender.OTHER) {
+            throw new IllegalArgumentException("성별은 MALE 또는 FEMALE만 선택할 수 있습니다.");
+        }
+        String normalizedNickname = NicknamePolicy.normalize(nickname);
+        NicknamePolicy.validate(normalizedNickname);
+        if (userRepository.existsByNicknameAndIdNot(normalizedNickname, user.getId())) {
+            throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
+        }
+
+        // 선택 필드는 null 전달 시 기존 값 유지
+        String nextProfileImageUrl = profileImageUrl != null
+                ? profileImageUrl : user.getProfileImageUrl();
+        String nextProfileBio = profileBio != null
+                ? profileBio : user.getProfileBio();
+        String nextExternalLinkUrl = externalLinkUrl != null
+                ? externalLinkUrl : user.getExternalLinkUrl();
+
+        user.updateProfile(
+                normalizedNickname,
+                nextProfileImageUrl,
+                nextProfileBio,
+                nextExternalLinkUrl,
+                gender,
+                birthDate,
+                regionName,
+                regionCode
+        );
+    }
+
+    private void updateUserStyles(User user, List<String> requestedCodes) {
+        if (requestedCodes.stream().distinct().count() != requestedCodes.size()) {
+            throw new IllegalArgumentException("중복된 스타일 코드가 포함되어 있습니다.");
+        }
+
+        List<Style> allStyles = styleRepository.findAllByOrderByCodeAsc();
+        Map<String, Style> styleByCode = allStyles.stream()
+                .collect(Collectors.toMap(Style::getCode, style -> style));
+        boolean hasUnknownStyle = requestedCodes.stream()
+                .anyMatch(code -> !styleByCode.containsKey(code));
+        if (hasUnknownStyle) {
             throw new IllegalArgumentException("존재하지 않는 스타일 코드가 포함되어 있습니다.");
         }
 
-        // 기존 행 보존: preference_weight만 갱신, wardrobe/feedback_weight 유지
-        // 요청 배열 순서 기준: 첫 번째 code = 대표 스타일 +7, 나머지 = 보조 스타일 +3, 선택 해제 = 0
-        // findByCodeIn()은 DB 반환 순서를 보장하지 않으므로 code → Style 맵을 만들어 요청 순서로 순회
-        Map<String, Style> styleByCode = selectedStyles.stream()
-                .collect(Collectors.toMap(Style::getCode, s -> s));
-        List<UserStyle> existingList = userStyleRepository.findAllByUserId(userId);
+        List<UserStyle> existingList = userStyleRepository.findAllByUserId(user.getId());
+        Map<Long, UserStyle> existingByStyleId = existingList.stream()
+                .collect(Collectors.toMap(userStyle -> userStyle.getStyle().getId(), userStyle -> userStyle));
         Map<Long, Integer> preferenceMap = new LinkedHashMap<>();
-        List<String> requestedCodes = request.styleCodes();
         for (int i = 0; i < requestedCodes.size(); i++) {
             Style style = styleByCode.get(requestedCodes.get(i));
             preferenceMap.put(style.getId(), i == 0 ? 7 : 3);
         }
 
-        for (UserStyle us : existingList) {
-            int weight = preferenceMap.getOrDefault(us.getStyle().getId(), 0);
-            us.updatePreferenceWeight(weight);
+        List<UserStyle> newStyles = new ArrayList<>();
+        for (Style style : allStyles) {
+            UserStyle userStyle = existingByStyleId.get(style.getId());
+            if (userStyle == null) {
+                userStyle = UserStyle.builder()
+                        .user(user)
+                        .style(style)
+                        .build();
+                newStyles.add(userStyle);
+            }
+            userStyle.updatePreferenceWeight(preferenceMap.getOrDefault(style.getId(), 0));
         }
-
-        // 기존 행이 없는 신규 선택 스타일만 insert
-        Set<Long> existingStyleIds = existingList.stream()
-                .map(us -> us.getStyle().getId())
-                .collect(Collectors.toSet());
-        List<UserStyle> newStyles = selectedStyles.stream()
-                .filter(style -> !existingStyleIds.contains(style.getId()))
-                .map(style -> {
-                    UserStyle us = UserStyle.builder().user(user).style(style).build();
-                    int weight = preferenceMap.getOrDefault(style.getId(), 0);
-                    us.updatePreferenceWeight(weight);
-                    return us;
-                })
-                .toList();
         userStyleRepository.saveAll(newStyles);
     }
 
@@ -143,6 +236,22 @@ public class UserService {
 
         user.withdraw();
         refreshTokenService.delete(userId);
+    }
+
+    @Transactional
+    public void restoreWithdrawnUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
+
+        if (user.getStatus() != UserStatus.WITHDRAWN) {
+            throw new IllegalStateException("탈퇴 상태의 사용자만 복구할 수 있습니다.");
+        }
+        if (user.getWithdrawnAt() == null
+                || !user.getWithdrawnAt().isAfter(LocalDateTime.now().minusDays(30))) {
+            throw new IllegalStateException("탈퇴 후 30일이 경과하여 계정을 복구할 수 없습니다.");
+        }
+
+        user.restore();
     }
 
     @Transactional(readOnly = true)
@@ -167,5 +276,61 @@ public class UserService {
         return new MarketingConsentResponse(
                 user.getMarketingAgreed()
         );
+    }
+
+    private MyProfileResponse toMyProfileResponse(User user) {
+        List<String> styleCodes = userStyleRepository.findAllByUserId(user.getId()).stream()
+                .filter(userStyle -> userStyle.getPreferenceWeight() > 0)
+                .sorted(
+                        Comparator.comparing(UserStyle::getPreferenceWeight, Comparator.reverseOrder())
+                                .thenComparing(userStyle -> userStyle.getStyle().getCode())
+                )
+                .map(userStyle -> userStyle.getStyle().getCode())
+                .toList();
+
+        List<SocialAccount> socialAccountList = socialAccountRepository.findAllByUserId(user.getId()).stream()
+                .sorted(Comparator.comparing(SocialAccount::getProvider))
+                .toList();
+
+        List<String> socialProviders = socialAccountList.stream()
+                .map(SocialAccount::getProvider)
+                .distinct()
+                .sorted()
+                .toList();
+
+        List<SocialAccountResponse> socialAccounts = socialAccountList.stream()
+                .map(account -> new SocialAccountResponse(
+                        account.getProvider(),
+                        account.getProviderEmail()
+                ))
+                .toList();
+
+        return new MyProfileResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getNickname(),
+                isOnboarded(user, styleCodes),
+                user.getBirthDate(),
+                user.getGender(),
+                user.getRegionName(),
+                user.getRegionCode(),
+                user.getProfileImageUrl(),
+                user.getProfileBio(),
+                user.getExternalLinkUrl(),
+                styleCodes,
+                socialProviders,
+                socialAccounts
+        );
+    }
+
+    private boolean isOnboarded(User user, List<String> styleCodes) {
+        return user.getNickname() != null
+                && !user.getNickname().isBlank()
+                && user.getGender() != null
+                && user.getGender() != User.Gender.OTHER
+                && user.getBirthDate() != null
+                && user.getRegionCode() != null
+                && !user.getRegionCode().isBlank()
+                && styleCodes.size() >= 2;
     }
 }
