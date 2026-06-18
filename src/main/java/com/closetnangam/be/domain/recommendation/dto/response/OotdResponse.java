@@ -15,6 +15,7 @@ public record OotdResponse(
             OotdItemResponse top,
             OotdItemResponse bottom,
             OotdItemResponse outer,
+            OotdItemResponse shoes,
             double totalScore
     ) {}
 

@@ -85,6 +85,19 @@ public class UserStyle extends BaseEntity {
     }
 
     private void calculateCombinedWeight() {
-        this.combinedWeight = this.preferenceWeight + this.wardrobeWeight + this.feedbackWeight;
+        // 옷장 통계가 있는 경우 (wardrobeWeight > 0)
+        // 보유 옷 비율 70% + 온보딩 가중치 30% 배분 전략 적용
+        // 온보딩 가중치(preferenceWeight)는 1.0~5.0 범위라고 하셨으나 DB에는 Integer(예: 100~500 또는 1~5)로 저장될 수 있음.
+        // 여기서는 기존 combinedWeight가 단순히 합산이었으므로, 비율로 재계산.
+        if (this.wardrobeWeight > 0) {
+            // 기존 preferenceWeight가 1~5 범위라면 100을 곱해 단위를 맞추거나, 
+            // 여기선 단순히 가중치 비율만 조정.
+            // (preferenceWeight * 0.3) + (wardrobeWeight * 0.7) + (feedbackWeight)
+            double combined = (this.preferenceWeight * 0.3) + (this.wardrobeWeight * 0.7) + this.feedbackWeight;
+            this.combinedWeight = (int) Math.round(combined);
+        } else {
+            // 신규 사용자(옷장 비어있음): 온보딩 가중치 100% 반영
+            this.combinedWeight = this.preferenceWeight + this.feedbackWeight;
+        }
     }
 }

@@ -108,6 +108,7 @@ public class WardrobeStatisticsService {
             userStyle.syncWardrobeWeight(payload.wardrobeWeight());
             userStyleRepository.save(userStyle);
         }
+        userStyleRepository.flush(); // 즉시 반영하여 추천 서비스에서 최신 가중치를 읽을 수 있도록 함
     }
 
     private List<ItemTypeCount> toItemTypeCounts(Map<String, Integer> itemTypeCounts) {
