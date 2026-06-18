@@ -1,5 +1,7 @@
 package com.closetnangam.be.domain.user.service;
 
+import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
+import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.user.dto.request.CompleteOnboardingRequest;
@@ -43,6 +45,7 @@ public class UserService {
     private final UserStyleRepository userStyleRepository;
     private final SocialAccountRepository socialAccountRepository;
     private final StyleRepository styleRepository;
+    private final WardrobeClothesRepository wardrobeClothesRepository;
     private final RefreshTokenService refreshTokenService;
     private final LocalImageStorageService localImageStorageService;
 
@@ -214,6 +217,8 @@ public class UserService {
             preferenceMap.put(style.getId(), i == 0 ? 7 : 3);
         }
 
+        boolean hasWardrobeData = wardrobeClothesRepository.existsByUserIdAndOwnershipStatus(user.getId(), OwnershipStatus.OWNED);
+
         List<UserStyle> newStyles = new ArrayList<>();
         for (Style style : allStyles) {
             UserStyle userStyle = existingByStyleId.get(style.getId());
@@ -224,7 +229,7 @@ public class UserService {
                         .build();
                 newStyles.add(userStyle);
             }
-            userStyle.updatePreferenceWeight(preferenceMap.getOrDefault(style.getId(), 0));
+            userStyle.updatePreferenceWeight(preferenceMap.getOrDefault(style.getId(), 0), hasWardrobeData);
         }
         userStyleRepository.saveAll(newStyles);
     }
