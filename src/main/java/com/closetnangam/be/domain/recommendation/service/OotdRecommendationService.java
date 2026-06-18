@@ -45,6 +45,7 @@ public class OotdRecommendationService {
     private final UserRepository userRepository;
     private final WardrobeStatisticsService wardrobeStatisticsService;
 
+    @Transactional
     public OotdResponse recommend(Long currentUserId, Long wardrobeId, double currentTemp) {
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
@@ -269,7 +270,7 @@ public class OotdRecommendationService {
                         Integer w = styleWeights.get(code);
                         // 가중치를 더 직접적으로 반영 (예: combinedWeight가 100이면 1.0점 추가)
                         // 온보딩 선호도가 높을수록 점수가 크게 상승하도록 조정
-                        return w != null ? w / 50.0 : 0.0; 
+                        return w != null ? w / 50.0 : 0.0;
                     })
                     .max()
                     .orElse(0.0);

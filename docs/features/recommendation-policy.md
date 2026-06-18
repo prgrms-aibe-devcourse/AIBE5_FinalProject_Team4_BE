@@ -25,13 +25,14 @@ last_updated: 2026-06-11
 | `preference_weight` | 온보딩/마이페이지에서 사용자가 선택한 스타일 점수 |
 | `wardrobe_weight` | 사용자가 옷장에 등록한 옷 스타일 기반 점수 |
 | `feedback_weight` | 추천 싫어요/추천 제외 기반 마이너스 점수 |
-| `combined_weight` | 세 점수를 합산한 최종 스타일 점수 |
+| `combined_weight` | 세 점수를 결합한 최종 스타일 점수 (온보딩 30% + 옷장 70% + 피드백) |
 
 최종 점수는 아래 기준으로 계산합니다.
 
-```text
-combined_weight = preference_weight + wardrobe_weight + feedback_weight
-```
+- **신규 사용자 (옷장 비어있음)**:
+  `combined_weight = preference_weight + feedback_weight`
+- **기존 사용자 (옷장 데이터 있음)**:
+  `combined_weight = (preference_weight * 0.3) + (wardrobe_weight * 0.7) + feedback_weight`
 
 ## 점수 부여 기준
 

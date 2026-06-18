@@ -147,7 +147,7 @@ public class StyleProductRecommender {
     private ScoredRecommendation scoreCandidateWithUserStyles(User user, List<UserStyle> userStyles, Clothes clothes, double currentTemp) {
         ClothesTagSnapshot snapshot = clothes.getRecommendationTagSnapshot();
         List<String> candidateStyles = snapshot.styleCodes();
-        
+
         // 1. 스타일 점수 (60%)
         double maxStyleScore = 0.0;
 

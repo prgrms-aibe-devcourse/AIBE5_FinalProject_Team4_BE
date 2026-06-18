@@ -569,6 +569,18 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
           "favorite": false
         },
         "outer": null,
+        "shoes": {
+          "clothesId": 103,
+          "wardrobeClothesId": 3,
+          "name": "신발 이름",
+          "brand": "브랜드",
+          "color": "WHITE",
+          "imageUrl": "https://...",
+          "externalProductUrl": "https://...",
+          "category": "SHOES",
+          "itemType": "SNEAKERS",
+          "favorite": false
+        },
         "totalScore": 2.5
       }
     ],
@@ -579,7 +591,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: `outer` 필드는 기온에 따라 외투가 필요 없는 경우(HOT, WARM) `null`로 반환됩니다.
+> **Note**: `outer` 필드는 기온에 따라 외투가 필요 없는 경우(HOT, WARM) `null`로 반환됩니다. `shoes` 필드는 모든 코디 조합에 기본적으로 포함됩니다. `wardrobeClothesId`는 보유 옷이 부족해 외부 쇼핑몰 상품으로 보충된 경우 `null`로 반환될 수 있으므로 FE는 이를 기준으로 렌더링을 분기해야 합니다.
 
 #### 추천 피드백 제출
 
