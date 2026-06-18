@@ -194,6 +194,52 @@ class SimilarProductRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("유사상품 내부 후보는 대표 색상과 대표 스타일을 함께 반환한다")
+    void similarProductInternalCandidatesIncludePrimaryColorAndStyle() {
+        WardrobeClothes wardrobeClothes = createWardrobeClothes(
+                1L,
+                User.Gender.MALE,
+                "ourselves",
+                "multi stripe long sleeve",
+                "BLACK",
+                "LONG_SLEEVE",
+                "TOP",
+                StyleCode.CASUAL
+        );
+        WardrobeClothes internalCandidate = createWardrobeClothes(
+                2L,
+                User.Gender.MALE,
+                "internal-brand",
+                "internal minimal shirt",
+                "WHITE",
+                "LONG_SLEEVE",
+                "TOP",
+                StyleCode.MINIMAL
+        );
+        ReflectionTestUtils.setField(internalCandidate.getClothes(), "id", 30L);
+
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(wardrobeClothes));
+        given(clothesRepository.findSimilarProductInternalCandidates(
+                eq(10L),
+                anyList(),
+                eq("TOP"),
+                anyList(),
+                any(Pageable.class)
+        )).willReturn(List.of(internalCandidate.getClothes()));
+        given(naverApiService.searchShoppingProducts(anyString(), anyInt(), anyInt(), anyString()))
+                .willReturn(List.of());
+
+        SimilarProductRecommendationResponse response =
+                similarProductRecommendationService.recommendSimilarProducts(1L, 10L);
+
+        assertThat(response.products()).hasSize(1);
+        NaverShoppingProductResponse product = response.products().get(0);
+        assertThat(product.candidateSource()).isEqualTo("INTERNAL");
+        assertThat(product.primaryColor()).isEqualTo("WHITE");
+        assertThat(product.primaryStyle()).isEqualTo("MINIMAL");
+    }
+
+    @Test
     @DisplayName("선택한 옷이 요청 사용자의 옷이 아니면 추천을 차단한다")
     void recommendSimilarProductsRejectsOtherUsersClothes() {
         given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.empty());

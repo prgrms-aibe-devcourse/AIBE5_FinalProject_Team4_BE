@@ -233,6 +233,8 @@ export interface NaverShoppingProduct {
   category4: string;
   clothesId: number | null;
   candidateSource: "NAVER" | "INTERNAL";
+  primaryColor: string | null;
+  primaryStyle: string | null;
 }
 
 export interface AiMdOutfitRecommendation {
@@ -523,8 +525,8 @@ export interface AiMdProductRecommendationData {
 
 AI MD 상품 추천의 `product`는 `candidateSource`에 따라 액션 기준이 다릅니다.
 
-- `candidateSource="INTERNAL"`: `product.clothesId`가 있으므로 기존 공용 옷 위시리스트 연결 API와 추천 피드백 API를 바로 사용할 수 있습니다.
-- `candidateSource="NAVER"`: `product.clothesId`가 `null`일 수 있습니다. 이 경우 먼저 네이버 상품 저장 플로우로 미보유 옷을 생성해야 하며, 저장 전에는 `clothesId` 기반 추천 피드백을 보낼 수 없습니다.
+- `candidateSource="INTERNAL"`: `product.clothesId`가 있으므로 기존 공용 옷 위시리스트 연결 API와 추천 피드백 API를 바로 사용할 수 있습니다. DB 태그가 있으면 `product.primaryColor`/`product.primaryStyle`에 대표 색상·대표 스타일 코드가 내려옵니다.
+- `candidateSource="NAVER"`: `product.clothesId`가 `null`일 수 있고, DB 태그가 없으므로 `product.primaryColor`/`product.primaryStyle`은 `null`입니다. 이 경우 먼저 네이버 상품 저장 플로우로 미보유 옷을 생성해야 하며, 저장 전에는 `clothesId` 기반 추천 피드백을 보낼 수 없습니다.
 - 내부 후보는 가격 정보가 없어 `lowestPrice`/`highestPrice`가 `null`일 수 있고, 구매 링크가 없는 경우 `link=""`일 수 있습니다.
 
 현재 AI MD 상품 추천 API에는 전용 저장 endpoint가 없습니다. 네이버 후보의 미보유 옷 저장은 아래 API를 사용합니다.
