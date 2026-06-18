@@ -74,4 +74,4 @@ gemini:
 weather:
   api:
     key: test-weather-key
-    url: https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
+    url: https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst

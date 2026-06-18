@@ -162,6 +162,7 @@ public class StyleProductRecommender {
                 clothes.getBrandName(),
                 clothes.getCategory(),
                 snapshot.primaryColor(),
+                RecommendResponse.toColorDisplay(snapshot.primaryColor()),  // 추가
                 snapshot.primaryStyleCode(),
                 clothes.getId()
         );
