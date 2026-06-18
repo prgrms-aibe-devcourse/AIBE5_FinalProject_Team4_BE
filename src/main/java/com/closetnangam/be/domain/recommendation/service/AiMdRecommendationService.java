@@ -15,6 +15,7 @@ import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.StyleRole;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
 import com.closetnangam.be.domain.outfit.dto.response.OutfitResponse;
 import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitBook;
@@ -783,6 +784,7 @@ public class AiMdRecommendationService {
         String productId = StringUtils.hasText(clothes.getExternalProductId()) && !"NONE".equalsIgnoreCase(clothes.getExternalProductId())
                 ? clothes.getExternalProductId()
                 : "CLOTHES_" + clothes.getId();
+        ClothesTagSnapshot tagSnapshot = clothes.getRecommendationTagSnapshot();
         return new NaverShoppingProductResponse(
                 clothes.getName(),
                 normalizeExternalValue(clothes.getExternalProductUrl()),
@@ -799,7 +801,9 @@ public class AiMdRecommendationService {
                 defaultIfBlank(clothes.getCategory(), "UNKNOWN"),
                 toItemTypeLabel(clothes.getItemType()),
                 clothes.getId(),
-                "INTERNAL"
+                "INTERNAL",
+                tagSnapshot.primaryColor(),
+                tagSnapshot.primaryStyleCode()
         );
     }
 

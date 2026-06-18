@@ -22,8 +22,50 @@ public record NaverShoppingProductResponse(
         String category3,
         String category4,
         Long clothesId,
-        String candidateSource
+        String candidateSource,
+        String primaryColor,
+        String primaryStyle
 ) {
+    public NaverShoppingProductResponse(
+            String title,
+            String link,
+            String image,
+            Integer lowestPrice,
+            Integer highestPrice,
+            String mallName,
+            String productId,
+            String productType,
+            String brand,
+            String maker,
+            String category1,
+            String category2,
+            String category3,
+            String category4,
+            Long clothesId,
+            String candidateSource
+    ) {
+        this(
+                title,
+                link,
+                image,
+                lowestPrice,
+                highestPrice,
+                mallName,
+                productId,
+                productType,
+                brand,
+                maker,
+                category1,
+                category2,
+                category3,
+                category4,
+                clothesId,
+                candidateSource,
+                null,
+                null
+        );
+    }
+
     public NaverShoppingProductResponse(
             String title,
             String link,
@@ -56,7 +98,9 @@ public record NaverShoppingProductResponse(
                 category3,
                 category4,
                 null,
-                "NAVER"
+                "NAVER",
+                null,
+                null
         );
     }
 }

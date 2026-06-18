@@ -136,6 +136,8 @@ export interface NaverShoppingProduct {
   category4: string;
   clothesId: number | null;
   candidateSource: "NAVER" | "INTERNAL";
+  primaryColor: string | null;
+  primaryStyle: string | null;
 }
 
 export interface SimilarProductRecommendation {
@@ -226,8 +228,8 @@ export type SimilarProductRecommendationResponse =
 
 `products`에는 네이버쇼핑 실시간 후보와 내부 `CLOTHES` 공용 후보가 함께 포함됩니다.
 
-- `candidateSource="NAVER"`: 네이버쇼핑 API에서 온 후보입니다. `clothesId`는 `null`일 수 있습니다. 위시리스트 저장은 기존 네이버 상품 저장 플로우를 사용하고, 저장 전 추천 피드백은 보낼 수 없습니다.
-- `candidateSource="INTERNAL"`: `CLOTHES.clothes_info_source=EXTERNAL_SHOPPING`인 내부 공용 후보입니다. `clothesId`가 있으므로 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`와 `POST /api/v1/users/{userId}/recommendations/feedback`에 바로 사용할 수 있습니다.
+- `candidateSource="NAVER"`: 네이버쇼핑 API에서 온 후보입니다. `clothesId`는 `null`일 수 있고, DB 태그가 없으므로 `primaryColor`/`primaryStyle`은 `null`입니다. 위시리스트 저장은 기존 네이버 상품 저장 플로우를 사용하고, 저장 전 추천 피드백은 보낼 수 없습니다.
+- `candidateSource="INTERNAL"`: `CLOTHES.clothes_info_source=EXTERNAL_SHOPPING`인 내부 공용 후보입니다. `clothesId`가 있으므로 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`와 `POST /api/v1/users/{userId}/recommendations/feedback`에 바로 사용할 수 있습니다. DB 태그가 있으면 `primaryColor`/`primaryStyle`에 대표 색상·대표 스타일 코드가 내려옵니다.
 - 내부 후보는 가격 정보가 없어 `lowestPrice`/`highestPrice`가 `null`일 수 있고, 구매 링크가 없는 경우 `link=""`일 수 있습니다. FE는 가격 미표시와 구매 버튼 비활성화를 처리해야 합니다.
 - 내부 후보도 기준 사용자의 성별과 `UNISEX` 상품만 포함합니다. 사용자 성별이 `OTHER`이거나 없으면 내부 후보 성별을 제한하지 않습니다.
 
