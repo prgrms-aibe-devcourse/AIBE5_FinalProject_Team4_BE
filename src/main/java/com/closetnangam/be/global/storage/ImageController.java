@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.nio.file.Path;
 import java.util.Locale;
 
 @Tag(name = "Image", description = "의류 이미지 서빙 API (인증 필요)")
@@ -25,7 +24,7 @@ public class ImageController {
     private static final String FEED_SUBDIRECTORY = "feed";
     private static final String PROFILE_SUBDIRECTORY = "profile";
 
-    private final LocalImageStorageService localImageStorageService;
+    private final ImageStorageService imageStorageService;
 
     @Operation(
             summary = "의류 사진 조회",
@@ -83,8 +82,8 @@ public class ImageController {
     }
 
     private ResponseEntity<byte[]> serveUserImage(String subdirectory, Long userId, String filename) {
-        Path storedPath = localImageStorageService.resolveSecureUserImagePath(subdirectory, userId, filename);
-        byte[] imageBytes = localImageStorageService.readStoredImage(storedPath);
+        String storedPath = imageStorageService.resolveUserImageStoredPath(subdirectory, userId, filename);
+        byte[] imageBytes = imageStorageService.readStoredImage(storedPath);
 
         return ResponseEntity.ok()
                 .contentType(resolveMediaType(filename))

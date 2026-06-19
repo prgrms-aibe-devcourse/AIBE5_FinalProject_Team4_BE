@@ -1,10 +1,13 @@
 package com.closetnangam.be.domain.user.service;
 
+import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
+import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.user.dto.request.CompleteOnboardingRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateProfileRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
+import com.closetnangam.be.domain.user.dto.request.UpdateGuideTourRequest;
 import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
 import com.closetnangam.be.domain.user.dto.response.MyProfileResponse;
 import com.closetnangam.be.domain.user.dto.response.NicknameAvailabilityResponse;
@@ -20,12 +23,14 @@ import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.domain.user.support.NicknamePolicy;
 import com.closetnangam.be.global.auth.jwt.RefreshTokenService;
-import com.closetnangam.be.global.storage.LocalImageStorageService;
+import com.closetnangam.be.global.storage.ImageStorageService;
+import com.closetnangam.be.global.storage.StoredImage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -43,8 +48,10 @@ public class UserService {
     private final UserStyleRepository userStyleRepository;
     private final SocialAccountRepository socialAccountRepository;
     private final StyleRepository styleRepository;
+    private final WardrobeClothesRepository wardrobeClothesRepository;
     private final RefreshTokenService refreshTokenService;
-    private final LocalImageStorageService localImageStorageService;
+    private final ImageStorageService localImageStorageService;
+
 
     @Transactional(readOnly = true)
     public MyProfileResponse getMyProfile(Long userId) {
@@ -117,7 +124,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public ProfileImageUploadResponse uploadProfileImage(Long userId, MultipartFile file) {
         getUser(userId);
-        LocalImageStorageService.StoredImage storedImage = localImageStorageService.storeProfileImage(userId, file);
+        StoredImage storedImage = localImageStorageService.storeProfileImage(userId, file);
         return new ProfileImageUploadResponse(storedImage.publicUrl());
     }
 
@@ -214,6 +221,8 @@ public class UserService {
             preferenceMap.put(style.getId(), i == 0 ? 7 : 3);
         }
 
+        boolean hasWardrobeData = wardrobeClothesRepository.existsByUserIdAndOwnershipStatus(user.getId(), OwnershipStatus.OWNED);
+
         List<UserStyle> newStyles = new ArrayList<>();
         for (Style style : allStyles) {
             UserStyle userStyle = existingByStyleId.get(style.getId());
@@ -224,9 +233,16 @@ public class UserService {
                         .build();
                 newStyles.add(userStyle);
             }
-            userStyle.updatePreferenceWeight(preferenceMap.getOrDefault(style.getId(), 0));
+            userStyle.updatePreferenceWeight(preferenceMap.getOrDefault(style.getId(), 0), hasWardrobeData);
         }
         userStyleRepository.saveAll(newStyles);
+    }
+
+    @Transactional
+    public void updateGuideTour(Long userId, UpdateGuideTourRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
+        user.updateGuideTour(request.home(), request.wardrobe(), request.feed(), request.mypage());
     }
 
     @Transactional
@@ -310,8 +326,12 @@ public class UserService {
                 user.getEmail(),
                 user.getNickname(),
                 isOnboarded(user, styleCodes),
-                user.getBirthDate(),
+                user.isGuideTourCompletedHome(),
+                user.isGuideTourCompletedWardrobe(),
+                user.isGuideTourCompletedFeed(),
+                user.isGuideTourCompletedMypage(),
                 user.getGender(),
+                user.getBirthDate(),
                 user.getRegionName(),
                 user.getRegionCode(),
                 user.getProfileImageUrl(),

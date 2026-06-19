@@ -11,6 +11,15 @@ import java.util.Optional;
 
 public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes, Long> {
 
+    @Query("""
+            select count(wc) > 0 from WardrobeClothes wc
+            join wc.wardrobe w
+            where w.user.id = :userId
+              and wc.ownershipStatus = :ownershipStatus
+              and wc.deletedAt is null
+            """)
+    boolean existsByUserIdAndOwnershipStatus(@Param("userId") Long userId, @Param("ownershipStatus") OwnershipStatus ownershipStatus);
+
 
     @Query("""
             select wc from WardrobeClothes wc

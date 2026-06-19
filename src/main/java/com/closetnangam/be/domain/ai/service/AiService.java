@@ -8,7 +8,7 @@ import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.global.external.gemini.GeminiService;
 import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.global.external.gemini.dto.GeminiClothingClassificationResult;
-import com.closetnangam.be.global.storage.LocalImageStorageService;
+import com.closetnangam.be.global.storage.ImageStorageService;
 import com.closetnangam.be.global.storage.StoredImageAnalysisContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,7 +31,7 @@ public class AiService {
     private final ClothingAiPhotoRepository clothingAiPhotoRepository;
     private final CategoryCatalogService categoryCatalogService;
     private final GeminiService geminiService;
-    private final LocalImageStorageService localImageStorageService;
+    private final ImageStorageService imageStorageService;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
 
@@ -39,14 +39,14 @@ public class AiService {
             ClothingAiPhotoRepository clothingAiPhotoRepository,
             CategoryCatalogService categoryCatalogService,
             GeminiService geminiService,
-            LocalImageStorageService localImageStorageService,
+            ImageStorageService imageStorageService,
             ObjectMapper objectMapper,
             PlatformTransactionManager transactionManager
     ) {
         this.clothingAiPhotoRepository = clothingAiPhotoRepository;
         this.categoryCatalogService = categoryCatalogService;
         this.geminiService = geminiService;
-        this.localImageStorageService = localImageStorageService;
+        this.imageStorageService = imageStorageService;
         this.objectMapper = objectMapper;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
@@ -74,7 +74,7 @@ public class AiService {
         GeminiClothingClassificationResult result = null;
         String failureMessage = null;
         try {
-            byte[] imageBytes = localImageStorageService.readStoredImage(ctx.storedPath());
+            byte[] imageBytes = imageStorageService.readStoredImage(ctx.storedPath());
             result = geminiService.classifyClothingImage(
                     imageBytes,
                     ctx.contentType(),

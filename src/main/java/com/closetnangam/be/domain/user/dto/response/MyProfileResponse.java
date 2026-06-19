@@ -1,17 +1,20 @@
 package com.closetnangam.be.domain.user.dto.response;
 
-import com.closetnangam.be.domain.user.entity.User;
-
 import java.time.LocalDate;
 import java.util.List;
+import com.closetnangam.be.domain.user.entity.User;
 
 public record MyProfileResponse(
         Long userId,
         String email,
         String nickname,
         boolean onboarded,
-        LocalDate birthDate,
+        boolean guideTourCompletedHome,
+        boolean guideTourCompletedWardrobe,
+        boolean guideTourCompletedFeed,
+        boolean guideTourCompletedMypage,
         User.Gender gender,
+        LocalDate birthDate,
         String regionName,
         String regionCode,
         String profileImageUrl,
@@ -20,5 +23,4 @@ public record MyProfileResponse(
         List<String> styleCodes,
         List<String> socialProviders,
         List<SocialAccountResponse> socialAccounts
-) {
-}
+) {}
