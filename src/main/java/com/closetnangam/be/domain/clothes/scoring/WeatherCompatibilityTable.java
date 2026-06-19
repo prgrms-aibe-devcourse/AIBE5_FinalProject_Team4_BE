@@ -25,9 +25,9 @@ public class WeatherCompatibilityTable {
             case "SHORT_SLEEVE", "SLEEVELESS", "SHORTS", "SANDALS_SLIPPERS" -> 1.0;
             case "COLLAR_TEE", "SKIRT" -> 0.9;
             case "SHIRT", "COTTON", "DENIM" -> 0.6;
-            case "LONG_SLEEVE", "KNIT", "SWEAT", "HOODIE", "SLACKS" -> 0.3;
-            case "PADDING", "COAT", "HEAVY", "LEATHER_JACKET" -> 0.0;
-            default -> 0.5;
+            case "LONG_SLEEVE", "KNIT", "SWEAT", "HOODIE", "SLACKS" -> 0.2;
+            case "PADDING", "COAT", "HEAVY", "LEATHER_JACKET", "CARDIGAN", "JACKET", "BLAZER", "WINDBREAKER", "HOOD_ZIPUP", "DENIM_JACKET", "VARSITY_JACKET", "WORK_JACKET", "MA1", "BLOUSON" -> 0.0;
+            default -> 0.3;
         };
     }
 

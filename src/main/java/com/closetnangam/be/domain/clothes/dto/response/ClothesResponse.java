@@ -109,13 +109,18 @@ public record ClothesResponse(
         );
     }
 
-    private static ColorDisplayResponse toColorDisplay(String colorCode) {
-        ClothesColor clothesColor = ClothesColor.fromCode(colorCode);
-        return new ColorDisplayResponse(
-                clothesColor.name(),
-                clothesColor.getLabel(),
-                clothesColor.getHex()
-        );
+    public static ColorDisplayResponse toColorDisplay(String colorCode) {
+        if (colorCode == null) return null;
+        try {
+            ClothesColor clothesColor = ClothesColor.fromCodeOrDefault(colorCode);
+            return new ColorDisplayResponse(
+                    clothesColor.name(),
+                    clothesColor.getLabel(),
+                    clothesColor.getHex()
+            );
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static Long resolveWardrobeId(WardrobeClothes wardrobeClothes) {

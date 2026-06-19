@@ -1,20 +1,20 @@
 ---
 doc_type: be_similar_product_api_spec
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-11
+last_updated: 2026-06-16
 ---
 
 # 유사상품 추천 API 명세서
 
-이 문서는 FE에서 사용자의 보유 옷 선택 모달, 유사상품 추천 목록, 외부 구매 링크 및 상품 저장 화면을 구현할 때 사용하는 연동 명세입니다.
+이 문서는 FE에서 사용자의 옷장 등록 옷 선택 모달, 유사상품 추천 목록, 외부 구매 링크 및 상품 저장 화면을 구현할 때 사용하는 연동 명세입니다.
 공통 정책의 원본은 [api-contract.md](./api-contract.md)이며, 공통 옷 응답 타입은 [AI MD API 명세서](./ai-md-api-spec.md)와 동일합니다.
 
 ## 1. 기능 개요
 
-사용자가 자신의 보유 옷 중 하나를 선택하면 BE가 해당 옷의 속성으로 네이버쇼핑 검색어를 구성하고 유사한 상품을 최대 10개 반환합니다.
+사용자가 자신의 옷장에 등록된 옷 중 하나를 선택하면 BE가 해당 옷의 속성으로 네이버쇼핑 검색어를 구성하고 유사한 상품을 최대 50개 반환합니다.
 
 ```text
-보유 옷 목록 조회
+옷장 등록 옷 목록 조회
 → 기준 옷 선택 모달 표시
 → 사용자가 옷 1개 선택
 → 유사상품 추천 API 호출
@@ -52,7 +52,7 @@ export interface ApiResponse<T> {
 }
 ```
 
-## 3. 보유 옷 목록 조회
+## 3. 기준 옷 목록 조회
 
 기준 옷 선택 모달을 열 때 사용합니다.
 
@@ -63,7 +63,7 @@ GET /api/v1/users/{userId}/clothes
 ### 응답
 
 ```ts
-type OwnedClothesResponse = ApiResponse<Clothes[]>;
+type SimilarProductBaseClothesResponse = ApiResponse<Clothes[]>;
 ```
 
 `Clothes`의 전체 타입은 [AI MD API 명세서의 Clothes 타입](./ai-md-api-spec.md#주요-응답-타입)을 참고합니다.
@@ -82,13 +82,14 @@ export interface SimilarProductBaseClothesOption {
   gender: "MALE" | "FEMALE" | "UNISEX";
   primaryColor: string | null;
   styles: StyleTag[];
-  ownershipStatus: "OWNED";
+  ownershipStatus: "OWNED" | "WISHLIST";
 }
 ```
 
 ### FE 처리 기준
 
-- 모달에서는 `ownershipStatus === "OWNED"`인 응답만 사용합니다.
+- 유사상품 추천의 기준 옷은 사용자의 활성 옷장 항목이면 됩니다. `ownershipStatus`가 `OWNED` 또는 `WISHLIST`인 옷을 모두 선택지로 사용할 수 있습니다.
+- `WISHLIST`는 아직 실제 보유하지 않은 관심 상품이지만, 비슷한 상품을 찾는 기준 옷으로는 유효합니다.
 - 추천 요청에는 `wardrobeClothesId`가 아니라 `clothesId`를 사용합니다.
 - 목록이 비어 있으면 옷 등록 화면으로 유도합니다.
 - 옷 이미지, 이름, 브랜드, 카테고리 정도를 선택 카드에 표시하는 것을 권장합니다.
@@ -104,7 +105,7 @@ GET /api/v1/users/{userId}/clothes/{clothesId}/similar-products
 | 이름 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | `userId` | `number` | Y | 로그인 사용자 ID |
-| `clothesId` | `number` | Y | 보유 옷 목록 응답의 `clothesId` |
+| `clothesId` | `number` | Y | 기준 옷 목록 응답의 `clothesId`. 해당 사용자의 활성 `OWNED` 또는 `WISHLIST` 옷장 항목이어야 함 |
 
 Request body와 query parameter는 없습니다.
 
@@ -122,7 +123,7 @@ export interface NaverShoppingProduct {
   title: string;
   link: string;
   image: string;
-  lowestPrice: number;
+  lowestPrice: number | null;
   highestPrice: number | null;
   mallName: string;
   productId: string;
@@ -133,6 +134,10 @@ export interface NaverShoppingProduct {
   category2: string;
   category3: string;
   category4: string;
+  clothesId: number | null;
+  candidateSource: "NAVER" | "INTERNAL";
+  primaryColor: string | null;
+  primaryStyle: string | null;
 }
 
 export interface SimilarProductRecommendation {
@@ -191,7 +196,27 @@ export type SimilarProductRecommendationResponse =
         "category1": "패션의류",
         "category2": "남성의류",
         "category3": "티셔츠",
-        "category4": ""
+        "category4": "",
+        "clothesId": null,
+        "candidateSource": "NAVER"
+      },
+      {
+        "title": "공용 DB 스트라이프 롱슬리브",
+        "link": "",
+        "image": "https://cdn.example.com/clothes/502.jpg",
+        "lowestPrice": null,
+        "highestPrice": null,
+        "mallName": "NAVER",
+        "productId": "CLOTHES_502",
+        "productType": "INTERNAL",
+        "brand": "브랜드",
+        "maker": "브랜드",
+        "category1": "패션의류",
+        "category2": "남성의류",
+        "category3": "TOP",
+        "category4": "롱슬리브",
+        "clothesId": 502,
+        "candidateSource": "INTERNAL"
       }
     ]
   },
@@ -200,6 +225,13 @@ export type SimilarProductRecommendationResponse =
 ```
 
 실제 `baseClothes`에는 `Clothes` 타입의 전체 필드가 포함됩니다. 위 예시는 화면 구현에 필요한 주요 필드만 표시했습니다.
+
+`products`에는 네이버쇼핑 실시간 후보와 내부 `CLOTHES` 공용 후보가 함께 포함됩니다.
+
+- `candidateSource="NAVER"`: 네이버쇼핑 API에서 온 후보입니다. `clothesId`는 `null`일 수 있고, DB 태그가 없으므로 `primaryColor`/`primaryStyle`은 `null`입니다. 위시리스트 저장은 기존 네이버 상품 저장 플로우를 사용하고, 저장 전 추천 피드백은 보낼 수 없습니다.
+- `candidateSource="INTERNAL"`: `CLOTHES.clothes_info_source=EXTERNAL_SHOPPING`인 내부 공용 후보입니다. `clothesId`가 있으므로 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`와 `POST /api/v1/users/{userId}/recommendations/feedback`에 바로 사용할 수 있습니다. DB 태그가 있으면 `primaryColor`/`primaryStyle`에 대표 색상·대표 스타일 코드가 내려옵니다.
+- 내부 후보는 가격 정보가 없어 `lowestPrice`/`highestPrice`가 `null`일 수 있고, 구매 링크가 없는 경우 `link=""`일 수 있습니다. FE는 가격 미표시와 구매 버튼 비활성화를 처리해야 합니다.
+- 내부 후보도 기준 사용자의 성별과 `UNISEX` 상품만 포함합니다. 사용자 성별이 `OTHER`이거나 없으면 내부 후보 성별을 제한하지 않습니다.
 
 ## 5. 추천 기준
 
@@ -234,23 +266,52 @@ BE는 동일 브랜드나 동일 상품 재검색을 줄이기 위해 브랜드�
 
 ## 6. 결과 목록 처리
 
-- 네이버쇼핑 기본 검색 결과는 최대 10개입니다.
+- 유사상품 추천 결과는 최대 50개입니다.
 - 별도 pagination 또는 더보기 parameter는 현재 제공하지 않습니다.
 - 결과가 없으면 `200 OK`와 `products: []`가 반환될 수 있습니다.
-- 상품 카드에는 이미지, 상품명, 브랜드 또는 쇼핑몰, 최저가를 표시합니다.
-- 구매 버튼은 `product.link`로 이동합니다.
+- 상품 카드에는 이미지, 상품명, 브랜드 또는 쇼핑몰을 표시합니다.
+- `lowestPrice`가 `number`이면 최저가를 통화 형식으로 표시하고, `null`이면 가격 영역을 숨기거나 "가격 정보 없음"으로 처리합니다.
+- 구매 버튼은 `product.link`가 비어 있지 않을 때만 노출하거나 활성화합니다.
 - 외부 링크는 새 창 또는 인앱 브라우저로 여는 것을 권장합니다.
-- 가격은 숫자이므로 FE에서 통화 형식으로 변환합니다.
+- `candidateSource="INTERNAL"`이고 `clothesId`가 있으면 위시리스트 연결, 추천 싫어요, 추천 제외 액션을 바로 수행할 수 있습니다.
 
 ```ts
-const formattedPrice = new Intl.NumberFormat("ko-KR").format(
-  product.lowestPrice,
-);
+const formattedPrice =
+  product.lowestPrice == null
+    ? null
+    : new Intl.NumberFormat("ko-KR").format(product.lowestPrice);
+
+const canPurchase = product.link.trim().length > 0;
+const canSubmitFeedback = product.candidateSource === "INTERNAL" && product.clothesId != null;
 ```
 
 ## 7. 추천 상품 선택 및 저장
 
 추천 상품은 자유롭게 복수 선택할 수 있습니다. 다만 유사상품 추천 API는 조회만 담당하며 저장 API는 별도입니다.
+
+### 내부 후보 저장
+
+`candidateSource="INTERNAL"`이고 `clothesId`가 있는 후보는 이미 공용 `CLOTHES`에 존재하므로 신규 생성 API를 호출하지 않습니다. 기존 옷 연결 API를 사용합니다.
+
+```http
+POST /api/users/{userId}/wishlist-clothes/{clothesId}
+```
+
+이 후보는 추천 피드백 API에도 같은 `clothesId`를 사용할 수 있습니다.
+
+```http
+POST /api/v1/users/{userId}/recommendations/feedback
+Content-Type: application/json
+
+{
+  "clothesId": 502,
+  "feedbackType": "DISLIKE"
+}
+```
+
+### 네이버 후보 저장
+
+`candidateSource="NAVER"`이고 `clothesId=null`인 후보는 아직 공용 `CLOTHES`가 없을 수 있으므로 기존 네이버 상품 신규 저장 플로우를 사용합니다.
 
 ```http
 POST /api/users/{userId}/wishlist-clothes
@@ -355,10 +416,10 @@ const results = await Promise.allSettled(
 
 ## 9. 로딩 및 빈 상태
 
-### 보유 옷 없음
+### 기준 옷 없음
 
 ```text
-유사한 상품을 찾으려면 먼저 옷장에 옷을 등록해 주세요.
+유사한 상품을 찾으려면 먼저 보유 옷 또는 미보유 관심 상품을 옷장에 등록해 주세요.
 ```
 
 옷 등록 화면으로 이동하는 버튼을 제공합니다.

@@ -96,7 +96,7 @@ public class RecommendationController {
 
     @Operation(
             summary = "AI MD 상품 추천",
-            description = "사용자 옷장과 선택한 AI MD 스타일을 기준으로 외부 상품 10개를 추천합니다."
+            description = "사용자 옷장과 선택한 AI MD 스타일을 기준으로 외부 상품을 최대 40개 추천합니다."
     )
     @GetMapping("/users/{userId}/recommendations/ai-md/{mdId}/products")
     public ResponseEntity<ApiResponse<AiMdProductRecommendationResponse>> recommendAiMdProducts(

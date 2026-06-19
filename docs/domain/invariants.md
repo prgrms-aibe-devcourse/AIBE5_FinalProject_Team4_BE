@@ -70,9 +70,12 @@ last_updated: 2026-06-10
 - 대표 색상은 7점, 보조 색상은 각각 3점으로 계산합니다.
 - 온보딩 또는 마이페이지에서 사용자가 여러 스타일을 선택하면 첫 번째 선택은 대표 스타일, 나머지는 보조 스타일로 봅니다.
 - 사용자가 선택한 선호 스타일 점수는 `USER_STYLES.preference_weight`에 반영합니다.
+- `USER_STYLES`는 사용자별 전체 스타일 row를 보장하며, 선택하지 않은 스타일의 `preference_weight`는 0으로 둡니다.
 - 사용자의 옷장에 등록된 옷 스타일 점수는 `USER_STYLES.wardrobe_weight`에 반영합니다.
 - 추천 싫어요 또는 추천 제외 피드백은 대표 스타일 -7점, 보조 스타일 각각 -3점으로 `USER_STYLES.feedback_weight`에 반영합니다.
-- 최종 스타일 점수는 `combined_weight = preference_weight + wardrobe_weight + feedback_weight` 기준으로 계산합니다.
+- 최종 스타일 점수는 아래 기준으로 계산하며, 사용자의 옷장 데이터 보유 여부를 기준으로 전략을 선택합니다.
+    - **신규 사용자 (전체 옷장 비어있음)**: `combined_weight = preference_weight + feedback_weight`
+    - **기존 사용자 (전체 옷장 데이터 있음)**: `combined_weight = round(preference_weight * 0.3 + wardrobe_weight * 0.7) + feedback_weight`
 - 점수가 같은 추천 후보는 같은 점수 그룹 안에서 랜덤 노출합니다. `RECO-005` 어울리는 옷 추천(`compatibilityScore` 동점)은 `brandName`이 `UNKNOWN`이 아닌 후보를 먼저 노출합니다.
 
 ## 추천 피드백과 제외

@@ -20,6 +20,17 @@ class BrandGenderCorrectorTest {
             "UNISEX, BOTTOM, PLASTIC ISLAND",
             "MALE, TOP, SOUP",
             "UNISEX, BOTTOM, 숲",
+            "MALE, TOP, 제시뉴욕",
+            "UNISEX, BOTTOM, JESSI NEW YORK",
+            "MALE, TOP, 로엠",
+            "UNISEX, BOTTOM, TRIANA",
+            "MALE, TOP, 미니멈",
+            "UNISEX, BOTTOM, EGOIST",
+            "MALE, TOP, ear papillonner",
+            "UNISEX, BOTTOM, 마담엘레강스",
+            "MALE, TOP, 몰리올리",
+            "UNISEX, BOTTOM, LIST",
+            "MALE, TOP, 쉬즈미스",
     })
     @DisplayName("여성 전용 브랜드는 FEMALE로 보정한다")
     void correctGenderToFemale(String gender, String category, String brand) {

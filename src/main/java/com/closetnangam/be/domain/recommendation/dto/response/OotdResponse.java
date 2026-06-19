@@ -14,7 +14,8 @@ public record OotdResponse(
     public record OotdCombinationResponse(
             OotdItemResponse top,
             OotdItemResponse bottom,
-            OotdItemResponse outer,
+            OotdItemResponse outer, // null if not needed/available
+            OotdItemResponse shoes, // null if no candidates found
             double totalScore
     ) {}
 

@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -102,38 +103,75 @@ public class StyleProductRecommender {
         Collections.shuffle(scoredRecommendations); // 먼저 섞음으로써 동점자 랜덤 효과
         scoredRecommendations.sort(Comparator.comparingDouble(ScoredRecommendation::score).reversed());
 
-        return scoredRecommendations.stream()
-                .limit(MAX_RESULTS)
-                .map(this::mapToRecommendResponse)
-                .toList();
+        // 결과 다양성 확보: 스타일 중복 최소화
+        return pickDiverseResults(scoredRecommendations, MAX_RESULTS);
+    }
+
+    private List<RecommendResponse> pickDiverseResults(List<ScoredRecommendation> scoredRecommendations, int limit) {
+        List<RecommendResponse> results = new ArrayList<>();
+        Map<String, Integer> styleCounts = new HashMap<>();
+
+        // 1차: 점수 순으로 보되, 특정 스타일이 과점하지 않도록 선택 (최대 40% 제한)
+        int perStyleLimit = Math.max(2, (int) (limit * 0.4));
+
+        for (ScoredRecommendation scored : scoredRecommendations) {
+            if (results.size() >= limit) break;
+
+            String style = scored.clothes().getRecommendationTagSnapshot().primaryStyleCode();
+            if (style == null) style = "CASUAL";
+
+            int count = styleCounts.getOrDefault(style, 0);
+            if (count < perStyleLimit) {
+                results.add(mapToRecommendResponse(scored));
+                styleCounts.put(style, count + 1);
+            }
+        }
+
+        // 2차: 부족한 개수만큼 다시 점수 순으로 채움
+        if (results.size() < limit) {
+            Set<Long> alreadyPicked = results.stream()
+                    .map(RecommendResponse::clothesId)
+                    .collect(Collectors.toSet());
+
+            for (ScoredRecommendation scored : scoredRecommendations) {
+                if (results.size() >= limit) break;
+                if (!alreadyPicked.contains(scored.clothes().getId())) {
+                    results.add(mapToRecommendResponse(scored));
+                }
+            }
+        }
+
+        return results;
     }
 
     private ScoredRecommendation scoreCandidateWithUserStyles(User user, List<UserStyle> userStyles, Clothes clothes, double currentTemp) {
         ClothesTagSnapshot snapshot = clothes.getRecommendationTagSnapshot();
-        String candidateStyleCode = snapshot.primaryStyleCode();
-        if (candidateStyleCode == null) candidateStyleCode = "CASUAL";
+        List<String> candidateStyles = snapshot.styleCodes();
 
         // 1. 스타일 점수 (60%)
         double maxStyleScore = 0.0;
 
         if (userStyles.isEmpty()) {
             // cold start — 성별 기반 기본값
+            String primary = snapshot.primaryStyleCode();
             if (user.getGender() == User.Gender.FEMALE) {
-                maxStyleScore = (candidateStyleCode.equals("CHIC")
-                        || candidateStyleCode.equals("CASUAL")) ? 1.0 : 0.0;
+                maxStyleScore = ("CHIC".equals(primary) || "CASUAL".equals(primary)) ? 0.8 : 0.0;
             } else {
-                maxStyleScore = candidateStyleCode.equals("CASUAL") ? 1.0 : 0.0;
+                maxStyleScore = "CASUAL".equals(primary) ? 0.8 : 0.0;
             }
         } else {
+            // 사용자의 모든 스타일 가중치 합산 (최대 1.0)
             for (UserStyle userStyle : userStyles) {
                 String userStyleCode = userStyle.getStyle().getCode();
-                // combined_weight 100 초과 방어
-                double combinedWeight = Math.min(userStyle.getCombinedWeight(), 100) / 100.0;
+                // combinedWeight가 0~100 범위라고 가정 (WardrobeStatisticsService에서 100분율로 계산됨)
+                double weight = Math.min(userStyle.getCombinedWeight(), 100) / 100.0;
 
-                if (userStyleCode.equals(candidateStyleCode)) {
-                    maxStyleScore = Math.max(maxStyleScore, combinedWeight);
+                if (candidateStyles.contains(userStyleCode)) {
+                    // 해당 옷이 사용자가 선호하는 스타일을 가지고 있으면 점수 부여
+                    // PRIMARY 스타일이면 가중치 100%, SECONDARY면 60% 반영
+                    double matchPower = userStyleCode.equals(snapshot.primaryStyleCode()) ? 1.0 : 0.6;
+                    maxStyleScore = Math.max(maxStyleScore, weight * matchPower);
                 }
-                // 불일치 스타일은 점수 없음 (else 제거)
             }
         }
 
@@ -143,6 +181,7 @@ public class StyleProductRecommender {
         ClothesSeason currentSeason = ClothesSeason.fromTemperature(currentTemp);
         double seasonMatchScore = currentSeason.isCompatibleWith(clothes.getSeason()) ? 1.0 : 0.0;
 
+        // 최종 점수 계산 (스타일 비중 유지하되 날씨/계절 합산)
         double totalScore = (STYLE_WEIGHT * maxStyleScore) + (WEATHER_WEIGHT * weatherScore * 0.7) + (0.12 * seasonMatchScore);
         String reason = String.format("Style: %.1f, Weather: %.1f, Season: %.1f", maxStyleScore, weatherScore, seasonMatchScore);
         return new ScoredRecommendation(clothes, totalScore, reason);
@@ -162,6 +201,7 @@ public class StyleProductRecommender {
                 clothes.getBrandName(),
                 clothes.getCategory(),
                 snapshot.primaryColor(),
+                RecommendResponse.toColorDisplay(snapshot.primaryColor()),  // 추가
                 snapshot.primaryStyleCode(),
                 clothes.getId()
         );
