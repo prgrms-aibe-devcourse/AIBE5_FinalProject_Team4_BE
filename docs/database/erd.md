@@ -126,6 +126,10 @@ erd_version: v2.3
 | `profile_bio` | 프로필 소개 문구 |
 | `external_link_url` | 대표 외부 링크 URL (단일) |
 | `status` | 계정 상태: `ACTIVE`, `WITHDRAWN` |
+| `guide_tour_completed_home` | 홈 가이드 투어 완료 여부. 기본값 `false` |
+| `guide_tour_completed_wardrobe` | 옷장 가이드 투어 완료 여부. 기본값 `false` |
+| `guide_tour_completed_feed` | 피드 가이드 투어 완료 여부. 기본값 `false` |
+| `guide_tour_completed_mypage` | 마이페이지 가이드 투어 완료 여부. 기본값 `false` |
 | `withdrawn_at` | 회원 탈퇴 시각. 탈퇴 이력이 없는 활성 계정은 `NULL` |
 
 ### `SOCIAL_ACCOUNTS`

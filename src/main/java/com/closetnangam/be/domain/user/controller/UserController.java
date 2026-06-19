@@ -1,5 +1,6 @@
 package com.closetnangam.be.domain.user.controller;
 
+import com.closetnangam.be.domain.user.dto.request.UpdateGuideTourRequest;
 import com.closetnangam.be.domain.user.dto.request.CompleteOnboardingRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateProfileRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
@@ -75,6 +76,15 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
+    @Operation(summary = "가이드 투어 완료 상태 업데이트",
+            description = "페이지별 가이드 투어 완료 여부를 업데이트합니다. null인 필드는 기존 값을 유지합니다.")
+    @PatchMapping("/guide-tour")
+    public ResponseEntity<ApiResponse<Void>> updateGuideTour(
+            @RequestBody UpdateGuideTourRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        userService.updateGuideTour(userId, request);
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
     @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지 파일을 업로드하고 프로필 저장에 사용할 imageUrl을 반환합니다. 반환된 imageUrl은 PATCH /api/v1/users/profile의 profileImageUrl에 전달해 저장합니다.")
     @PostMapping(value = "/profile/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProfileImageUploadResponse>> uploadProfileImage(
