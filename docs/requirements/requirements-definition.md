@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-15
+last_updated: 2026-06-19
 ---
 
 # 요구사항 정의서
@@ -81,7 +81,7 @@ last_updated: 2026-06-15
 | REQ-AUTH-003 | 로그인 | 로그인 처리 | 자동 로그인 | AUTH-005 | 로그인 상태 유지 | 중 | 유효한 JWT가 있으면 로그인 상태를 유지하고 만료되면 로그인 안내로 연결한다.                                    |
 | REQ-AUTH-004 | 로그인 | 로그인 처리 | 인증 토큰 관리 | AUTH-006 | JWT 저장 | 상 | OAuth 성공 후 JWT를 저장하고 보호 API 호출에 사용한다.                                           |
 | REQ-AUTH-004 | 로그인 | 로그인 처리 | 인증 토큰 관리 | AUTH-007 | 사용자 ID 검증 | 상 | JWT 사용자 ID와 요청 대상 사용자 ID 일치를 확인한다.                                              |
-| REQ-AUTH-005 | 로그인 | 로그인 처리 | 로그인 실패 | AUTH-008 | 실패 안내 | 상 | OAuth 로그인 실패를 안내한다.                                                             |
+| REQ-AUTH-005 | 로그인 | 로그인 처리 | 로그인 실패 | AUTH-008 | 실패 안내 | 상 | OAuth 로그인 실패 시 FE redirect query `error=oauth_failed`를 감지해 실패 안내를 표시하고 재시도 가능한 상태로 정리한다. |
 | REQ-ONBOARD-001 | 온보딩 | 회원가입 | 기본 정보 | ONBOARD-001 | 닉네임 입력 | 상 | 사용자가 닉네임을 입력하며, 저장 전 형식과 중복 여부를 검증한다.                                            |
 | REQ-ONBOARD-001 | 온보딩 | 회원가입 | 기본 정보 | ONBOARD-002 | 생년월일 입력 | 중 | 생년월일을 입력받아 맞춤형 추천 정확도 향상에 활용한다.                                                 |
 | REQ-ONBOARD-001 | 온보딩 | 회원가입 | 기본 정보 | ONBOARD-003 | 성별 입력 | 중 | 성별을 입력받아 맞춤형 추천 정확도 향상에 활용한다.                                                   |

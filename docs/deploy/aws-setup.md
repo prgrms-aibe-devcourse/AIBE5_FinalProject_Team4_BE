@@ -85,6 +85,18 @@ chmod +x scripts/deploy.sh
 ./scripts/deploy.sh
 ```
 
+이미 운영 서버에 `deploy/application-prod.yml`이 존재한다면 템플릿을 다시 복사하지 말고 기존 파일에서 아래 항목을 확인합니다.
+
+```yml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-authentication-method: client_secret_post
+```
+
 헬스체크:
 
 ```bash
@@ -130,7 +142,7 @@ curl -sf http://127.0.0.1:8080/actuator/health
 | 변수 | 용도 |
 | --- | --- |
 | `APP_BASE_URL` | OAuth callback과 `/api/**`를 받을 공개 origin |
-| `FE_BASE_URL` | OAuth 성공 후 FE redirect origin |
+| `FE_BASE_URL` | OAuth 완료 후 성공/복구/실패 상태를 받을 FE redirect origin |
 | `CORS_ALLOWED_ORIGINS` | FE origin (쉼표 구분). 같은 origin 배포도 명시 |
 | `RDS_*`, `DB_*` | RDS 연결 |
 | `REDIS_HOST` | compose 사용 시 `redis`, 단독 Redis면 host |

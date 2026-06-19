@@ -1,7 +1,7 @@
 ---
 doc_type: be_sequence_diagrams
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-14
+last_updated: 2026-06-19
 ---
 
 # 시퀀스 다이어그램
@@ -49,6 +49,9 @@ sequenceDiagram
     BE->>Token: 인증 토큰 저장
     BE-->>FE: 로그인 결과 전달
     FE->>User: 메인 화면 표시
+  else OAuth 실패
+    BE-->>FE: FE redirect URI + error=oauth_failed
+    FE->>User: 로그인 실패 안내 및 재시도 유도
   end
 ```
 

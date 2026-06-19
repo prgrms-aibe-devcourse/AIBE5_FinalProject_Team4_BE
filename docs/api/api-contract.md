@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-15
+last_updated: 2026-06-19
 ---
 
 # API 계약
@@ -68,7 +68,18 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 - Access Token이 만료(401)되면 `POST /api/v1/auth/refresh`를 호출해 재발급합니다.
 - 로그아웃 시 `POST /api/v1/auth/logout`을 호출해 서버에서 Refresh Token을 삭제합니다.
 - 탈퇴 후 30일 이내 계정으로 OAuth 로그인을 시도하면 자동 로그인하지 않고 FE에 복구 확인 상태를 전달합니다. 사용자가 복구를 확정하면 `POST /api/v1/auth/restore-withdrawn`으로 계정을 복구하고 인증 쿠키를 발급합니다.
+- OAuth 인증 실패(provider 오류, token 교환 실패, 사용자 정보 조회 실패 등)는 FE redirect URI로 `error=oauth_failed` query를 붙여 전달합니다. FE는 해당 query를 감지하면 로그인 실패 안내를 표시하고 URL query를 정리합니다.
 - 사용자별 리소스는 JWT의 사용자 ID와 path의 `userId`가 일치해야 합니다.
+
+### OAuth redirect query
+
+OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합니다.
+
+| Query | 발생 조건 | FE 처리 기준 |
+| --- | --- | --- |
+| 없음 | OAuth 로그인 성공 및 인증 쿠키 발급 완료 | 사용자 프로필 조회 후 온보딩 또는 메인 화면으로 분기 |
+| `withdrawn=restore_required` | 탈퇴 후 30일 이내 계정으로 로그인해 복구 확인이 필요한 경우 | 복구 확인 UI를 표시하고 사용자가 확정하면 `POST /api/v1/auth/restore-withdrawn` 호출 |
+| `error=oauth_failed` | OAuth provider 인증 오류, token 교환 실패, 사용자 정보 조회 실패 등 로그인 실패 | 로그인 실패 안내를 표시하고 query를 제거해 재시도 가능한 상태로 정리 |
 
 ## 이미지 업로드 기준
 
@@ -84,6 +95,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | Method | Path                               | 설명              |
 |--------|------------------------------------|-----------------|
 | GET    | `/oauth2/authorization/{provider}` | OAuth 로그인 시작    |
+| GET    | `/login/oauth2/code/{provider}`    | OAuth provider callback. 직접 호출하지 않으며 성공/실패 후 FE redirect URI로 이동 |
 | POST   | `/api/v1/auth/refresh`             | Access Token 재발급 |
 | POST   | `/api/v1/auth/logout`              | 로그아웃            |
 | POST   | `/api/v1/auth/restore-withdrawn`   | 탈퇴 계정 복구 확정 |
