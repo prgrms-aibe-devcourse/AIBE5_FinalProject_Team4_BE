@@ -21,7 +21,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
@@ -46,7 +45,8 @@ public class SecurityConfig {
             "/actuator/health",
             "/actuator/health/**",
             "/api/v1/legal/**",
-            "/images/**",
+            // NOTE: /images/**는 S3 전환 전 로컬 static 파일 서빙용
+            // S3 전환 시 이 항목 제거 예정
     };
 
     private final OAuth2UserService oAuth2UserService;
@@ -56,12 +56,10 @@ public class SecurityConfig {
     private final CookieBearerTokenResolver cookieBearerTokenResolver;
     private final CorsConfigurationSource corsConfigurationSource;
 
-    @Bean
-    @Profile("local")
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return web -> web.ignoring().requestMatchers("/images/**");
-    }
-
+    /**
+     * local 프로파일: API 요청은 Resource Server(JWT 쿠키)로, 소셜 로그인 흐름은 oauth2Login으로 처리합니다.
+     * STATELESS를 강제하지 않아 OAuth2 로그인 세션이 유지되고, 성공 후 JWT 쿠키로 전환됩니다.
+     */
     @Bean
     @Profile("local")
     public SecurityFilterChain localSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -70,6 +68,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // /images/**는 Security를 타되 인증 없이 허용 (CorsConfig의 imagesCorsFilter 동작 보장)
+                        // S3 전환 시 제거 예정
+                        .requestMatchers("/images/**").permitAll()
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -90,6 +91,9 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * 비-local 프로파일 탈퇴 계정 복구 체인 (@Order 0): OAuth 세션의 복구 대기 정보를 읽습니다.
+     */
     @Bean
     @Profile("!local")
     @Order(0)
@@ -105,6 +109,10 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * 비-local 프로파일 API 체인 (@Order 1): /api/** 요청을 Resource Server(JWT)로 인증합니다.
+     * STATELESS로 운영되며 세션을 생성하지 않습니다.
+     */
     @Bean
     @Profile("!local")
     @Order(1)
@@ -131,6 +139,9 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * 비-local 프로파일 OAuth 체인 (@Order 2): 소셜 로그인 시작/콜백 경로만 처리합니다.
+     */
     @Bean
     @Profile("!local")
     @Order(2)

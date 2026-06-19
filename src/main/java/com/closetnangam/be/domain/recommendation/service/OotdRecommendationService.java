@@ -222,6 +222,7 @@ public class OotdRecommendationService {
     ) {
         List<WardrobeClothes> categoryOwned = ownedClothes.stream()
                 .filter(wc -> wc.getClothes().getCategory().equals(category))
+                .filter(wc -> allowedGenders == null || allowedGenders.contains(wc.getClothes().getGender()))
                 .toList();
 
         List<Clothes> candidates = categoryOwned.stream()
