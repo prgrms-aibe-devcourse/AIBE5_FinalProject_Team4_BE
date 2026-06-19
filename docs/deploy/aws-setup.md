@@ -103,6 +103,16 @@ curl -sf http://127.0.0.1:8080/actuator/health
 
 `application-prod.yml`에 `server.forward-headers-strategy: framework`가 설정되어 있어 OAuth 쿠키 `Secure` 플래그가 HTTPS에서 동작합니다.
 
+### FE/BE 공개 URL 기준
+
+| 배포 형태 | `APP_BASE_URL` | `FE_BASE_URL` / `CORS_ALLOWED_ORIGINS` |
+| --- | --- | --- |
+| 같은 origin EC2 + Nginx | FE 접속 origin. 예: `https://www.closetnangam.site` | 같은 origin |
+| FE/BE 별도 도메인 | BE 공개 origin. 예: `https://api.closetnangam.site` | FE 접속 origin |
+
+같은 origin 배포에서는 Nginx가 `/api/`, `/oauth2/`, `/login/oauth2/`, `/actuator/health`만 Spring Boot로 프록시합니다.
+`/login`은 FE SPA 경로이므로 Spring Security가 처리하지 않도록 BE로 프록시하지 않습니다.
+
 ## 5. OAuth 콘솔 redirect URI
 
 각 개발자 콘솔에 **운영 URL** 등록:
@@ -113,15 +123,15 @@ curl -sf http://127.0.0.1:8080/actuator/health
 | Google | `{APP_BASE_URL}/login/oauth2/code/google` |
 | Naver | `{APP_BASE_URL}/login/oauth2/code/naver` |
 
-`deploy/.env`의 `APP_BASE_URL`, `FE_BASE_URL`과 일치해야 합니다.
+`deploy/.env`의 `APP_BASE_URL`, `FE_BASE_URL`과 일치해야 합니다. 같은 origin 배포라면 두 값은 같은 origin을 사용합니다.
 
 ## 6. 환경 변수 요약
 
 | 변수 | 용도 |
 | --- | --- |
-| `APP_BASE_URL` | BE 공개 URL (OAuth redirect, 이미지 base-url) |
-| `FE_BASE_URL` | OAuth 성공 후 FE redirect |
-| `CORS_ALLOWED_ORIGINS` | FE origin (쉼표 구분) |
+| `APP_BASE_URL` | OAuth callback과 `/api/**`를 받을 공개 origin |
+| `FE_BASE_URL` | OAuth 성공 후 FE redirect origin |
+| `CORS_ALLOWED_ORIGINS` | FE origin (쉼표 구분). 같은 origin 배포도 명시 |
 | `RDS_*`, `DB_*` | RDS 연결 |
 | `REDIS_HOST` | compose 사용 시 `redis`, 단독 Redis면 host |
 | `S3_BUCKET`, `S3_PUBLIC_BASE_URL` | img_url S3 연동 예정 |
