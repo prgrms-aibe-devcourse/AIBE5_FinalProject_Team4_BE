@@ -7,6 +7,7 @@ import com.closetnangam.be.domain.catalog.repository.StyleRepository;
 import com.closetnangam.be.domain.user.dto.request.CompleteOnboardingRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateProfileRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
+import com.closetnangam.be.domain.user.dto.request.UpdateGuideTourRequest;
 import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
 import com.closetnangam.be.domain.user.dto.response.MyProfileResponse;
 import com.closetnangam.be.domain.user.dto.response.NicknameAvailabilityResponse;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -48,6 +50,7 @@ public class UserService {
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final RefreshTokenService refreshTokenService;
     private final LocalImageStorageService localImageStorageService;
+
 
     @Transactional(readOnly = true)
     public MyProfileResponse getMyProfile(Long userId) {
@@ -235,6 +238,13 @@ public class UserService {
     }
 
     @Transactional
+    public void updateGuideTour(Long userId, UpdateGuideTourRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
+        user.updateGuideTour(request.home(), request.wardrobe(), request.feed(), request.mypage());
+    }
+
+    @Transactional
     public void withdraw(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
@@ -315,8 +325,12 @@ public class UserService {
                 user.getEmail(),
                 user.getNickname(),
                 isOnboarded(user, styleCodes),
-                user.getBirthDate(),
+                user.isGuideTourCompletedHome(),
+                user.isGuideTourCompletedWardrobe(),
+                user.isGuideTourCompletedFeed(),
+                user.isGuideTourCompletedMypage(),
                 user.getGender(),
+                user.getBirthDate(),
                 user.getRegionName(),
                 user.getRegionCode(),
                 user.getProfileImageUrl(),

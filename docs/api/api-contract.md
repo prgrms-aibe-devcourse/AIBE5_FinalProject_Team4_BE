@@ -98,6 +98,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | POST | `/api/v1/users/profile/image` | 프로필 이미지 업로드 (`multipart/form-data`, field: `file`) |
 | POST | `/api/v1/users/onboarding` | 온보딩 완료 저장. 프로필, 선호 스타일, 마케팅 동의 여부를 하나의 트랜잭션으로 저장 |
 | POST | `/api/v1/users/styles` | 스타일 선호도 저장 (사용자별 전체 스타일 row 보장, preference_weight만 갱신) |
+| PATCH | `/api/v1/users/guide-tour` | 가이드 투어 완료 상태 업데이트 |
 | DELETE | `/api/v1/users/me` | 회원 탈퇴 (소프트 삭제, 쿠키 만료) |
 
 #### GET /api/v1/users/profile 응답 필드
@@ -108,8 +109,12 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `email` | String | 사용자 계정 이메일. 소셜 로그인에서 확인된 이메일을 조회용으로 반환 |
 | `nickname` | String? | 온보딩/마이페이지에서 사용자가 설정한 닉네임. 온보딩 완료 전에는 `null`일 수 있음 |
 | `onboarded` | boolean | 온보딩 완료 여부. 닉네임, 사용자 성별, 생년월일, 지역 코드, 선호 스타일이 모두 저장되면 true |
-| `birthDate` | Date? | 생년월일. 온보딩 완료 전에는 `null`일 수 있음 |
+| `guideTourCompletedHome` | boolean | 홈 가이드 투어 완료 여부 |
+| `guideTourCompletedWardrobe` | boolean | 옷장 가이드 투어 완료 여부 |
+| `guideTourCompletedFeed` | boolean | 피드 가이드 투어 완료 여부 |
+| `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
 | `gender` | String | 사용자 성별. `MALE` / `FEMALE` / `OTHER` |
+| `birthDate` | Date? | 생년월일. 온보딩 완료 전에는 `null`일 수 있음 |
 | `regionName` | String | 지역명 |
 | `regionCode` | String | 지역 코드 |
 | `profileImageUrl` | String | 프로필 이미지 URL |
@@ -147,19 +152,34 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
 | `userId` | Long | 사용자 ID |
-| `email` | String | 사용자 계정 이메일. 소셜 로그인에서 확인된 이메일을 조회용으로 반환 |
+| `email` | String | 사용자 계정 이메일 |
 | `nickname` | String | 저장된 닉네임 |
-| `onboarded` | boolean | 온보딩 완료 여부. 프로필과 선호 스타일 저장 상태를 함께 기준으로 판단 |
-| `birthDate` | Date | 저장된 생년월일 |
-| `gender` | String | 저장된 사용자 성별 |
-| `regionName` | String | 저장된 지역명 |
-| `regionCode` | String | 저장된 지역 코드 |
-| `profileImageUrl` | String | 저장된 프로필 이미지 URL |
-| `profileBio` | String | 저장된 한 줄 소개 |
-| `externalLinkUrl` | String | 저장된 외부 링크 URL |
-| `styleCodes` | String[] | 선호 스타일 code 배열 |
+| `onboarded` | boolean | 온보딩 완료 여부. 저장 후 true이면 메인 페이지로 이동 |
+| `guideTourCompletedHome` | boolean | 홈 가이드 투어 완료 여부 |
+| `guideTourCompletedWardrobe` | boolean | 옷장 가이드 투어 완료 여부 |
+| `guideTourCompletedFeed` | boolean | 피드 가이드 투어 완료 여부 |
+| `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
+| `gender` | String | 성별 (`MALE` / `FEMALE`) |
+| `birthDate` | LocalDate | 생년월일 (yyyy-MM-dd) |
+| `regionName` | String | 지역명, 미설정 시 `""` |
+| `regionCode` | String | 지역 코드, 미설정 시 `""` |
+| `profileImageUrl` | String | 프로필 이미지 URL |
+| `profileBio` | String | 한 줄 소개 |
+| `externalLinkUrl` | String | 외부 링크 URL |
+| `styleCodes` | String[] | 선호 스타일 코드 목록, 대표 스타일 우선 정렬, 미설정 시 `[]` |
 | `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
 | `socialAccounts` | Object[] | 연결된 소셜 로그인 제공자와 제공자 이메일 목록. 조회 전용 |
+
+#### PATCH /api/v1/users/guide-tour 요청 필드
+
+페이지별 가이드 투어 완료 여부를 부분 업데이트합니다. `null`인 필드는 기존 값을 유지합니다.
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `home` | Boolean | 홈 가이드 투어 완료 여부. null 시 유지 |
+| `wardrobe` | Boolean | 옷장 가이드 투어 완료 여부. null 시 유지 |
+| `feed` | Boolean | 피드 가이드 투어 완료 여부. null 시 유지 |
+| `mypage` | Boolean | 마이페이지 가이드 투어 완료 여부. null 시 유지 |
 
 #### POST /api/v1/users/profile/image
 
