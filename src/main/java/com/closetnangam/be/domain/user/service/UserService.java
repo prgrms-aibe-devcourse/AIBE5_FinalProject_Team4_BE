@@ -51,36 +51,13 @@ public class UserService {
     private final RefreshTokenService refreshTokenService;
     private final LocalImageStorageService localImageStorageService;
 
-    private MyProfileResponse buildMyProfileResponse(User user) {
-        List<String> styleCodes = userStyleRepository.findAllByUserId(user.getId()).stream()
-                .filter(us -> us.getPreferenceWeight() > 0)
-                .sorted(Comparator.comparingInt(UserStyle::getPreferenceWeight).reversed())
-                .map(us -> us.getStyle().getCode())
-                .toList();
-
-        return new MyProfileResponse(
-                user.getId(),
-                user.getNickname(),
-                user.isOnboarded(),
-                user.isGuideTourCompletedHome(),
-                user.isGuideTourCompletedWardrobe(),
-                user.isGuideTourCompletedFeed(),
-                user.isGuideTourCompletedMypage(),
-                user.getGender() != null ? user.getGender().name() : null,
-                user.getBirthDate(),
-                user.getRegionName(),
-                user.getRegionCode(),
-                styleCodes
-        );
-        return toMyProfileResponse(user);
-    }
 
     @Transactional(readOnly = true)
     public MyProfileResponse getMyProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
 
-        return buildMyProfileResponse(user);
+        return toMyProfileResponse(user);
     }
 
     @Transactional(readOnly = true)
@@ -140,7 +117,6 @@ public class UserService {
                 request.externalLinkUrl()
         );
 
-        return buildMyProfileResponse(user);
         return toMyProfileResponse(user);
     }
 
@@ -349,8 +325,12 @@ public class UserService {
                 user.getEmail(),
                 user.getNickname(),
                 isOnboarded(user, styleCodes),
-                user.getBirthDate(),
+                user.isGuideTourCompletedHome(),
+                user.isGuideTourCompletedWardrobe(),
+                user.isGuideTourCompletedFeed(),
+                user.isGuideTourCompletedMypage(),
                 user.getGender(),
+                user.getBirthDate(),
                 user.getRegionName(),
                 user.getRegionCode(),
                 user.getProfileImageUrl(),
