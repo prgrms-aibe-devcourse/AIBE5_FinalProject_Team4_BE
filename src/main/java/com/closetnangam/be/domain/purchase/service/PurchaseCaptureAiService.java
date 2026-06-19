@@ -8,7 +8,7 @@ import com.closetnangam.be.domain.purchase.support.PurchaseCaptureDraftSupport;
 import com.closetnangam.be.global.external.gemini.GeminiService;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureExtractionResult;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureItem;
-import com.closetnangam.be.global.storage.LocalImageStorageService;
+import com.closetnangam.be.global.storage.ImageStorageService;
 import com.closetnangam.be.global.storage.StoredImageAnalysisContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,7 +31,7 @@ public class PurchaseCaptureAiService {
     private final PurchaseCaptureRepository purchaseCaptureRepository;
     private final CategoryCatalogService categoryCatalogService;
     private final GeminiService geminiService;
-    private final LocalImageStorageService localImageStorageService;
+    private final ImageStorageService imageStorageService;
     private final PurchaseCaptureThumbnailService purchaseCaptureThumbnailService;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
@@ -40,7 +40,7 @@ public class PurchaseCaptureAiService {
             PurchaseCaptureRepository purchaseCaptureRepository,
             CategoryCatalogService categoryCatalogService,
             GeminiService geminiService,
-            LocalImageStorageService localImageStorageService,
+            ImageStorageService imageStorageService,
             PurchaseCaptureThumbnailService purchaseCaptureThumbnailService,
             ObjectMapper objectMapper,
             PlatformTransactionManager transactionManager
@@ -48,7 +48,7 @@ public class PurchaseCaptureAiService {
         this.purchaseCaptureRepository = purchaseCaptureRepository;
         this.categoryCatalogService = categoryCatalogService;
         this.geminiService = geminiService;
-        this.localImageStorageService = localImageStorageService;
+        this.imageStorageService = imageStorageService;
         this.purchaseCaptureThumbnailService = purchaseCaptureThumbnailService;
         this.objectMapper = objectMapper;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -74,7 +74,7 @@ public class PurchaseCaptureAiService {
         GeminiPurchaseCaptureExtractionResult result = null;
         String failureMessage = null;
         try {
-            byte[] imageBytes = localImageStorageService.readStoredImage(ctx.storedPath());
+            byte[] imageBytes = imageStorageService.readStoredImage(ctx.storedPath());
             result = geminiService.extractPurchaseCaptureInfo(
                     imageBytes,
                     ctx.contentType(),

@@ -39,6 +39,8 @@ public class SecurityConfig {
             "/api/naver/**",
             "/api/weather/**",
             "/api/v1/auth/**",
+            "/actuator/health",
+            "/actuator/health/**",
             "/api/v1/legal/**"
     };
 
