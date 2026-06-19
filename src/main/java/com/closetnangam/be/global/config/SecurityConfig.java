@@ -1,6 +1,7 @@
 package com.closetnangam.be.global.config;
 
 import com.closetnangam.be.global.auth.jwt.CookieBearerTokenResolver;
+import com.closetnangam.be.global.auth.oauth.OAuth2FailureHandler;
 import com.closetnangam.be.global.auth.oauth.OAuth2SuccessHandler;
 import com.closetnangam.be.global.auth.oauth.OAuth2UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,6 +48,7 @@ public class SecurityConfig {
 
     private final OAuth2UserService oAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final OAuth2FailureHandler oAuth2FailureHandler;
     private final Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter;
     private final CookieBearerTokenResolver cookieBearerTokenResolver;
     private final CorsConfigurationSource corsConfigurationSource;
@@ -71,6 +73,7 @@ public class SecurityConfig {
                 .oauth2Login(oauth -> oauth
                         .userInfoEndpoint(e -> e.userService(oAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
+                        .failureHandler(oAuth2FailureHandler)
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .bearerTokenResolver(cookieBearerTokenResolver)
@@ -147,6 +150,7 @@ public class SecurityConfig {
                 .oauth2Login(oauth -> oauth
                         .userInfoEndpoint(e -> e.userService(oAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
+                        .failureHandler(oAuth2FailureHandler)
                 );
 
         return http.build();
