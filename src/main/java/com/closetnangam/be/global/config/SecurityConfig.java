@@ -45,8 +45,6 @@ public class SecurityConfig {
             "/actuator/health",
             "/actuator/health/**",
             "/api/v1/legal/**",
-            // NOTE: /images/**는 S3 전환 전 로컬 static 파일 서빙용
-            // S3 전환 시 이 항목 제거 예정
     };
 
     private final OAuth2UserService oAuth2UserService;
@@ -68,9 +66,6 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // /images/**는 Security를 타되 인증 없이 허용 (CorsConfig의 imagesCorsFilter 동작 보장)
-                        // S3 전환 시 제거 예정
-                        .requestMatchers("/images/**").permitAll()
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
