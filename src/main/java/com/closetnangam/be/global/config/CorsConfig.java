@@ -2,6 +2,11 @@ package com.closetnangam.be.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.core.Ordered;
+import jakarta.servlet.Filter;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -32,9 +37,38 @@ public class CorsConfig {
 
         // preflight 캐시 시간 (초)
         config.setMaxAge(3600L);
+        // static 이미지용 CORS (credentials 불필요)
+        CorsConfiguration imageConfig = new CorsConfiguration();
+        imageConfig.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:3000"
+        ));
+        imageConfig.setAllowedMethods(List.of("GET", "OPTIONS"));
+        imageConfig.setAllowedHeaders(List.of("*"));
+        imageConfig.setAllowCredentials(false);
+        imageConfig.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    @Bean
+    public FilterRegistrationBean<Filter> imagesCorsFilter() {
+        FilterRegistrationBean<Filter> bean = new FilterRegistrationBean<>();
+        bean.setFilter((request, response, chain) -> {
+            HttpServletResponse res = (HttpServletResponse) response;
+            HttpServletRequest req = (HttpServletRequest) request;
+            String origin = req.getHeader("Origin");
+            if (origin != null && (origin.equals("http://localhost:5173") || origin.equals("http://localhost:3000"))) {
+                res.setHeader("Access-Control-Allow-Origin", origin);
+                res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+                res.setHeader("Access-Control-Max-Age", "3600");
+            }
+            chain.doFilter(request, response);
+        });
+        bean.addUrlPatterns("/images/*");
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return bean;
     }
 }
