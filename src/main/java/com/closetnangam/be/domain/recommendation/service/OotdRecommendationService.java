@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.closetnangam.be.domain.clothes.scoring.ColorCompatibilityTable.score;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -241,17 +243,17 @@ public class OotdRecommendationService {
         }
 
         return candidates.stream()
+                .filter(c -> allowedGenders == null || allowedGenders.contains(c.getGender()))
                 .map(c -> {
                     WardrobeClothes wc = wardrobeMap.get(c.getId());
                     return new ScoredItem(c, wc, score(c, wc, temp, currentSeason, styleWeights, allowedGenders));
                 })
                 .sorted(Comparator.comparingDouble(ScoredItem::score).reversed())
-                .limit(MAX_CANDIDATES_PER_SLOT + 10) // 상위권에서 조금 더 넉넉하게 추출
+                .limit(MAX_CANDIDATES_PER_SLOT + 10)
                 .collect(Collectors.collectingAndThen(Collectors.toList(), list -> {
-                    java.util.Collections.shuffle(list); // 점수가 높은 것들 중에서 랜덤성을 부여
+                    java.util.Collections.shuffle(list);
                     return list.stream().limit(MAX_CANDIDATES_PER_SLOT).toList();
-                }));
-    }
+                }));}
 
     private double score(Clothes c, WardrobeClothes wc, double temp, ClothesSeason currentSeason, Map<String, Integer> styleWeights, List<ClothesGender> allowedGenders) {
         double weatherScore = WeatherCompatibilityTable.getWeatherScore(temp, c.getItemType());
