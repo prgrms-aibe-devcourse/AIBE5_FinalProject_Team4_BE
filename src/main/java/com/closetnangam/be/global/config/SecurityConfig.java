@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -43,7 +44,7 @@ public class SecurityConfig {
             "/api/v1/auth/**",
             "/actuator/health",
             "/actuator/health/**",
-            "/api/v1/legal/**"
+            "/api/v1/legal/**",
     };
 
     private final OAuth2UserService oAuth2UserService;
@@ -64,6 +65,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -134,7 +136,6 @@ public class SecurityConfig {
 
     /**
      * 비-local 프로파일 OAuth 체인 (@Order 2): 소셜 로그인 시작/콜백 경로만 처리합니다.
-     * 일반 FE 경로(/, /login 등)는 Spring Security 기본 로그인 페이지로 개입하지 않도록 제외합니다.
      */
     @Bean
     @Profile("!local")

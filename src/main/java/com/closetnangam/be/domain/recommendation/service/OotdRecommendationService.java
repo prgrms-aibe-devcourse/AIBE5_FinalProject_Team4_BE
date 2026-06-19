@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.closetnangam.be.domain.clothes.scoring.ColorCompatibilityTable.score;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -104,7 +106,8 @@ public class OotdRecommendationService {
         boolean requiresOuter = currentSeason.requiresOuter();
         List<ScoredItem> outerSlot = new ArrayList<>(outers);
         if (!requiresOuter) {
-            outerSlot.add(null);
+            // 아우터가 필수가 아닐 때, 아우터가 포함되지 않은 조합의 우선순위를 높이기 위해 null을 리스트 맨 앞에 추가
+            outerSlot.add(0, null);
         } else if (outerSlot.isEmpty()) {
             outerSlot.add(null);
         }
@@ -117,9 +120,13 @@ public class OotdRecommendationService {
                     for (ScoredItem shoe : shoeSlot) {
                         if (requiresOuter && outer == null) continue;
 
+                        // 아우터가 필수가 아닌데 아우터가 포함된 경우 패널티 부여 (아우터 없이 입는 것을 권장)
+                        double outerPenalty = (!requiresOuter && outer != null) ? -5.0 : 0.0;
+
                         double total = top.score + bottom.score
                                 + (outer != null ? outer.score : 0.0)
-                                + (shoe != null ? shoe.score : 0.0);
+                                + (shoe != null ? shoe.score : 0.0)
+                                + outerPenalty;
                         allCombinations.add(OotdResponse.OotdCombinationResponse.builder()
                                 .top(mapToItemResponse(top))
                                 .bottom(mapToItemResponse(bottom))
@@ -215,6 +222,7 @@ public class OotdRecommendationService {
     ) {
         List<WardrobeClothes> categoryOwned = ownedClothes.stream()
                 .filter(wc -> wc.getClothes().getCategory().equals(category))
+                .filter(wc -> allowedGenders == null || allowedGenders.contains(wc.getClothes().getGender()))
                 .toList();
 
         List<Clothes> candidates = categoryOwned.stream()
@@ -236,24 +244,29 @@ public class OotdRecommendationService {
         }
 
         return candidates.stream()
+                .filter(c -> allowedGenders == null || allowedGenders.contains(c.getGender()))
                 .map(c -> {
                     WardrobeClothes wc = wardrobeMap.get(c.getId());
-                    return new ScoredItem(c, wc, score(c, wc, temp, currentSeason, styleWeights));
+                    return new ScoredItem(c, wc, score(c, wc, temp, currentSeason, styleWeights, allowedGenders));
                 })
                 .sorted(Comparator.comparingDouble(ScoredItem::score).reversed())
-                .limit(MAX_CANDIDATES_PER_SLOT + 10) // 상위권에서 조금 더 넉넉하게 추출
+                .limit(MAX_CANDIDATES_PER_SLOT + 10)
                 .collect(Collectors.collectingAndThen(Collectors.toList(), list -> {
-                    java.util.Collections.shuffle(list); // 점수가 높은 것들 중에서 랜덤성을 부여
+                    java.util.Collections.shuffle(list);
                     return list.stream().limit(MAX_CANDIDATES_PER_SLOT).toList();
-                }));
-    }
+                }));}
 
-    private double score(Clothes c, WardrobeClothes wc, double temp, ClothesSeason currentSeason, Map<String, Integer> styleWeights) {
+    private double score(Clothes c, WardrobeClothes wc, double temp, ClothesSeason currentSeason, Map<String, Integer> styleWeights, List<ClothesGender> allowedGenders) {
         double weatherScore = WeatherCompatibilityTable.getWeatherScore(temp, c.getItemType());
 
         // 날씨 점수가 0이면 추천 후보에서 사실상 배제 (매우 낮은 점수 부여)
         if (weatherScore <= 0.0) {
             return -100.0;
+        }
+
+        // 성별 적합도 체크: 사용자의 성별과 맞지 않는 옷은 배제
+        if (allowedGenders != null && !allowedGenders.contains(c.getGender())) {
+            return -200.0;
         }
 
         boolean isCompatibleSeason = currentSeason.isCompatibleWith(c.getSeason());
