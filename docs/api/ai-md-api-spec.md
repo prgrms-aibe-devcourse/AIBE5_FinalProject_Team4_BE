@@ -154,10 +154,11 @@ Request body는 없습니다.
 - 사용자 옷장 등록 옷(`OWNED`, `WISHLIST`)과 네이버쇼핑 후보, 내부 `EXTERNAL_SHOPPING` 공용 후보를 Gemini에 전달합니다.
 - 내부 후보는 선택한 MD 성별과 `UNISEX` 상품만 사용합니다.
 - 선택한 MD가 코디 후보 4개를 구성합니다.
-- 각 코디에는 사용자 옷장 등록 옷이 최소 1개 포함됩니다.
+- 각 코디는 사용자 옷장 등록 옷 없이 외부/내부 추천 상품만으로도 구성될 수 있습니다.
 - 옷장 등록 옷과 외부 상품을 합쳐 `TOP`, `BOTTOM`, `SHOES`가 반드시 포함됩니다.
-- `OUTER`와 외부 상품은 선택 사항입니다.
-- 옷장 등록 옷만으로 완성된 코디도 가능합니다.
+- `OUTER`는 선택 사항입니다.
+- 옷장 등록 옷만으로 완성된 코디와 외부/내부 추천 상품만으로 완성된 코디가 모두 가능합니다.
+- 코디 구성은 보유 옷 포함 여부보다 룩 전체의 색상 연결, 실루엣 균형, 소재감, 상황 적합성을 우선합니다.
 - 이 단계에서는 DB에 아무것도 저장하지 않습니다.
 
 ### 주요 응답 타입
@@ -279,27 +280,69 @@ export interface AiMdOutfitRecommendationData {
         "season": "ALL_SEASON",
         "reason": "상의가 중심을 잡고 카고 팬츠와 스니커즈가 스트릿 무드를 완성해.",
         "stylingTip": "소매를 가볍게 걷어 올려 활동적인 느낌을 더해봐.",
-        "ownedItems": [
+        "ownedItems": [],
+        "externalProducts": [
           {
-            "clothesId": 1,
-            "wardrobeClothesId": 11,
-            "name": "스트라이프 롱슬리브",
-            "category": "TOP"
+            "title": "스트릿 반팔 티셔츠",
+            "link": "https://example.com/top",
+            "image": "https://example.com/top.jpg",
+            "lowestPrice": null,
+            "highestPrice": null,
+            "mallName": "INTERNAL",
+            "productId": "CLOTHES_100",
+            "productType": "INTERNAL",
+            "brand": "테스트브랜드",
+            "maker": "테스트브랜드",
+            "category1": "패션의류",
+            "category2": "남성의류",
+            "category3": "TOP",
+            "category4": "반팔티",
+            "clothesId": 100,
+            "candidateSource": "INTERNAL",
+            "primaryColor": "BLACK",
+            "primaryStyle": "STREET"
           },
           {
-            "clothesId": 2,
-            "wardrobeClothesId": 12,
-            "name": "카고 팬츠",
-            "category": "BOTTOM"
+            "title": "와이드 카고 팬츠",
+            "link": "https://example.com/bottom",
+            "image": "https://example.com/bottom.jpg",
+            "lowestPrice": null,
+            "highestPrice": null,
+            "mallName": "INTERNAL",
+            "productId": "CLOTHES_101",
+            "productType": "INTERNAL",
+            "brand": "테스트브랜드",
+            "maker": "테스트브랜드",
+            "category1": "패션의류",
+            "category2": "남성의류",
+            "category3": "BOTTOM",
+            "category4": "팬츠",
+            "clothesId": 101,
+            "candidateSource": "INTERNAL",
+            "primaryColor": "BLACK",
+            "primaryStyle": "STREET"
           },
           {
-            "clothesId": 3,
-            "wardrobeClothesId": 13,
-            "name": "화이트 스니커즈",
-            "category": "SHOES"
+            "title": "블랙 스니커즈",
+            "link": "https://example.com/shoes",
+            "image": "https://example.com/shoes.jpg",
+            "lowestPrice": null,
+            "highestPrice": null,
+            "mallName": "INTERNAL",
+            "productId": "CLOTHES_102",
+            "productType": "INTERNAL",
+            "brand": "테스트브랜드",
+            "maker": "테스트브랜드",
+            "category1": "패션의류",
+            "category2": "남성의류",
+            "category3": "SHOES",
+            "category4": "스니커즈",
+            "clothesId": 102,
+            "candidateSource": "INTERNAL",
+            "primaryColor": "BLACK",
+            "primaryStyle": "STREET"
           }
-        ],
-        "externalProducts": []
+        ]
       }
     ]
   },
@@ -328,7 +371,7 @@ export interface AiMdOutfitSaveRequest {
   season?: string | null;
   reason?: string | null;
   stylingTip?: string | null;
-  wardrobeClothesIds: number[];
+  wardrobeClothesIds?: number[] | null;
   externalProducts: NaverShoppingProduct[];
 }
 ```
@@ -346,27 +389,25 @@ export function toAiMdOutfitSaveRequest(
     season: outfit.season,
     reason: outfit.reason,
     stylingTip: outfit.stylingTip,
-    wardrobeClothesIds: outfit.ownedItems.map((item) => {
-      if (item.wardrobeClothesId == null) {
-        throw new Error("옷장 등록 옷 ID가 없는 코디는 저장할 수 없습니다.");
-      }
-      return item.wardrobeClothesId;
-    }),
+    wardrobeClothesIds: outfit.ownedItems
+      .map((item) => item.wardrobeClothesId)
+      .filter((id): id is number => id != null),
     externalProducts: outfit.externalProducts,
   };
 }
 ```
 
-`clothesId`가 아니라 반드시 `wardrobeClothesId`를 전송해야 합니다.
+옷장 등록 옷을 저장 요청에 포함할 때는 `clothesId`가 아니라 반드시 `wardrobeClothesId`를 전송해야 합니다. 외부/내부 추천 상품만으로 완성된 코디는 `wardrobeClothesIds: []` 또는 `wardrobeClothesIds: null`로 저장할 수 있습니다.
 
 ### 저장 검증 조건
 
 | 조건 | 기준 |
 | --- | --- |
-| 옷장 등록 옷 | 현재 사용자의 `wardrobeClothesId` 최소 1개. `OWNED`, `WISHLIST` 모두 허용 |
+| 옷장 등록 옷 | 선택 사항. 값이 있으면 현재 사용자의 `wardrobeClothesId`만 허용하며 `OWNED`, `WISHLIST` 모두 사용 가능 |
 | 필수 구성 | 옷장 등록 옷과 외부 상품을 합쳐 `TOP`, `BOTTOM`, `SHOES` 모두 포함 |
-| 선택 구성 | `OUTER`, 외부 상품 |
+| 선택 구성 | `OUTER`, 옷장 등록 옷 |
 | 외부 상품 없음 | `externalProducts: []` 전송 가능 |
+| 옷장 등록 옷 없음 | `wardrobeClothesIds: []` 또는 `null` 전송 가능 |
 | title | 필수, 최대 100자 |
 | description | 필수 |
 
@@ -394,8 +435,69 @@ await Promise.all(
   "season": "ALL_SEASON",
   "reason": "상의가 중심을 잡고 카고 팬츠와 스니커즈가 스트릿 무드를 완성해.",
   "stylingTip": "소매를 가볍게 걷어 올려 활동적인 느낌을 더해봐.",
-  "wardrobeClothesIds": [11, 12, 13],
-  "externalProducts": []
+  "wardrobeClothesIds": [],
+  "externalProducts": [
+    {
+      "title": "스트릿 반팔 티셔츠",
+      "link": "https://example.com/top",
+      "image": "https://example.com/top.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_100",
+      "productType": "INTERNAL",
+      "brand": "테스트브랜드",
+      "maker": "테스트브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "TOP",
+      "category4": "반팔티",
+      "clothesId": 100,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "BLACK",
+      "primaryStyle": "STREET"
+    },
+    {
+      "title": "와이드 카고 팬츠",
+      "link": "https://example.com/bottom",
+      "image": "https://example.com/bottom.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_101",
+      "productType": "INTERNAL",
+      "brand": "테스트브랜드",
+      "maker": "테스트브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "BOTTOM",
+      "category4": "팬츠",
+      "clothesId": 101,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "BLACK",
+      "primaryStyle": "STREET"
+    },
+    {
+      "title": "블랙 스니커즈",
+      "link": "https://example.com/shoes",
+      "image": "https://example.com/shoes.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_102",
+      "productType": "INTERNAL",
+      "brand": "테스트브랜드",
+      "maker": "테스트브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "SHOES",
+      "category4": "스니커즈",
+      "clothesId": 102,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "BLACK",
+      "primaryStyle": "STREET"
+    }
+  ]
 }
 ```
 
@@ -549,16 +651,15 @@ BE에서 AI MD 추천 상품 전용 저장 API를 추가하는 후속 작업이 
 | `401` | JWT 없음 또는 만료 | 로그인 화면 또는 토큰 갱신 |
 | `403` | JWT 사용자와 path `userId` 불일치 | 접근 불가 안내 |
 | `404` | 사용자 등 리소스 없음 | 이전 화면 이동 또는 데이터 새로고침 |
-| `409` | 옷장 등록 옷 없음, Gemini가 유효 코디 4개를 만들지 못함, AI 사용량 초과 | 옷 등록 유도 또는 재시도 UI |
+| `409` | 상품 추천용 보유 옷 없음, Gemini가 유효 코디 4개를 만들지 못함, AI 사용량 초과 | 옷 등록 유도 또는 재시도 UI |
 | `502` | 네이버쇼핑/Gemini 외부 연동 장애 또는 응답 파싱 실패 | 잠시 후 재시도 안내 |
 
 대표 오류 메시지:
 
 ```text
 사용자 성별에 맞지 않는 AI MD입니다.
-AI MD 추천을 받으려면 보유 옷 또는 미보유 관심 상품을 먼저 등록해 주세요.
+AI MD 추천을 받으려면 보유 옷을 먼저 등록해 주세요.
 AI MD가 저장 가능한 코디 4개를 구성하지 못했습니다.
-저장할 코디에는 옷장 등록 옷이 최소 1개 포함되어야 합니다.
 저장할 코디에는 상의, 하의, 신발이 각각 최소 1개 포함되어야 합니다.
 외부 서비스 연동 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.
 ```

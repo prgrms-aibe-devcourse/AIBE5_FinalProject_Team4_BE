@@ -40,6 +40,8 @@ node_modules/
 
 # Sensitive config
 application-prod.yml
+deploy/.env
+deploy/application-prod.yml
 
 # Runtime uploads
 uploads/

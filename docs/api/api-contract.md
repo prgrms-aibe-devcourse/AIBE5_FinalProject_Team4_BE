@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-15
+last_updated: 2026-06-19
 ---
 
 # API 계약
@@ -68,7 +68,18 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 - Access Token이 만료(401)되면 `POST /api/v1/auth/refresh`를 호출해 재발급합니다.
 - 로그아웃 시 `POST /api/v1/auth/logout`을 호출해 서버에서 Refresh Token을 삭제합니다.
 - 탈퇴 후 30일 이내 계정으로 OAuth 로그인을 시도하면 자동 로그인하지 않고 FE에 복구 확인 상태를 전달합니다. 사용자가 복구를 확정하면 `POST /api/v1/auth/restore-withdrawn`으로 계정을 복구하고 인증 쿠키를 발급합니다.
+- OAuth 인증 실패(provider 오류, token 교환 실패, 사용자 정보 조회 실패 등)는 FE redirect URI로 `error=oauth_failed` query를 붙여 전달합니다. FE는 해당 query를 감지하면 로그인 실패 안내를 표시하고 URL query를 정리합니다.
 - 사용자별 리소스는 JWT의 사용자 ID와 path의 `userId`가 일치해야 합니다.
+
+### OAuth redirect query
+
+OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합니다.
+
+| Query | 발생 조건 | FE 처리 기준 |
+| --- | --- | --- |
+| 없음 | OAuth 로그인 성공 및 인증 쿠키 발급 완료 | 사용자 프로필 조회 후 온보딩 또는 메인 화면으로 분기 |
+| `withdrawn=restore_required` | 탈퇴 후 30일 이내 계정으로 로그인해 복구 확인이 필요한 경우 | 복구 확인 UI를 표시하고 사용자가 확정하면 `POST /api/v1/auth/restore-withdrawn` 호출 |
+| `error=oauth_failed` | OAuth provider 인증 오류, token 교환 실패, 사용자 정보 조회 실패 등 로그인 실패 | 로그인 실패 안내를 표시하고 query를 제거해 재시도 가능한 상태로 정리 |
 
 ## 이미지 업로드 기준
 
@@ -84,6 +95,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | Method | Path                               | 설명              |
 |--------|------------------------------------|-----------------|
 | GET    | `/oauth2/authorization/{provider}` | OAuth 로그인 시작    |
+| GET    | `/login/oauth2/code/{provider}`    | OAuth provider callback. 직접 호출하지 않으며 성공/실패 후 FE redirect URI로 이동 |
 | POST   | `/api/v1/auth/refresh`             | Access Token 재발급 |
 | POST   | `/api/v1/auth/logout`              | 로그아웃            |
 | POST   | `/api/v1/auth/restore-withdrawn`   | 탈퇴 계정 복구 확정 |
@@ -98,6 +110,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | POST | `/api/v1/users/profile/image` | 프로필 이미지 업로드 (`multipart/form-data`, field: `file`) |
 | POST | `/api/v1/users/onboarding` | 온보딩 완료 저장. 프로필, 선호 스타일, 마케팅 동의 여부를 하나의 트랜잭션으로 저장 |
 | POST | `/api/v1/users/styles` | 스타일 선호도 저장 (사용자별 전체 스타일 row 보장, preference_weight만 갱신) |
+| PATCH | `/api/v1/users/guide-tour` | 가이드 투어 완료 상태 업데이트 |
 | DELETE | `/api/v1/users/me` | 회원 탈퇴 (소프트 삭제, 쿠키 만료) |
 
 #### GET /api/v1/users/profile 응답 필드
@@ -108,8 +121,12 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `email` | String | 사용자 계정 이메일. 소셜 로그인에서 확인된 이메일을 조회용으로 반환 |
 | `nickname` | String? | 온보딩/마이페이지에서 사용자가 설정한 닉네임. 온보딩 완료 전에는 `null`일 수 있음 |
 | `onboarded` | boolean | 온보딩 완료 여부. 닉네임, 사용자 성별, 생년월일, 지역 코드, 선호 스타일이 모두 저장되면 true |
-| `birthDate` | Date? | 생년월일. 온보딩 완료 전에는 `null`일 수 있음 |
+| `guideTourCompletedHome` | boolean | 홈 가이드 투어 완료 여부 |
+| `guideTourCompletedWardrobe` | boolean | 옷장 가이드 투어 완료 여부 |
+| `guideTourCompletedFeed` | boolean | 피드 가이드 투어 완료 여부 |
+| `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
 | `gender` | String | 사용자 성별. `MALE` / `FEMALE` / `OTHER` |
+| `birthDate` | Date? | 생년월일. 온보딩 완료 전에는 `null`일 수 있음 |
 | `regionName` | String | 지역명 |
 | `regionCode` | String | 지역 코드 |
 | `profileImageUrl` | String | 프로필 이미지 URL |
@@ -147,19 +164,34 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
 | `userId` | Long | 사용자 ID |
-| `email` | String | 사용자 계정 이메일. 소셜 로그인에서 확인된 이메일을 조회용으로 반환 |
+| `email` | String | 사용자 계정 이메일 |
 | `nickname` | String | 저장된 닉네임 |
-| `onboarded` | boolean | 온보딩 완료 여부. 프로필과 선호 스타일 저장 상태를 함께 기준으로 판단 |
-| `birthDate` | Date | 저장된 생년월일 |
-| `gender` | String | 저장된 사용자 성별 |
-| `regionName` | String | 저장된 지역명 |
-| `regionCode` | String | 저장된 지역 코드 |
-| `profileImageUrl` | String | 저장된 프로필 이미지 URL |
-| `profileBio` | String | 저장된 한 줄 소개 |
-| `externalLinkUrl` | String | 저장된 외부 링크 URL |
-| `styleCodes` | String[] | 선호 스타일 code 배열 |
+| `onboarded` | boolean | 온보딩 완료 여부. 저장 후 true이면 메인 페이지로 이동 |
+| `guideTourCompletedHome` | boolean | 홈 가이드 투어 완료 여부 |
+| `guideTourCompletedWardrobe` | boolean | 옷장 가이드 투어 완료 여부 |
+| `guideTourCompletedFeed` | boolean | 피드 가이드 투어 완료 여부 |
+| `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
+| `gender` | String | 성별 (`MALE` / `FEMALE`) |
+| `birthDate` | LocalDate | 생년월일 (yyyy-MM-dd) |
+| `regionName` | String | 지역명, 미설정 시 `""` |
+| `regionCode` | String | 지역 코드, 미설정 시 `""` |
+| `profileImageUrl` | String | 프로필 이미지 URL |
+| `profileBio` | String | 한 줄 소개 |
+| `externalLinkUrl` | String | 외부 링크 URL |
+| `styleCodes` | String[] | 선호 스타일 코드 목록, 대표 스타일 우선 정렬, 미설정 시 `[]` |
 | `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
 | `socialAccounts` | Object[] | 연결된 소셜 로그인 제공자와 제공자 이메일 목록. 조회 전용 |
+
+#### PATCH /api/v1/users/guide-tour 요청 필드
+
+페이지별 가이드 투어 완료 여부를 부분 업데이트합니다. `null`인 필드는 기존 값을 유지합니다.
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `home` | Boolean | 홈 가이드 투어 완료 여부. null 시 유지 |
+| `wardrobe` | Boolean | 옷장 가이드 투어 완료 여부. null 시 유지 |
+| `feed` | Boolean | 피드 가이드 투어 완료 여부. null 시 유지 |
+| `mypage` | Boolean | 마이페이지 가이드 투어 완료 여부. null 시 유지 |
 
 #### POST /api/v1/users/profile/image
 
@@ -734,7 +766,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 옷장 등록 옷을 최소 1개 포함해야 하며, `OWNED`와 `WISHLIST` 옷장 항목을 모두 코디 구성에 사용할 수 있습니다. 옷장 등록 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부 상품은 필수가 아니므로 옷장 등록 옷만으로 필수 세 카테고리가 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
+> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 옷장 등록 옷(`OWNED`, `WISHLIST`)과 외부/내부 추천 상품 후보를 자유롭게 섞을 수 있으며, `ownedItems`가 빈 배열이어도 유효합니다. 옷장 등록 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부/내부 추천 상품만으로 필수 세 카테고리가 완성된 후보도 유효하며, 옷장 등록 옷만으로 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
 
 #### AI MD 추천 코디 저장 요청/응답
 
@@ -746,12 +778,73 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
   "season": "ALL_SEASON",
   "reason": "MD 말투가 반영된 코디 추천 이유",
   "stylingTip": "스타일링 팁",
-  "wardrobeClothesIds": [1, 2, 3],
-  "externalProducts": []
+  "wardrobeClothesIds": [],
+  "externalProducts": [
+    {
+      "title": "추천 상의",
+      "link": "https://example.com/top",
+      "image": "https://example.com/top.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_100",
+      "productType": "INTERNAL",
+      "brand": "브랜드",
+      "maker": "브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "TOP",
+      "category4": "반팔티",
+      "clothesId": 100,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "BLACK",
+      "primaryStyle": "STREET"
+    },
+    {
+      "title": "추천 하의",
+      "link": "https://example.com/bottom",
+      "image": "https://example.com/bottom.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_101",
+      "productType": "INTERNAL",
+      "brand": "브랜드",
+      "maker": "브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "BOTTOM",
+      "category4": "팬츠",
+      "clothesId": 101,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "BLACK",
+      "primaryStyle": "STREET"
+    },
+    {
+      "title": "추천 신발",
+      "link": "https://example.com/shoes",
+      "image": "https://example.com/shoes.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_102",
+      "productType": "INTERNAL",
+      "brand": "브랜드",
+      "maker": "브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "SHOES",
+      "category4": "스니커즈",
+      "clothesId": 102,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "WHITE",
+      "primaryStyle": "STREET"
+    }
+  ]
 }
 ```
 
-위 예시의 `wardrobeClothesIds`는 각각 `TOP`, `BOTTOM`, `SHOES`인 사용자 옷장 등록 옷을 의미합니다. 저장 요청도 추천 후보와 동일하게 사용자 옷장 등록 옷을 최소 1개 포함하고, `OWNED`와 `WISHLIST` 옷장 항목을 모두 사용할 수 있습니다. `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부 상품 없이 옷장 등록 옷만으로 완성할 수 있으며, 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
+`wardrobeClothesIds`는 선택 사항이며 `null` 또는 빈 배열일 수 있습니다. 값이 있으면 현재 사용자의 `OWNED` 또는 `WISHLIST` 옷장 항목만 사용됩니다. 저장 요청은 `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부/내부 추천 상품만으로 완성할 수 있고, 외부 상품 없이 옷장 등록 옷만으로도 완성할 수 있습니다. 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
 
 저장 성공 시에는 선택된 코디 1개가 `OUTFITS`, `OUTFIT_ITEMS`에 저장되고, 응답은 저장된 `outfit`과 구성 옷 목록을 포함합니다. 저장된 구성 옷은 코디북 조회 응답의 `outfits[].items`에서도 다시 조회할 수 있습니다.
 

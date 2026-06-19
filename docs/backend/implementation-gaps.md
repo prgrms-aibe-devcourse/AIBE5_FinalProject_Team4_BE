@@ -37,7 +37,6 @@ last_updated: 2026-06-14
 | 옷장 통계 범위 | `/statistics` API가 `OWNED` 상태의 보유 옷만 계산하고 `totalOwnedCount`를 반환 | 옷장 전체 요약은 `OWNED`와 `WISHLIST`를 함께 고려 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | `USER_STYLES.wardrobe_weight` 산정 범위 | `/statistics` API 호출 시 보유 옷 기준 스타일 가중치를 계산해 `USER_STYLES.wardrobe_weight`에 동기화 | `wardrobe_weight`는 사용자의 옷장에 등록된 옷 스타일 기반 점수라는 기준을 따름 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | `CLOTHES.season` 수정 범위와 계절 기준 | 현재 `season`은 `CLOTHES`에 저장되지만 옷 수정 요청에서 변경 가능. 일부 Swagger/OpenAPI 설명은 `season`을 옷장 정보처럼 설명함. `GET /api/v1/categories` 일반 응답은 계절 목록을 별도 필드로 제공하지 않고, 추천/날씨 계산은 `ClothesSeason` 기준으로 통합됨 | `season`은 `CLOTHES` 공통 정보이며 옷 등록 시 1개 선택하고 생성 후 변경하지 않음 | [requirements-definition.md](../requirements/requirements-definition.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [invariants.md](../domain/invariants.md), [api-contract.md](../api/api-contract.md) |
-| 이미지 저장 방식 | 현재 이미지 업로드/조회 구현은 로컬 파일 저장소, `/api/v1/images/**` 조회 endpoint, 프로필 이미지 업로드 API를 사용 | 운영 기준은 AWS S3 저장과 이미지 URL 관리 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md) |
 | 배포/인프라 목표 구조 | GitHub Actions는 테스트/빌드 CI를 수행하고, Docker Compose는 로컬 MySQL/Redis 개발 인프라를 실행. AWS 배포와 CD 자동화는 진행 예정 | 시스템 아키텍처는 AWS EC2/RDS/S3와 GitHub Actions 기반 배포까지 포함한 목표 구조 | [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) |
 | 추천 응답 형식 | `RECO-002` 추천 응답의 `price`는 "0" 고정, `score`는 0~1 문자열, `reason`은 기술적 매칭 결과 반환 | 실제 가격, 백분율 점수, 사용자 친화적 자연어 추천 이유 제공 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | AI MD 추천 검증 범위 | `RECO-006` API는 완성형 코디 검증과 스타일 가중 상품 후보 구성을 구현했지만, 외부 상품 포함 저장·저장 실패 및 다중 네이버 검색 조합 경로 테스트가 부족 | 외부 상품 혼합 코디 저장, 4개 미만 응답, 저장 실패/롤백, 다중 검색 결과 병합 경로를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
@@ -52,7 +51,6 @@ last_updated: 2026-06-14
 | `STYLE-002` | `USER_STYLES.wardrobe_weight` | `WardrobeStatisticsService`, `UserStyle.syncWardrobeWeight`, `WardrobeStatisticsResponse.userStylePayloads` | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [erd.md](../database/erd.md) | 통계 API 호출 시 보유 옷 기준 스타일 가중치를 저장. 옷장 전체 등록 기준 반영 여부 확인 필요 |
 | `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` | 옷 계절 수정 기준 | `Clothes`, `ClothesService`, `ClothesUpdateRequest`, `PhotoClothesRegistrationController`, `PurchaseCaptureRegistrationController`, `CategoryCatalogService`, `ClothesSeason` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [api-contract.md](../api/api-contract.md) | `CLOTHES.season` 저장과 AI 분석 필드 반영은 완료. 옷 수정 요청의 `season` 변경 가능성, 일부 OpenAPI 설명, 카탈로그 일반 응답/계절 호환 계산 기준 확인 필요 |
 | `RECO-005` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 시 `brandName != UNKNOWN` 우선 |
-| `DEPLOY-004` | 이미지 저장과 조회 | `LocalImageStorageService`, `ImageController`, `StorageProperties`, `UserController`, `UserService` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [garment-registration.md](../features/garment-registration.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md) | 현재 로컬 저장소 기반. 프로필 이미지 업로드도 같은 로컬 저장소를 사용하며, 운영 기준인 AWS S3 전환 여부 확인 필요 |
 | `DEPLOY-001`~`DEPLOY-005` | 배포/인프라 목표 구조 | `.github/workflows/ci.yml`, `docker-compose.yml` | [requirements-definition.md](../requirements/requirements-definition.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) | 시스템 아키텍처는 목표 구조 기준. 현재 GitHub Actions는 CI, Docker Compose는 로컬 MySQL/Redis 실행, AWS 배포/CD 자동화는 진행 예정 |
 | `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | `price` placeholder("0"), 0~1 점수 형식, 기술적 추천 이유 제공. 기준 문서와 응답 형식 차이 존재 |
 | `RECO-006` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 다중 상품 검색, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
@@ -171,35 +169,6 @@ src/main/java/com/closetnangam/be/domain/purchase/controller/PurchaseCaptureRegi
 
 공식 기준을 유지한다면 구현 PR에서 생성 후 수정 요청이 `season`을 변경하지 않도록 API/DTO/서비스 책임과 OpenAPI 설명을 함께 정리해야 합니다. 이때 카탈로그 일반 응답에서 계절 code를 내려줄지, 문서 기준 code만 사용할지 확정하고, 추천/날씨 계절 호환 계산도 `CLOTHES.season` code 기준으로 정리합니다. 반대로 현재 코드 기준을 공식 기준으로 확정한다면 [erd.md](../database/erd.md), [invariants.md](../domain/invariants.md), [catalog.md](../domain/catalog.md), [garment-registration.md](../features/garment-registration.md), [api-contract.md](../api/api-contract.md)를 같은 PR에서 수정합니다.
 
-### `DEPLOY-004` 이미지 저장 방식
-
-공식 기준 문서에서 옷 사진, 구매내역 캡처, 피드 이미지, 프로필 이미지는 AWS S3 저장 기준으로 관리합니다.
-
-현재 BE 구현은 로컬 파일 저장소를 사용합니다.
-
-```text
-src/main/java/com/closetnangam/be/global/storage/LocalImageStorageService.java
-- storeClothesPhoto(...)
-- storePurchaseCapture(...)
-- storeFeedPhoto(...)
-- storeProfileImage(...)
-
-src/main/java/com/closetnangam/be/global/config/StorageProperties.java
-- app.storage.local.basePath
-- app.storage.local.baseUrl
-
-src/main/java/com/closetnangam/be/global/storage/ImageController.java
-- GET /api/v1/images/clothes/{userId}/{filename}
-- GET /api/v1/images/purchase-captures/{userId}/{filename}
-- GET /api/v1/images/feed/{userId}/{filename}
-- GET /api/v1/images/profile/{userId}/{filename}
-
-src/main/java/com/closetnangam/be/domain/user/controller/UserController.java
-- POST /api/v1/users/profile/image
-```
-
-따라서 현재 코드의 이미지 저장 방식은 운영 기준인 AWS S3가 아니라 로컬 개발 저장소 기준으로 이해합니다. 프로필 이미지 업로드 API는 현재 로컬 이미지 URL을 반환하지만, S3 저장소로 전환하면 같은 API에서 S3 또는 CDN URL을 반환하는 방식으로 이어가는 것을 기준으로 합니다. S3 저장소로 전환하거나 로컬 저장소를 공식 기준으로 확정한다면 [api-contract.md](../api/api-contract.md), [domain/invariants.md](../domain/invariants.md), [garment-registration.md](../features/garment-registration.md), [data-lifecycle.md](../database/data-lifecycle.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md)를 같은 PR에서 함께 수정합니다.
-
 ### `DEPLOY-001`~`DEPLOY-005` 목표 배포 구조와 현재 로컬/CI 상태
 
 [system-architecture.md](../architecture/system-architecture.md)는 현재 로컬 구현만이 아니라 MVP와 운영 배포까지 고려한 목표 시스템 구성을 설명합니다. 따라서 AWS EC2, RDS, S3, GitHub Actions 기반 배포 흐름은 목표 구조 기준으로 읽습니다.
@@ -209,7 +178,7 @@ src/main/java/com/closetnangam/be/domain/user/controller/UserController.java
 - GitHub Actions는 테스트와 빌드 CI를 수행합니다.
 - EC2 자동 배포 CD workflow는 아직 구현되지 않았습니다.
 - Docker Compose는 BE 애플리케이션 실행이 아니라 로컬 MySQL/Redis 개발 인프라 실행에 사용합니다.
-- AWS S3는 운영 기준 이미지 저장소이며, 현재 구현은 로컬 이미지 저장소를 사용합니다.
+- AWS S3는 운영 기준 이미지 저장소이며, `STORAGE_BACKEND=s3`(운영 기본) / `local`(로컬 기본)으로 전환 가능합니다.
 
 자동 코드리뷰와 문서 검토 시 `system-architecture.md`만 보고 현재 구현이 누락되었다고 판단하지 않고, 이 문서의 gap 항목을 함께 확인합니다.
 
@@ -252,17 +221,18 @@ src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendati
 - 내부 후보는 사용자 또는 선택한 MD 성별과 `UNISEX` 상품만 사용. 유사상품 추천의 `OTHER`/성별 없음 사용자는 내부 후보 성별 제한 없음
 - Gemini 응답을 기반으로 저장 전 코디 후보 4개 구성
 - 사용자가 선택한 코디 후보 1개 저장
-- 코디별 보유 옷 최소 1개 포함 검증
-- 보유 옷과 외부 상품을 합쳐 TOP, BOTTOM, SHOES가 모두 포함된 완성형 코디 검증
-- OUTER와 외부 상품은 선택 사항
+- 보유 옷과 외부/내부 추천 상품을 합쳐 TOP, BOTTOM, SHOES가 모두 포함된 완성형 코디 검증
+- 코디별 보유 옷 포함은 선택 사항이며, 외부/내부 추천 상품만으로 완성된 코디도 유효
+- OUTER와 보유 옷은 선택 사항
 ```
 
-현재 구현은 외부 상품을 선택하지 않은 보유 옷 단독 코디도 유효한 응답으로 처리합니다. 단, 보유 옷만으로 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. Gemini가 `externalProductIds`를 생략하거나 null로 반환하면 빈 목록으로 정규화하며, 이후 보유 옷과 합친 전체 구성으로 완성형 코디 여부를 검증합니다.
+현재 구현은 외부 상품을 선택하지 않은 보유 옷 단독 코디와 보유 옷이 없는 외부/내부 추천 상품 단독 코디를 모두 유효한 응답으로 처리합니다. 단, 최종 구성에 `TOP`, `BOTTOM`, `SHOES`가 모두 있어야 합니다. Gemini가 `wardrobeClothesIds` 또는 `externalProductIds`를 생략하거나 null로 반환하면 빈 목록으로 정규화하며, 이후 전체 구성으로 완성형 코디 여부를 검증합니다.
 
 현재 아래 경로는 테스트가 존재합니다.
 
 - `externalProductIds`가 null이거나 생략된 응답을 빈 목록으로 정규화
 - 존재하지 않는 `wardrobeClothesId` 후보를 제외하고 실제 사용자 옷장에 매핑되는 후보를 선택
+- 옷장 등록 옷 없이 외부/내부 추천 상품만으로 구성된 완성형 코디를 허용
 - 상의만 포함하고 하의 또는 신발이 없는 후보를 완성형 코디에서 제외
 - 저장 가능한 후보가 4개를 초과하면 앞에서부터 4개만 확정
 - 코디 프롬프트가 필수 구성, 전체 아이템 추천 사유, MD별 말투를 요구하는지 검증
