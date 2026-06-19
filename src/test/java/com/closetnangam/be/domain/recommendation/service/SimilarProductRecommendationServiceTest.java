@@ -240,6 +240,115 @@ class SimilarProductRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("유사상품 내부 후보는 기준 옷과 더 비슷한 후보를 먼저 반환한다")
+    void similarProductInternalCandidatesAreSortedBySimilarityScore() {
+        WardrobeClothes wardrobeClothes = createWardrobeClothes(
+                1L,
+                User.Gender.MALE,
+                "ourselves",
+                "multi stripe long sleeve",
+                "BLACK",
+                "LONG_SLEEVE",
+                "TOP",
+                StyleCode.CASUAL
+        );
+        WardrobeClothes weakCandidate = createWardrobeClothes(
+                2L,
+                User.Gender.MALE,
+                "weak-brand",
+                "plain short sleeve",
+                "WHITE",
+                "SHORT_SLEEVE",
+                "TOP",
+                StyleCode.MINIMAL
+        );
+        ReflectionTestUtils.setField(weakCandidate.getClothes(), "id", 31L);
+        WardrobeClothes strongCandidate = createWardrobeClothes(
+                3L,
+                User.Gender.MALE,
+                "strong-brand",
+                "stripe long sleeve",
+                "BLACK",
+                "LONG_SLEEVE",
+                "TOP",
+                StyleCode.CASUAL
+        );
+        ReflectionTestUtils.setField(strongCandidate.getClothes(), "id", 32L);
+
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(wardrobeClothes));
+        given(clothesRepository.findSimilarProductInternalCandidates(
+                eq(10L),
+                anyList(),
+                eq("TOP"),
+                anyList(),
+                any(Pageable.class)
+        )).willReturn(List.of(weakCandidate.getClothes(), strongCandidate.getClothes()));
+        given(naverApiService.searchShoppingProducts(anyString(), anyInt(), anyInt(), anyString()))
+                .willReturn(List.of());
+
+        SimilarProductRecommendationResponse response =
+                similarProductRecommendationService.recommendSimilarProducts(1L, 10L);
+
+        assertThat(response.products())
+                .extracting(NaverShoppingProductResponse::clothesId)
+                .containsExactly(32L, 31L);
+    }
+
+    @Test
+    @DisplayName("유사상품 추천은 내부 후보 8, 네이버 후보 2 비율로 구성한다")
+    void recommendSimilarProductsUsesEightToTwoInternalNaverRatio() {
+        WardrobeClothes wardrobeClothes = createWardrobeClothes(
+                1L,
+                User.Gender.MALE,
+                "ourselves",
+                "multi stripe long sleeve",
+                "BLACK",
+                "LONG_SLEEVE",
+                "TOP",
+                StyleCode.CASUAL
+        );
+        List<Clothes> internalCandidates = java.util.stream.IntStream.rangeClosed(1, 45)
+                .mapToObj(index -> {
+                    WardrobeClothes candidate = createWardrobeClothes(
+                            10L + index,
+                            User.Gender.MALE,
+                            "internal-brand-" + index,
+                            "stripe long sleeve " + index,
+                            "BLACK",
+                            "LONG_SLEEVE",
+                            "TOP",
+                            StyleCode.CASUAL
+                    );
+                    ReflectionTestUtils.setField(candidate.getClothes(), "id", 100L + index);
+                    ReflectionTestUtils.setField(candidate.getClothes(), "externalProductId", "INTERNAL-" + index);
+                    return candidate.getClothes();
+                })
+                .toList();
+
+        given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.of(wardrobeClothes));
+        given(clothesRepository.findSimilarProductInternalCandidates(
+                eq(10L),
+                anyList(),
+                eq("TOP"),
+                anyList(),
+                any(Pageable.class)
+        )).willReturn(internalCandidates);
+        given(naverApiService.searchShoppingProducts(anyString(), anyInt(), anyInt(), anyString()))
+                .willReturn(createProducts(20));
+
+        SimilarProductRecommendationResponse response =
+                similarProductRecommendationService.recommendSimilarProducts(1L, 10L);
+
+        assertThat(response.products()).hasSize(50);
+        assertThat(response.products().stream()
+                .filter(product -> "INTERNAL".equals(product.candidateSource()))
+                .count()).isEqualTo(40);
+        assertThat(response.products().stream()
+                .filter(product -> !"INTERNAL".equals(product.candidateSource()))
+                .count()).isEqualTo(10);
+    }
+
+    @Test
     @DisplayName("선택한 옷이 요청 사용자의 옷이 아니면 추천을 차단한다")
     void recommendSimilarProductsRejectsOtherUsersClothes() {
         given(wardrobeClothesRepository.findByClothesIdAndUserId(10L, 1L)).willReturn(Optional.empty());

@@ -78,13 +78,15 @@ public class AiMdRecommendationService {
     private static final int PRODUCT_RECOMMENDATION_COUNT = 40;
     private static final int PRODUCT_SEARCH_QUERY_COUNT = 8;
     private static final int PRODUCT_SEARCH_RESULTS_PER_QUERY = 20;
-    private static final int INTERNAL_PRODUCT_CANDIDATE_COUNT = 80;
+    private static final int INTERNAL_PRODUCT_CANDIDATE_COUNT = 300;
     private static final int MAX_PRODUCT_CANDIDATES_FOR_PROMPT = 120;
+    private static final int INTERNAL_PRODUCT_PROMPT_LIMIT = 96;
+    private static final int NAVER_PRODUCT_PROMPT_LIMIT = 24;
     private static final int MAX_RECOMMENDATIONS_PER_BRAND = 2;
     private static final int MAX_RECOMMENDATIONS_PER_CATEGORY = 4;
     private static final int MAX_WARDROBE_ITEMS_FOR_PROMPT = 24;
-    private static final int OUTFIT_PRODUCTS_PER_CATEGORY = 10;
-    private static final int OUTFIT_INTERNAL_PRODUCTS_PER_CATEGORY = 10;
+    private static final int OUTFIT_PRODUCTS_PER_CATEGORY = 4;
+    private static final int OUTFIT_INTERNAL_PRODUCTS_PER_CATEGORY = 16;
     private static final List<Integer> OUTFIT_PRODUCT_SEARCH_START_INDEXES = List.of(1, 11, 21, 31, 41);
     private static final List<String> OUTFIT_PRODUCT_SEARCH_SORT_OPTIONS = List.of("sim", "date");
     private static final List<Integer> PRODUCT_SEARCH_START_INDEXES = List.of(1, 21, 41, 61, 81, 101);
@@ -166,12 +168,15 @@ public class AiMdRecommendationService {
         Map<Long, WardrobeClothes> wardrobeById = wardrobeItems.stream()
                 .collect(Collectors.toMap(WardrobeClothes::getId, Function.identity(), (left, right) -> left));
 
-        List<WardrobeClothes> selectedWardrobeItems = request.wardrobeClothesIds().stream()
+        List<Long> requestedWardrobeClothesIds = request.wardrobeClothesIds() == null
+                ? List.of()
+                : request.wardrobeClothesIds();
+        List<WardrobeClothes> selectedWardrobeItems = requestedWardrobeClothesIds.stream()
                 .map(wardrobeById::get)
                 .filter(Objects::nonNull)
                 .toList();
-        if (selectedWardrobeItems.isEmpty()) {
-            throw new IllegalArgumentException("저장할 코디에는 옷장 등록 옷이 최소 1개 포함되어야 합니다.");
+        if (selectedWardrobeItems.size() != requestedWardrobeClothesIds.size()) {
+            throw new IllegalArgumentException("현재 사용자의 옷장 등록 옷만 저장할 수 있습니다.");
         }
 
         OutfitBook outfitBook = outfitBookRepository.findByUser_Id(userId)
@@ -204,7 +209,7 @@ public class AiMdRecommendationService {
         List<WardrobeClothes> wardrobeItems = findOwnedWardrobeItems(userId);
         List<StyleSearchProfile> styleProfiles = buildStyleSearchProfiles(userId, persona);
         List<ProductSearchPlan> searchPlans = buildProductSearchPlans(persona, wardrobeItems, styleProfiles);
-        List<NaverShoppingProductResponse> products = searchProductCandidates(userId, persona.gender(), searchPlans);
+        List<NaverShoppingProductResponse> products = searchProductCandidates(userId, persona, wardrobeItems, styleProfiles, searchPlans);
         String query = searchPlans.stream()
                 .map(ProductSearchPlan::query)
                 .collect(Collectors.joining(" | "));
@@ -287,9 +292,6 @@ public class AiMdRecommendationService {
             List<WardrobeClothes> ownedItems,
             List<NaverShoppingProductResponse> externalProducts
     ) {
-        if (ownedItems.isEmpty()) {
-            throw new IllegalStateException("AI MD가 옷장 등록 옷을 포함하지 않은 코디를 반환했습니다.");
-        }
         List<Clothes> externalClothes = externalProducts.stream()
                 .map(product -> getOrCreateExternalClothes(persona, product))
                 .toList();
@@ -338,9 +340,6 @@ public class AiMdRecommendationService {
                 .map(wardrobeById::get)
                 .filter(Objects::nonNull)
                 .toList();
-        if (ownedItems.isEmpty()) {
-            throw new IllegalStateException("AI MD가 옷장 등록 옷을 포함하지 않은 코디를 반환했습니다.");
-        }
         List<NaverShoppingProductResponse> externalProducts = candidate.externalProductIds().stream()
                 .map(productById::get)
                 .filter(Objects::nonNull)
@@ -457,14 +456,10 @@ public class AiMdRecommendationService {
     }
 
     private List<WardrobeClothes> findAiMdWardrobeItems(Long userId) {
-        List<WardrobeClothes> wardrobeItems = wardrobeClothesRepository.findAllActiveByUserIdAndOwnershipStatuses(
+        return wardrobeClothesRepository.findAllActiveByUserIdAndOwnershipStatuses(
                 userId,
                 AI_MD_WARDROBE_OWNERSHIP_STATUSES
         );
-        if (wardrobeItems.isEmpty()) {
-            throw new IllegalStateException("AI MD 추천을 받으려면 보유 옷 또는 미보유 관심 상품을 먼저 등록해 주세요.");
-        }
-        return wardrobeItems;
     }
 
     private List<WardrobeClothes> findOwnedWardrobeItems(Long userId) {
@@ -485,8 +480,9 @@ public class AiMdRecommendationService {
         }
         /*
          * Gemini가 반환한 wardrobeClothesId는 외부 입력이므로 raw id 존재 여부만 믿지 않는다.
-         * 실제 현재 사용자 옷장에 매핑되는 보유/미보유 옷이 1개 이상 남고,
-         * 옷장 등록 옷과 외부 상품을 합쳐 상의·하의·신발이 모두 구성된 후보만 반환 대상으로 확정한다.
+         * 실제 현재 사용자 옷장에 매핑되는 옷만 남기고, 외부 상품 후보도 후보 목록에 있는 상품만 남긴다.
+         * 옷장 등록 옷이 없어도 저장 가능한 외부/내부 상품만으로 상의·하의·신발이 모두 구성되면
+         * 반환 대상으로 확정한다.
          */
         return aiResult.outfits().stream()
                 .filter(outfit -> {
@@ -494,9 +490,6 @@ public class AiMdRecommendationService {
                             .map(wardrobeById::get)
                             .filter(Objects::nonNull)
                             .toList();
-                    if (ownedItems.isEmpty()) {
-                        return false;
-                    }
                     List<NaverShoppingProductResponse> externalProducts = outfit.externalProductIds().stream()
                             .map(productById::get)
                             .filter(Objects::nonNull)
@@ -730,32 +723,125 @@ public class AiMdRecommendationService {
 
     private List<NaverShoppingProductResponse> searchProductCandidates(
             Long userId,
-            User.Gender personaGender,
+            AiMdPersona persona,
+            List<WardrobeClothes> wardrobeItems,
+            List<StyleSearchProfile> styleProfiles,
             List<ProductSearchPlan> searchPlans
     ) {
-        Map<String, NaverShoppingProductResponse> candidatesByKey = new LinkedHashMap<>();
         List<Long> excludedClothesIds = findExcludedClothesIds(userId);
+        Set<String> wardrobeColorCodes = wardrobeColorCodes(wardrobeItems);
+        Map<String, NaverShoppingProductResponse> internalCandidatesByKey = new LinkedHashMap<>();
         clothesRepository.findExternalShoppingRecommendationCandidates(
                         excludedClothesIds,
-                        allowedClothesGenders(personaGender),
+                        allowedClothesGenders(persona.gender()),
                         PageRequest.of(0, INTERNAL_PRODUCT_CANDIDATE_COUNT)
                 ).stream()
+                .map(candidate -> new InternalProductCandidate(
+                        candidate,
+                        calculateInternalProductFitScore(candidate, persona, styleProfiles, wardrobeColorCodes)
+                ))
+                .filter(candidate -> candidate.score() > 0)
+                .sorted(Comparator
+                        .comparingInt(InternalProductCandidate::score).reversed()
+                        .thenComparing(candidate -> candidate.clothes().getCreatedAt(), Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(candidate -> candidate.clothes().getId(), Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(INTERNAL_PRODUCT_PROMPT_LIMIT)
+                .map(InternalProductCandidate::clothes)
                 .map(this::toInternalProductResponse)
-                .forEach(product -> candidatesByKey.putIfAbsent(productIdentityKey(product), product));
+                .forEach(product -> internalCandidatesByKey.putIfAbsent(productIdentityKey(product), product));
 
+        Map<String, NaverShoppingProductResponse> naverCandidatesByKey = new LinkedHashMap<>();
         for (ProductSearchPlan plan : searchPlans) {
             naverApiService.searchShoppingProducts(
                     plan.query(),
                     PRODUCT_SEARCH_RESULTS_PER_QUERY,
                     plan.start(),
                     "sim"
-            ).forEach(product -> candidatesByKey.putIfAbsent(productIdentityKey(product), product));
+            ).forEach(product -> {
+                String key = productIdentityKey(product);
+                if (!internalCandidatesByKey.containsKey(key)) {
+                    naverCandidatesByKey.putIfAbsent(key, product);
+                }
+            });
         }
-        List<NaverShoppingProductResponse> candidates = new ArrayList<>(candidatesByKey.values());
-        Collections.shuffle(candidates);
-        return candidates.stream()
-                .limit(MAX_PRODUCT_CANDIDATES_FOR_PROMPT)
+        List<NaverShoppingProductResponse> candidates = new ArrayList<>(MAX_PRODUCT_CANDIDATES_FOR_PROMPT);
+        candidates.addAll(internalCandidatesByKey.values().stream()
+                .limit(INTERNAL_PRODUCT_PROMPT_LIMIT)
+                .toList());
+        candidates.addAll(naverCandidatesByKey.values().stream()
+                .limit(NAVER_PRODUCT_PROMPT_LIMIT)
+                .toList());
+        if (candidates.size() < MAX_PRODUCT_CANDIDATES_FOR_PROMPT) {
+            Set<String> selectedKeys = new HashSet<>();
+            candidates.forEach(product -> selectedKeys.add(productIdentityKey(product)));
+            Stream.concat(internalCandidatesByKey.values().stream(), naverCandidatesByKey.values().stream())
+                    .filter(product -> selectedKeys.add(productIdentityKey(product)))
+                    .limit(MAX_PRODUCT_CANDIDATES_FOR_PROMPT - candidates.size())
+                    .forEach(candidates::add);
+        }
+        return candidates;
+    }
+
+    private int calculateInternalProductFitScore(
+            Clothes candidate,
+            AiMdPersona persona,
+            List<StyleSearchProfile> styleProfiles,
+            Set<String> wardrobeColorCodes
+    ) {
+        int score = 0;
+        Map<String, Integer> styleWeightByCode = styleProfiles.stream()
+                .collect(Collectors.toMap(StyleSearchProfile::code, StyleSearchProfile::weight, Math::max));
+        List<String> candidateStyleCodes = candidate.getSortedStyleTags().stream()
+                .map(styleTag -> normalizeRecommendationCode(styleTag.getStyle().getCode()))
+                .filter(StringUtils::hasText)
                 .toList();
+        for (int index = 0; index < candidateStyleCodes.size(); index++) {
+            String styleCode = candidateStyleCodes.get(index);
+            int rankMultiplier = index == 0 ? 2 : 1;
+            if (persona.styleCodes().contains(styleCode)) {
+                score += 18 * rankMultiplier;
+            }
+            score += Math.min(20, styleWeightByCode.getOrDefault(styleCode, 0)) * rankMultiplier;
+        }
+
+        List<String> candidateColorCodes = candidate.getSortedColorTags().stream()
+                .map(ClothingColor::getColorCode)
+                .map(this::normalizeRecommendationCode)
+                .filter(StringUtils::hasText)
+                .toList();
+        if (!candidateColorCodes.isEmpty() && wardrobeColorCodes.contains(candidateColorCodes.get(0))) {
+            score += 12;
+        }
+        long colorOverlapCount = candidateColorCodes.stream()
+                .filter(wardrobeColorCodes::contains)
+                .distinct()
+                .count();
+        score += (int) Math.min(12, colorOverlapCount * 4);
+
+        if (StringUtils.hasText(candidate.getCategory())) {
+            score += 3;
+        }
+        if (StringUtils.hasText(candidate.getImageUrl())) {
+            score += 2;
+        }
+        return score;
+    }
+
+    private Set<String> wardrobeColorCodes(List<WardrobeClothes> wardrobeItems) {
+        return wardrobeItems.stream()
+                .map(WardrobeClothes::getClothes)
+                .flatMap(clothes -> clothes.getSortedColorTags().stream())
+                .map(ClothingColor::getColorCode)
+                .map(this::normalizeRecommendationCode)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toSet());
+    }
+
+    private String normalizeRecommendationCode(String value) {
+        if (!StringUtils.hasText(value) || "NONE".equalsIgnoreCase(value)) {
+            return "";
+        }
+        return value.trim().toUpperCase();
     }
 
     private List<Long> findExcludedClothesIds(Long userId) {
@@ -880,8 +966,9 @@ public class AiMdRecommendationService {
             List<NaverShoppingProductResponse> externalProducts
     ) {
         return """
-                당신은 옷장난감 서비스에서 고객의 옷장을 직접 살펴보고 코디를 제안하는 전문 패션 MD입니다.
-                아래 MD의 취향과 화법을 자신의 정체성으로 유지하면서, 사용자의 옷장 등록 옷과 외부 상품 후보를 섞어 저장 가능한 완성형 코디를 정확히 4개 구성하세요.
+                당신은 옷장난감 서비스에서 고객에게 자연스러운 풀착장을 제안하는 전문 패션 MD입니다.
+                아래 MD의 취향과 화법을 자신의 정체성으로 유지하면서, 옷장 등록 옷과 외부 상품 후보를 랜덤하게 섞어 저장 가능한 완성형 코디를 정확히 4개 구성하세요.
+                특정 보유 옷을 반드시 써야 한다는 압박보다 룩 전체의 조화, 색상 연결, 실루엣 균형, 소재감, 상황 적합성을 더 중요하게 판단하세요.
 
                 [MD]
                 이름: %s
@@ -898,18 +985,22 @@ public class AiMdRecommendationService {
 
                 규칙:
                 - outfits 배열 길이는 반드시 4입니다.
-                - 각 코디는 wardrobeClothesIds를 최소 1개 이상 포함해야 합니다.
                 - wardrobeClothesIds에는 ownershipStatus가 OWNED인 보유 옷과 WISHLIST인 미보유 관심 상품을 모두 사용할 수 있습니다.
+                - wardrobeClothesIds는 비어 있어도 됩니다. 옷장 등록 옷을 억지로 넣지 말고, 외부 상품 후보만으로 더 자연스러운 룩이 되면 externalProductIds만으로 코디를 구성하세요.
                 - 각 코디는 옷장 등록 옷과 외부 상품을 합쳐 TOP(상의), BOTTOM(하의), SHOES(신발)를 각각 최소 1개 포함해야 합니다.
                 - OUTER(아우터)는 계절과 스타일에 맞을 때 추가하고, TOP은 이너와 레이어드 상의처럼 여러 개 선택할 수 있습니다.
                 - 상의만 여러 개 조합한 결과는 코디로 인정하지 않습니다. 반드시 하의와 신발까지 완성합니다.
                 - wardrobeClothesIds는 옷장 등록 옷 목록의 wardrobeClothesId만 사용합니다.
                 - externalProductIds는 외부 상품 후보의 productId만 사용합니다.
-                - 외부 상품은 필요할 때만 섞되, 코디 저장이 가능하도록 선택한 productId를 명확히 넣습니다.
+                - 외부 상품은 적극적으로 활용할 수 있으며, 코디 저장이 가능하도록 선택한 productId를 명확히 넣습니다.
+                - 후보 목록에서 매번 서로 다른 중심 아이템을 랜덤하게 고르되, 무작위성보다 착장으로 입었을 때 자연스러운 조화를 우선합니다.
+                - 색상은 한 코디 안에서 중심색 1~2개와 보조색 1개 정도로 정리하고, 너무 튀는 색이 겹치면 제외합니다.
+                - 실루엣은 상의와 하의 핏이 서로 충돌하지 않게 맞추고, 신발은 룩의 무게감을 마무리하는 방향으로 고릅니다.
+                - 소재나 무드가 계절·상황과 어긋나는 조합은 피하고, 같은 스타일 코드라도 너무 비슷한 상품만 반복하지 않습니다.
                 - 추천할 때마다 같은 옷장 등록 옷 조합, 같은 외부 상품 조합, 같은 코디 제목과 사유가 반복되지 않도록 4개 코디의 중심 아이템과 분위기를 서로 다르게 구성합니다.
                 - 가능한 경우 4개 코디가 서로 다른 카테고리 보강 방식(신발 중심, 하의 중심, 아우터 포인트, 상의 레이어드 등)을 갖도록 구성합니다.
                 - reason은 사용자가 "왜 이 코디가 나에게 어울리는지" 바로 이해할 수 있도록 2~3개의 짧은 문장으로 작성하며, 전체 분량은 한글 기준 약 180~260자로 제한합니다.
-                - reason에는 선택한 옷장 등록 옷과 외부 상품을 빠짐없이 한 번씩 언급합니다. 상품명이 길면 브랜드나 핵심 상품명으로 자연스럽게 줄여 씁니다.
+                - reason에는 선택한 옷장 등록 옷이 있다면 빠짐없이 언급하고, 외부 상품도 빠짐없이 한 번씩 언급합니다. 상품명이 길면 브랜드나 핵심 상품명으로 자연스럽게 줄여 씁니다.
                 - 상의·하의·아우터·신발 등 각 아이템이 코디에서 맡는 역할을 색상, 핏, 소재, 실루엣 중 확인 가능한 특징과 연결해 짧게 설명합니다.
                 - 아이템별 설명을 따로 나열하지 말고, "상의가 중심을 잡고 하의가 균형을 맞추며 신발이 마무리한다"처럼 코디 전체의 조합 이유로 자연스럽게 이어 씁니다.
                 - reason은 %s MD가 사용자에게 직접 코디를 제안하는 말투로 작성하며, 페르소나의 스타일 취향과 추천 사유 화법을 일관되게 반영합니다.
@@ -936,8 +1027,8 @@ public class AiMdRecommendationService {
                       "season": "ALL_SEASON",
                       "reason": "string",
                       "stylingTip": "string",
-                      "wardrobeClothesIds": [1],
-                      "externalProductIds": ["123"]
+                      "wardrobeClothesIds": [],
+                      "externalProductIds": ["top-1", "bottom-1", "shoes-1"]
                     }
                   ]
                 }
@@ -1058,6 +1149,8 @@ public class AiMdRecommendationService {
                 규칙:
                 - products 배열은 가능한 한 40개를 반환합니다.
                 - productId는 상품 후보 목록에 있는 값만 사용합니다.
+                - source가 INTERNAL인 상품은 서비스가 미리 분류해 둔 내부 상품 후보입니다. MD 스타일, 사용자 스타일 가중치, 옷장 색상과 맞는 INTERNAL 상품을 우선 추천합니다.
+                - 네이버 검색 후보는 내부 상품으로 채우기 어려운 카테고리나 분위기를 보강할 때 사용합니다. 단순히 외부 검색 상품이라는 이유만으로 INTERNAL 후보보다 우선하지 않습니다.
                 - 사용자 스타일 가중치가 높은 스타일의 상품은 더 자주 고르고, 낮은 양수 스타일도 일부 섞어 추천 결과가 한 스타일로만 고정되지 않게 합니다.
                 - 같은 상품, 이름만 조금 다른 동일 모델, 같은 브랜드의 지나치게 유사한 상품을 반복 선택하지 않습니다.
                 - 상의·하의·아우터·신발과 브랜드가 한 종류에 치우치지 않도록 후보 범위 안에서 다양하게 구성합니다.
@@ -1140,6 +1233,9 @@ public class AiMdRecommendationService {
     }
 
     private record ProductSearchPlan(String query, int start) {
+    }
+
+    private record InternalProductCandidate(Clothes clothes, int score) {
     }
 
     private String resolveThumbnailUrl(List<WardrobeClothes> ownedItems, List<NaverShoppingProductResponse> externalProducts) {

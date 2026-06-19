@@ -754,7 +754,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 옷장 등록 옷을 최소 1개 포함해야 하며, `OWNED`와 `WISHLIST` 옷장 항목을 모두 코디 구성에 사용할 수 있습니다. 옷장 등록 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부 상품은 필수가 아니므로 옷장 등록 옷만으로 필수 세 카테고리가 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
+> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 옷장 등록 옷(`OWNED`, `WISHLIST`)과 외부/내부 추천 상품 후보를 자유롭게 섞을 수 있으며, `ownedItems`가 빈 배열이어도 유효합니다. 옷장 등록 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부/내부 추천 상품만으로 필수 세 카테고리가 완성된 후보도 유효하며, 옷장 등록 옷만으로 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
 
 #### AI MD 추천 코디 저장 요청/응답
 
@@ -766,12 +766,73 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
   "season": "ALL_SEASON",
   "reason": "MD 말투가 반영된 코디 추천 이유",
   "stylingTip": "스타일링 팁",
-  "wardrobeClothesIds": [1, 2, 3],
-  "externalProducts": []
+  "wardrobeClothesIds": [],
+  "externalProducts": [
+    {
+      "title": "추천 상의",
+      "link": "https://example.com/top",
+      "image": "https://example.com/top.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_100",
+      "productType": "INTERNAL",
+      "brand": "브랜드",
+      "maker": "브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "TOP",
+      "category4": "반팔티",
+      "clothesId": 100,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "BLACK",
+      "primaryStyle": "STREET"
+    },
+    {
+      "title": "추천 하의",
+      "link": "https://example.com/bottom",
+      "image": "https://example.com/bottom.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_101",
+      "productType": "INTERNAL",
+      "brand": "브랜드",
+      "maker": "브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "BOTTOM",
+      "category4": "팬츠",
+      "clothesId": 101,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "BLACK",
+      "primaryStyle": "STREET"
+    },
+    {
+      "title": "추천 신발",
+      "link": "https://example.com/shoes",
+      "image": "https://example.com/shoes.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_102",
+      "productType": "INTERNAL",
+      "brand": "브랜드",
+      "maker": "브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "SHOES",
+      "category4": "스니커즈",
+      "clothesId": 102,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "WHITE",
+      "primaryStyle": "STREET"
+    }
+  ]
 }
 ```
 
-위 예시의 `wardrobeClothesIds`는 각각 `TOP`, `BOTTOM`, `SHOES`인 사용자 옷장 등록 옷을 의미합니다. 저장 요청도 추천 후보와 동일하게 사용자 옷장 등록 옷을 최소 1개 포함하고, `OWNED`와 `WISHLIST` 옷장 항목을 모두 사용할 수 있습니다. `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부 상품 없이 옷장 등록 옷만으로 완성할 수 있으며, 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
+`wardrobeClothesIds`는 선택 사항이며 `null` 또는 빈 배열일 수 있습니다. 값이 있으면 현재 사용자의 `OWNED` 또는 `WISHLIST` 옷장 항목만 사용됩니다. 저장 요청은 `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부/내부 추천 상품만으로 완성할 수 있고, 외부 상품 없이 옷장 등록 옷만으로도 완성할 수 있습니다. 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
 
 저장 성공 시에는 선택된 코디 1개가 `OUTFITS`, `OUTFIT_ITEMS`에 저장되고, 응답은 저장된 `outfit`과 구성 옷 목록을 포함합니다. 저장된 구성 옷은 코디북 조회 응답의 `outfits[].items`에서도 다시 조회할 수 있습니다.
 
