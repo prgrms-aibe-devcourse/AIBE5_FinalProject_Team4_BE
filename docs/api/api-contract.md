@@ -198,7 +198,7 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 | `gender` | Y | `MALE` / `FEMALE` |
 | `regionName` | Y | 지역명 |
 | `regionCode` | Y | 지역 코드 |
-| `styleCodes` | Y | 선호 스타일 코드 배열 (1~3개) |
+| `styleCodes` | Y | 선호 스타일 코드 배열 (2~10개). 배열 순서 기준 첫 번째가 대표 스타일(+7), 나머지가 보조 스타일(+3) |
 | `marketingAgreed` | Y | 마케팅 정보 수신 동의 여부 |
 
 #### POST /api/v1/users/onboarding 응답 필드

@@ -43,8 +43,8 @@ last_updated: 2026-06-15
 | `SYSTEM-001`~`SYSTEM-004` | 공통 시스템 | 로딩/에러 | 로딩, 404/500/네트워크 오류 안내 | 공통 오류 응답 | 공통 UI |
 | `SYSTEM-005` | 공통 시스템 | 통합 필터 | 카탈로그 기준값을 활용한 목록 필터링 | `GET /api/v1/categories`, 카탈로그 code | 옷장, 추천, 목록 필터 |
 | `SYSTEM-006`~`SYSTEM-007` | 공통 시스템 | 서비스 안내 | 서비스 소개와 도움말/가이드 투어 안내. 페이지별 투어 완료 상태를 BE에서 관리하며 로그인 후 미완료 시 자동 노출 | `GET /api/v1/users/profile` (guideTourCompleted* 필드), `PATCH /api/v1/users/guide-tour`, `USERS.guide_tour_completed_home/wardrobe/feed/mypage/outfit_book`, `docs/planning/project-plan.md`, `docs/legal/terms.md` | 홈, 옷장, 피드, 마이페이지, 코디북 |
-| `SYSTEM-008`~`SYSTEM-009` | 공통 시스템 | 필수 약관 동의 | 이용약관과 개인정보 처리방침을 확인하고 회원가입 시 자동 동의 기준으로 처리 | `docs/legal/terms.md`, `docs/legal/privacy-policy.md` | 로그인 모달, 온보딩 |
-| `SYSTEM-010` | 공통 시스템 | 마케팅 정보 수신 동의 | 선택 동의로 관리하며 온보딩/마이페이지에서 조회 및 변경 | `GET /api/v1/users/{userId}/marketing-consent`, `PATCH /api/v1/users/{userId}/marketing-consent`, `USERS.marketing_agreed`, `USERS.marketing_agreed_at`, `docs/legal/marketing-consent.md` | 온보딩, 마이페이지 |
+| `SYSTEM-008`~`SYSTEM-009` | 공통 시스템 | 필수 약관 동의 | 이용약관과 개인정보 처리방침을 확인하고 회원가입 시 자동 동의 기준으로 처리 | `GET /api/v1/legal/terms`, `GET /api/v1/legal/privacy-policy`, `docs/legal/terms.md`, `docs/legal/privacy-policy.md` | 로그인 모달, 온보딩 |
+| `SYSTEM-010` | 공통 시스템 | 마케팅 정보 수신 동의 | 선택 동의로 관리하며 온보딩/마이페이지에서 조회 및 변경 | `GET /api/v1/users/{userId}/marketing-consent`, `PATCH /api/v1/users/{userId}/marketing-consent`, `GET /api/v1/legal/marketing-consent`, `USERS.marketing_agreed`, `USERS.marketing_agreed_at`, `docs/legal/marketing-consent.md` | 온보딩, 마이페이지 |
 | `DATA-001` | 데이터 관리 | 초기 상품 데이터 | 추천 기능 시연을 위한 DB/API 초기 데이터 준비 | 샘플 상품 데이터 | 추천 |
 | `FEED-001`~`FEED-009` | 룩피드 | 피드/반응/빈 상태 | 코디 공유, 상세, 좋아요, 저장, 댓글, 대댓글, 팔로우, 빈 상태 | `FEED_POSTS`, `FEED_POST_IMAGES`, `FEED_LIKES`, `FEED_COMMENTS`, `FEED_POST_SAVES`, `USER_FOLLOWS` | 룩피드 |
 

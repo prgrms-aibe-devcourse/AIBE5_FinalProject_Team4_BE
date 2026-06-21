@@ -124,7 +124,7 @@ erd_version: v2.3
 | 컬럼 | 의미 |
 | --- | --- |
 | `status` | 계정 상태. `ACTIVE` / `WITHDRAWN`. 탈퇴 시 `WITHDRAWN`으로 변경 |
-| `withdrawn_at` | 탈퇴 처리 시각. 탈퇴 전 `1970-01-01 00:00:00` (기본값). 30일 보존 후 처리 기준 |
+| `withdrawn_at` | 탈퇴 처리 시각. 활성 계정은 `NULL`, 탈퇴 시 탈퇴 시각으로 설정. 30일 보존 후 처리 기준 |
 | `profile_bio` | 프로필 소개 문구 |
 | `external_link_url` | 대표 외부 링크 URL (단일) |
 | `guide_tour_completed_home` | 홈 화면 가이드 투어 완료 여부. 최초 false, 완료/건너뛰기 시 true |
