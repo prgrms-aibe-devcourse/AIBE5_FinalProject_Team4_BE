@@ -103,48 +103,39 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 ### 사용자
 | Method | Path | 설명 |
 | --- | --- | --- |
-| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 본인 프로필 반환 (응답 필드는 아래 표 참고) |
+| GET | `/api/v1/users/profile` | 현재 로그인한 사용자 프로필 반환 (userId, nickname, onboarded, guideTour 완료 여부) |
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
 | GET | `/api/v1/users/nickname/check` | 닉네임 규칙 및 중복 여부 확인 |
-| PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 본인 프로필 반환 |
-| POST | `/api/v1/users/profile/image` | 프로필 이미지 업로드 (`multipart/form-data`, field: `file`) |
-| POST | `/api/v1/users/onboarding` | 온보딩 완료 저장. 프로필, 선호 스타일, 마케팅 동의 여부를 하나의 트랜잭션으로 저장 |
-| POST | `/api/v1/users/styles` | 스타일 선호도 저장 (사용자별 전체 스타일 row 보장, preference_weight만 갱신) |
-| PATCH | `/api/v1/users/guide-tour` | 가이드 투어 완료 상태 업데이트 |
+| PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 userId, nickname, onboarded 반환 |
+| POST | `/api/v1/users/profile/image` | 프로필 이미지 업로드. 저장된 이미지 URL 반환 |
+| POST | `/api/v1/users/onboarding` | 온보딩 완료 저장 (프로필 + 스타일 + 마케팅 동의 일괄 저장) |
+| POST | `/api/v1/users/styles` | 스타일 선호도 저장 (기존 row 보존, preference_weight만 갱신) |
+| PATCH | `/api/v1/users/guide-tour` | 페이지별 가이드 투어 완료 상태 업데이트 |
 | DELETE | `/api/v1/users/me` | 회원 탈퇴 (소프트 삭제, 쿠키 만료) |
 
 #### GET /api/v1/users/profile 응답 필드
 
-| 필드 | 타입 | 설명 |
-| --- | --- | --- |
-| `userId` | Long | 사용자 ID |
-| `email` | String | 사용자 계정 이메일. 소셜 로그인에서 확인된 이메일을 조회용으로 반환 |
-| `nickname` | String? | 온보딩/마이페이지에서 사용자가 설정한 닉네임. 온보딩 완료 전에는 `null`일 수 있음 |
-| `onboarded` | boolean | 온보딩 완료 여부. 닉네임, 사용자 성별, 생년월일, 지역 코드, 선호 스타일이 모두 저장되면 true |
-| `guideTourCompletedHome` | boolean | 홈 가이드 투어 완료 여부 |
-| `guideTourCompletedWardrobe` | boolean | 옷장 가이드 투어 완료 여부 |
-| `guideTourCompletedFeed` | boolean | 피드 가이드 투어 완료 여부 |
-| `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
-| `gender` | String | 사용자 성별. `MALE` / `FEMALE` / `OTHER` |
-| `birthDate` | Date? | 생년월일. 온보딩 완료 전에는 `null`일 수 있음 |
-| `regionName` | String | 지역명 |
-| `regionCode` | String | 지역 코드 |
-| `profileImageUrl` | String | 프로필 이미지 URL |
-| `profileBio` | String | 한 줄 소개 |
-| `externalLinkUrl` | String | 외부 링크 URL |
-| `styleCodes` | String[] | 선호 스타일 code 배열 |
-| `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
-| `socialAccounts` | Object[] | 연결된 소셜 로그인 제공자와 제공자 이메일 목록. 조회 전용 |
-
-#### GET /api/v1/users/nickname/check 응답 필드
-
-닉네임은 룩피드 프로필 식별에도 사용하므로 전체 회원 기준으로 중복될 수 없습니다. 영문 소문자, 숫자, 마침표(`.`), 밑줄(`_`)만 3~30자로 사용할 수 있으며 처음과 끝은 영문 또는 숫자여야 합니다.
-
-| 필드 | 타입 | 설명 |
-| --- | --- | --- |
-| `nickname` | String | 정규화된 닉네임 |
-| `available` | boolean | 사용 가능 여부 |
-| `message` | String | 사용 가능 또는 오류 안내 문구 |
+| 필드                           | 타입 | 설명 |
+|------------------------------| --- | --- |
+| `userId`                     | Long | 사용자 ID |
+| `nickname`                   | String | 카카오 닉네임 또는 온보딩에서 설정한 닉네임 |
+| `onboarded`                  | boolean | 온보딩 완료 여부. birthDate가 기본값(2000-01-01)이면 false, 실제 날짜이면 true |
+| `guideTourCompletedHome`     | boolean | 홈 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
+| `guideTourCompletedWardrobe` | boolean | 옷장 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
+| `guideTourCompletedFeed`     | boolean | 피드 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
+| `guideTourCompletedMypage`   | boolean | 마이페이지 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true (마이페이지 미완성으로 당분간 미사용) |
+| `guideTourCompletedOutfitBook` | boolean | 코디북 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
+| `email`                        | String  | 사용자 계정 이메일 |
+| `gender`                       | String  | `MALE` / `FEMALE` / `OTHER` |
+| `birthDate`                    | String  | 생년월일 (yyyy-MM-dd). 온보딩 미완료 시 기본값 2000-01-01 |
+| `regionName`                   | String  | 지역명 |
+| `regionCode`                   | String  | 지역 코드 |
+| `profileImageUrl`              | String  | 프로필 이미지 URL |
+| `profileBio`                   | String  | 한 줄 소개 |
+| `externalLinkUrl`              | String  | 외부 링크 URL |
+| `styleCodes`                   | String[] | 선호 스타일 코드 목록 (preference_weight > 0인 항목, 선호도 내림차순) |
+| `socialProviders`              | String[] | 연결된 소셜 로그인 제공자 목록 |
+| `socialAccounts`               | Object[] | 소셜 계정 상세 목록 (`provider`, `providerEmail`) |
 
 #### PATCH /api/v1/users/profile 요청 필드
 
@@ -167,73 +158,66 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 | `email` | String | 사용자 계정 이메일 |
 | `nickname` | String | 저장된 닉네임 |
 | `onboarded` | boolean | 온보딩 완료 여부. 저장 후 true이면 메인 페이지로 이동 |
-| `guideTourCompletedHome` | boolean | 홈 가이드 투어 완료 여부 |
-| `guideTourCompletedWardrobe` | boolean | 옷장 가이드 투어 완료 여부 |
-| `guideTourCompletedFeed` | boolean | 피드 가이드 투어 완료 여부 |
+| `guideTourCompletedHome` | boolean | 홈 화면 가이드 투어 완료 여부 |
+| `guideTourCompletedWardrobe` | boolean | 옷장 화면 가이드 투어 완료 여부 |
+| `guideTourCompletedFeed` | boolean | 피드 화면 가이드 투어 완료 여부 |
 | `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
-| `gender` | String | 성별 (`MALE` / `FEMALE`) |
-| `birthDate` | LocalDate | 생년월일 (yyyy-MM-dd) |
-| `regionName` | String | 지역명, 미설정 시 `""` |
-| `regionCode` | String | 지역 코드, 미설정 시 `""` |
+| `guideTourCompletedOutfitBook` | boolean | 코디북 화면 가이드 투어 완료 여부 |
+| `email` | String | 사용자 계정 이메일 |
+| `gender` | String | `MALE` / `FEMALE` / `OTHER` |
+| `birthDate` | String | 생년월일 (yyyy-MM-dd) |
+| `regionName` | String | 지역명 |
+| `regionCode` | String | 지역 코드 |
 | `profileImageUrl` | String | 프로필 이미지 URL |
 | `profileBio` | String | 한 줄 소개 |
 | `externalLinkUrl` | String | 외부 링크 URL |
-| `styleCodes` | String[] | 선호 스타일 코드 목록, 대표 스타일 우선 정렬, 미설정 시 `[]` |
+| `styleCodes` | String[] | 선호 스타일 코드 목록 |
 | `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
-| `socialAccounts` | Object[] | 연결된 소셜 로그인 제공자와 제공자 이메일 목록. 조회 전용 |
+| `socialAccounts` | Object[] | 소셜 계정 상세 목록 (`provider`, `providerEmail`) |
 
-#### PATCH /api/v1/users/guide-tour 요청 필드
+#### POST /api/v1/users/profile/image 요청
 
-페이지별 가이드 투어 완료 여부를 부분 업데이트합니다. `null`인 필드는 기존 값을 유지합니다.
+`multipart/form-data` 형식으로 전송합니다.
+
+| 파트 | 필수 | 설명 |
+| --- | --- | --- |
+| `file` | Y | 업로드할 이미지 파일 (jpg, png 등) |
+
+#### POST /api/v1/users/profile/image 응답 필드
 
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
-| `home` | Boolean | 홈 가이드 투어 완료 여부. null 시 유지 |
-| `wardrobe` | Boolean | 옷장 가이드 투어 완료 여부. null 시 유지 |
-| `feed` | Boolean | 피드 가이드 투어 완료 여부. null 시 유지 |
-| `mypage` | Boolean | 마이페이지 가이드 투어 완료 여부. null 시 유지 |
-
-#### POST /api/v1/users/profile/image
-
-프로필 이미지 파일을 업로드하고 프로필 저장에 사용할 이미지 URL을 반환합니다.
-반환된 `imageUrl`은 `PATCH /api/v1/users/profile` 요청의 `profileImageUrl`에 전달해 저장합니다.
-
-요청:
-
-```text
-Content-Type: multipart/form-data
-field: file
-```
-
-응답:
-
-```json
-{
-  "success": true,
-  "data": {
-    "imageUrl": "http://localhost:8080/api/v1/images/profile/1/sample.jpg"
-  },
-  "message": null
-}
-```
+| `imageUrl` | String | 업로드된 이미지의 공개 URL. PATCH /profile의 profileImageUrl에 사용 |
 
 #### POST /api/v1/users/onboarding 요청 필드
 
-온보딩 마지막 단계에서 한 번 호출합니다. 프로필, 선호 스타일, 마케팅 정보 수신 동의 여부는 같은 트랜잭션에서 함께 저장되며, 일부 정보만 저장된 상태를 남기지 않습니다.
-
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
-| `nickname` | Y | 닉네임. 영문 소문자, 숫자, 마침표(`.`), 밑줄(`_`)만 3~30자 |
+| `nickname` | Y | 닉네임 |
 | `birthDate` | Y | 생년월일 (yyyy-MM-dd) |
-| `gender` | Y | 사용자 성별: `MALE` / `FEMALE` |
+| `gender` | Y | `MALE` / `FEMALE` |
 | `regionName` | Y | 지역명 |
 | `regionCode` | Y | 지역 코드 |
-| `styleCodes` | Y | 선호 스타일 code 배열 (2~10개). 배열 순서 기준 첫 번째는 대표 스타일(+7), 나머지는 보조 스타일(+3), 선택하지 않은 스타일은 0점으로 반영합니다. |
-| `marketingAgreed` | Y | 마케팅 정보 수신 동의 여부. 선택 동의이므로 `false` 저장 가능 |
+| `styleCodes` | Y | 선호 스타일 코드 배열 (2~10개). 배열 순서 기준 첫 번째가 대표 스타일(+7), 나머지가 보조 스타일(+3) |
+| `marketingAgreed` | Y | 마케팅 정보 수신 동의 여부 |
 
 #### POST /api/v1/users/onboarding 응답 필드
 
-`GET /api/v1/users/profile` 응답 필드와 동일한 본인 프로필 정보를 반환합니다.
+GET /api/v1/users/profile 응답 필드와 동일합니다.
+
+#### GET /api/v1/users/nickname/check 쿼리 파라미터
+
+| 파라미터 | 필수 | 설명 |
+| --- | --- | --- |
+| `nickname` | Y | 확인할 닉네임 |
+
+#### GET /api/v1/users/nickname/check 응답 필드
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `nickname` | String | 정규화된 닉네임 |
+| `available` | boolean | 사용 가능 여부 |
+| `message` | String | 사용 가능/불가 사유 메시지 |
 
 #### POST /api/v1/users/styles 요청 필드
 
@@ -242,6 +226,30 @@ field: file
 | `styleCodes` | Y | 스타일 코드 배열 (2~10개, 예: `["CASUAL", "MINIMAL"]`). 저장 시 사용자별 전체 스타일 row를 보장하고, 배열 순서 기준 첫 번째는 대표 스타일(+7), 나머지는 보조 스타일(+3), 선택하지 않은 스타일은 0점으로 반영합니다. |
 
 허용 스타일 코드: `CASUAL`, `STREET`, `MINIMAL`, `SPORTY`, `CLASSIC`, `CHIC`, `WORKWEAR`, `CITYBOY`, `GORPCORE`, `RETRO`
+
+#### PATCH /api/v1/users/guide-tour 요청 필드
+
+페이지별 가이드 투어 완료 여부를 업데이트합니다. null인 필드는 기존 값을 유지합니다.
+
+| 필드 | 필수 | 설명                                              |
+| --- | --- |-------------------------------------------------|
+| `home` | N | 홈 화면 투어 완료 여부. null 시 기존 값 유지                        |
+| `wardrobe` | N | 옷장 화면 투어 완료 여부. null 시 기존 값 유지                       |
+| `feed` | N | 피드 화면 투어 완료 여부. null 시 기존 값 유지                       |
+| `mypage` | N | 마이페이지 투어 완료 여부. null 시 기존 값 유지 (마이페이지 완성 시 활성화)    |
+| `outfitBook` | N | 코디북 화면 투어 완료 여부. null 시 기존 값 유지 (코디북 완성 시 활성화)    |
+
+요청 예시:
+
+```json
+{
+  "home": true,
+  "wardrobe": null,
+  "feed": null,
+  "mypage": null,
+  "outfitBook": null
+}
+```
 
 ### 마케팅 동의
 

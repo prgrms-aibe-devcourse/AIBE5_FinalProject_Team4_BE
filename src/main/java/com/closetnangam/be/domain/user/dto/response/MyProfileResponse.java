@@ -13,6 +13,7 @@ public record MyProfileResponse(
         boolean guideTourCompletedWardrobe,
         boolean guideTourCompletedFeed,
         boolean guideTourCompletedMypage,
+        boolean guideTourCompletedOutfitBook,
         User.Gender gender,
         LocalDate birthDate,
         String regionName,

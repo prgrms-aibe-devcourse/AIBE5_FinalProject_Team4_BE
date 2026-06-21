@@ -1,7 +1,7 @@
 ---
 doc_type: be_database
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-10
+last_updated: 2026-06-16
 erd_version: v2.3
 ---
 
@@ -123,14 +123,15 @@ erd_version: v2.3
 
 | 컬럼 | 의미 |
 | --- | --- |
+| `status` | 계정 상태. `ACTIVE` / `WITHDRAWN`. 탈퇴 시 `WITHDRAWN`으로 변경 |
+| `withdrawn_at` | 탈퇴 처리 시각. 활성 계정은 `NULL`, 탈퇴 시 탈퇴 시각으로 설정. 30일 보존 후 처리 기준 |
 | `profile_bio` | 프로필 소개 문구 |
 | `external_link_url` | 대표 외부 링크 URL (단일) |
-| `status` | 계정 상태: `ACTIVE`, `WITHDRAWN` |
-| `guide_tour_completed_home` | 홈 가이드 투어 완료 여부. 기본값 `false` |
-| `guide_tour_completed_wardrobe` | 옷장 가이드 투어 완료 여부. 기본값 `false` |
-| `guide_tour_completed_feed` | 피드 가이드 투어 완료 여부. 기본값 `false` |
-| `guide_tour_completed_mypage` | 마이페이지 가이드 투어 완료 여부. 기본값 `false` |
-| `withdrawn_at` | 회원 탈퇴 시각. 탈퇴 이력이 없는 활성 계정은 `NULL` |
+| `guide_tour_completed_home` | 홈 화면 가이드 투어 완료 여부. 최초 false, 완료/건너뛰기 시 true |
+| `guide_tour_completed_wardrobe` | 옷장 화면 가이드 투어 완료 여부. 최초 false, 완료/건너뛰기 시 true |
+| `guide_tour_completed_feed` | 피드 화면 가이드 투어 완료 여부. 최초 false, 완료/건너뛰기 시 true |
+| `guide_tour_completed_mypage` | 마이페이지 가이드 투어 완료 여부. 당분간 미사용 (마이페이지 미완성) |
+| `guide_tour_completed_outfit_book` | 코디북 화면 가이드 투어 완료 여부. 당분간 미사용 (코디북 미완성) |
 
 ### `SOCIAL_ACCOUNTS`
 
@@ -154,7 +155,7 @@ erd_version: v2.3
 
 | 대상 | BE 엔티티 | 비고 |
 | --- | --- | --- |
-| `USERS` | `User` | `profile_bio`, `external_link_url` 매핑 완료 |
+| `USERS` | `User` | `profile_bio`, `external_link_url`, `guide_tour_completed_*` 매핑 완료 |
 | `SOCIAL_ACCOUNTS` | `SocialAccount` | `created_at` + `last_login_at`만 매핑 |
 | `USER_EXTERNAL_LINKS` | `UserExternalLink` | 엔티티·Repository만. **마이페이지 CRUD API는 후속 (USER-002)** |
 | `FEED_*`, `USER_FOLLOWS` | 미구현 | 엔티티 셸 또는 없음. 룩피드 도메인 후속 |

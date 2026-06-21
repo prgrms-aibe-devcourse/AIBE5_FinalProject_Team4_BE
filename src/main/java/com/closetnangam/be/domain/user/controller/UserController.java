@@ -1,7 +1,7 @@
 package com.closetnangam.be.domain.user.controller;
 
-import com.closetnangam.be.domain.user.dto.request.UpdateGuideTourRequest;
 import com.closetnangam.be.domain.user.dto.request.CompleteOnboardingRequest;
+import com.closetnangam.be.domain.user.dto.request.UpdateGuideTourRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateProfileRequest;
 import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
 import com.closetnangam.be.domain.user.dto.request.MarketingConsentUpdateRequest;
@@ -80,22 +80,23 @@ public class UserController {
             description = "페이지별 가이드 투어 완료 여부를 업데이트합니다. null인 필드는 기존 값을 유지합니다.")
     @PatchMapping("/guide-tour")
     public ResponseEntity<ApiResponse<Void>> updateGuideTour(
-            @RequestBody UpdateGuideTourRequest request) {
+            @RequestBody UpdateGuideTourRequest request
+    ) {
         Long userId = SecurityUtils.getCurrentUserId();
         userService.updateGuideTour(userId, request);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
-    @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지 파일을 업로드하고 프로필 저장에 사용할 imageUrl을 반환합니다. 반환된 imageUrl은 PATCH /api/v1/users/profile의 profileImageUrl에 전달해 저장합니다.")
+
+    @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지를 업로드하고 저장된 이미지 URL을 반환합니다. 반환된 URL을 PATCH /profile의 profileImageUrl 필드에 사용하세요.")
     @PostMapping(value = "/profile/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProfileImageUploadResponse>> uploadProfileImage(
             @RequestPart("file") MultipartFile file
     ) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok(userService.uploadProfileImage(userId, file)));
+        return ResponseEntity.ok(ApiResponse.ok(userService.uploadProfileImage(userId, file)));
     }
 
-    @Operation(summary = "스타일 선호도 저장", description = "선택한 스타일 코드 목록을 저장합니다. 사용자별 전체 스타일 row를 보장하고 preference_weight만 갱신합니다. 배열 순서 기준 첫 번째 스타일은 대표(+7), 나머지는 보조(+3), 선택하지 않은 스타일은 0으로 낮춥니다. wardrobe_weight, feedback_weight는 유지됩니다.")
+    @Operation(summary = "스타일 선호도 저장", description = "선택한 스타일 코드 목록을 저장합니다. 기존 UserStyle row를 보존하면서 preference_weight만 갱신합니다. 배열 순서 기준 첫 번째 스타일은 대표(+7), 나머지는 보조(+3), 선택 해제된 스타일은 0으로 낮춥니다. wardrobe_weight, feedback_weight는 유지됩니다.")
     @PostMapping("/styles")
     public ResponseEntity<ApiResponse<Void>> updateStyles(
             @Valid @RequestBody UpdateStylesRequest request

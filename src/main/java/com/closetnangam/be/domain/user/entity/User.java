@@ -83,6 +83,9 @@ public class User extends BaseEntity {
     @Column(name = "guide_tour_completed_mypage", nullable = false)
     private boolean guideTourCompletedMypage;
 
+    @Column(name = "guide_tour_completed_outfit_book", nullable = false)
+    private boolean guideTourCompletedOutfitBook;
+
     public enum Gender {
         MALE, FEMALE, OTHER
     }
@@ -195,10 +198,12 @@ public class User extends BaseEntity {
         return "SHORT_SLEEVE";
     }
 
-    public void updateGuideTour(Boolean home, Boolean wardrobe, Boolean feed, Boolean mypage) {
-        if (home != null)     this.guideTourCompletedHome = home;
-        if (wardrobe != null) this.guideTourCompletedWardrobe = wardrobe;
-        if (feed != null)     this.guideTourCompletedFeed = feed;
-        if (mypage != null)   this.guideTourCompletedMypage = mypage;
+    public void updateGuideTour(Boolean home, Boolean wardrobe, Boolean feed, Boolean mypage, Boolean outfitBook) {
+        if (home != null)       this.guideTourCompletedHome = home;
+        if (wardrobe != null)   this.guideTourCompletedWardrobe = wardrobe;
+        if (feed != null)       this.guideTourCompletedFeed = feed;
+        if (mypage != null)     this.guideTourCompletedMypage = mypage;
+        if (outfitBook != null) this.guideTourCompletedOutfitBook = outfitBook;
     }
+
 }

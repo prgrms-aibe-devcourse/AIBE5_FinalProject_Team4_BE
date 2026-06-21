@@ -178,7 +178,6 @@ public class UserService {
             throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
         }
 
-        // 선택 필드는 null 전달 시 기존 값 유지
         String nextProfileImageUrl = profileImageUrl != null
                 ? profileImageUrl : user.getProfileImageUrl();
         String nextProfileBio = profileBio != null
@@ -242,7 +241,7 @@ public class UserService {
     public void updateGuideTour(Long userId, UpdateGuideTourRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
-        user.updateGuideTour(request.home(), request.wardrobe(), request.feed(), request.mypage());
+        user.updateGuideTour(request.home(), request.wardrobe(), request.feed(), request.mypage(), request.outfitBook());
     }
 
     @Transactional
@@ -330,6 +329,7 @@ public class UserService {
                 user.isGuideTourCompletedWardrobe(),
                 user.isGuideTourCompletedFeed(),
                 user.isGuideTourCompletedMypage(),
+                user.isGuideTourCompletedOutfitBook(),
                 user.getGender(),
                 user.getBirthDate(),
                 user.getRegionName(),
