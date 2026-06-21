@@ -149,10 +149,11 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 
 | 필드 | 필수 | 설명                                              |
 | --- | --- |-------------------------------------------------|
-| `home` | N | 홈 화면 투어 완료 여부. null 시 기존 값 유지                   |
-| `wardrobe` | N | 옷장 화면 투어 완료 여부. null 시 기존 값 유지                  |
-| `feed` | N | 피드 화면 투어 완료 여부. null 시 기존 값 유지                  |
-| `mypage` | N | 마이페이지 투어 완료 여부. null 시 기존 값 유지 (마이페이지 완성 시 활성화) |
+| `home` | N | 홈 화면 투어 완료 여부. null 시 기존 값 유지                        |
+| `wardrobe` | N | 옷장 화면 투어 완료 여부. null 시 기존 값 유지                       |
+| `feed` | N | 피드 화면 투어 완료 여부. null 시 기존 값 유지                       |
+| `mypage` | N | 마이페이지 투어 완료 여부. null 시 기존 값 유지 (마이페이지 완성 시 활성화)    |
+| `outfitBook` | N | 코디북 화면 투어 완료 여부. null 시 기존 값 유지 (코디북 완성 시 활성화)    |
 
 요청 예시:
 
@@ -161,7 +162,8 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
   "home": true,
   "wardrobe": null,
   "feed": null,
-  "mypage": null
+  "mypage": null,
+  "outfitBook": null
 }
 ```
 
