@@ -37,7 +37,7 @@ public enum ClothesSeason {
     public static ClothesSeason fromTemperature(double temp) {
         if (temp < 5.0) return WINTER;
         if (temp < 20.0) return FALL;
-        if (temp < 28.0) return SPRING;
+        if (temp < 24.0) return SPRING;
         return SUMMER;
     }
 

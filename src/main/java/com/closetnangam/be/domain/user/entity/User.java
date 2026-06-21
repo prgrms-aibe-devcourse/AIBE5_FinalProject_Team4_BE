@@ -25,9 +25,6 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 public class User extends BaseEntity {
 
-    private static final LocalDate DEFAULT_BIRTH_DATE = LocalDate.of(2000, 1, 1);
-    private static final LocalDateTime INACTIVE_TIMESTAMP = LocalDateTime.of(1970, 1, 1, 0, 0);
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
@@ -36,7 +33,7 @@ public class User extends BaseEntity {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(unique = true, length = 50)
     private String nickname;
 
     @Column(name = "profile_image_url", nullable = false, length = 500)
@@ -48,7 +45,7 @@ public class User extends BaseEntity {
     @Column(name = "external_link_url", nullable = false, length = 255)
     private String externalLinkUrl;
 
-    @Column(name = "birth_date", nullable = false)
+    @Column(name = "birth_date")
     private LocalDate birthDate;
 
     @Enumerated(EnumType.STRING)
@@ -64,14 +61,14 @@ public class User extends BaseEntity {
     @Column(name = "marketing_agreed", nullable = false)
     private Boolean marketingAgreed;
 
-    @Column(name = "marketing_agreed_at", nullable = false)
+    @Column(name = "marketing_agreed_at")
     private LocalDateTime marketingAgreedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private UserStatus status;
 
-    @Column(name = "withdrawn_at", nullable = false)
+    @Column(name = "withdrawn_at")
     private LocalDateTime withdrawnAt;
 
     @Column(name = "guide_tour_completed_home", nullable = false)
@@ -133,9 +130,6 @@ public class User extends BaseEntity {
         if (externalLinkUrl == null) {
             externalLinkUrl = "";
         }
-        if (birthDate == null) {
-            birthDate = DEFAULT_BIRTH_DATE;
-        }
         if (gender == null) {
             gender = Gender.OTHER;
         }
@@ -148,14 +142,8 @@ public class User extends BaseEntity {
         if (marketingAgreed == null) {
             marketingAgreed = false;
         }
-        if (marketingAgreedAt == null) {
-            marketingAgreedAt = INACTIVE_TIMESTAMP;
-        }
         if (status == null) {
             status = UserStatus.ACTIVE;
-        }
-        if (withdrawnAt == null) {
-            withdrawnAt = INACTIVE_TIMESTAMP;
         }
     }
 
@@ -186,16 +174,21 @@ public class User extends BaseEntity {
 
     public void restore() {
         this.status = UserStatus.ACTIVE;
-        this.withdrawnAt = INACTIVE_TIMESTAMP;
+        this.withdrawnAt = null;
     }
 
     public boolean isOnboarded() {
-        return !DEFAULT_BIRTH_DATE.equals(this.birthDate);
+        return this.nickname != null
+                && this.birthDate != null
+                && this.gender != null
+                && this.gender != Gender.OTHER
+                && this.regionCode != null
+                && !this.regionCode.isBlank();
     }
 
     public void updateMarketingAgreement(boolean marketingAgreed) {
         this.marketingAgreed = marketingAgreed;
-        this.marketingAgreedAt = marketingAgreed ? LocalDateTime.now() : INACTIVE_TIMESTAMP;
+        this.marketingAgreedAt = marketingAgreed ? LocalDateTime.now() : null;
     }
 
     public String getDefaultAnchorItemType() {

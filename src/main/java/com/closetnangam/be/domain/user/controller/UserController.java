@@ -6,6 +6,8 @@ import com.closetnangam.be.domain.user.dto.request.UpdateStylesRequest;
 import com.closetnangam.be.domain.user.dto.request.MarketingConsentUpdateRequest;
 import com.closetnangam.be.domain.user.dto.response.MarketingConsentResponse;
 import com.closetnangam.be.domain.user.dto.response.MyProfileResponse;
+import com.closetnangam.be.domain.user.dto.response.NicknameAvailabilityResponse;
+import com.closetnangam.be.domain.user.dto.response.ProfileImageUploadResponse;
 import com.closetnangam.be.domain.user.dto.response.UserProfileResponse;
 import com.closetnangam.be.domain.user.service.UserService;
 import com.closetnangam.be.global.auth.util.SecurityUtils;
@@ -16,6 +18,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,7 +29,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "User", description = "사용자 API")
 @RestController
@@ -35,7 +42,7 @@ public class UserController {
 
     private final UserService userService;
 
-    @Operation(summary = "내 프로필 조회", description = "현재 로그인한 사용자의 userId, nickname, onboarded를 반환합니다.")
+    @Operation(summary = "내 프로필 조회", description = "현재 로그인한 사용자의 기본 프로필, 온보딩 여부, 지역, 선호 스타일, 소셜 로그인 제공자 정보를 반환합니다.")
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<MyProfileResponse>> getMyProfile() {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -47,6 +54,15 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserProfileResponse>> getUserProfile(@PathVariable Long userId) {
         SecurityUtils.verifyUserIdMatch(userId);
         return ResponseEntity.ok(ApiResponse.ok(userService.getUserProfile(userId)));
+    }
+
+    @Operation(summary = "닉네임 사용 가능 여부 확인", description = "온보딩과 마이페이지 편집에서 사용할 닉네임 규칙과 중복 여부를 확인합니다.")
+    @GetMapping("/nickname/check")
+    public ResponseEntity<ApiResponse<NicknameAvailabilityResponse>> checkNicknameAvailability(
+            @RequestParam String nickname
+    ) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.ok(userService.checkNicknameAvailability(userId, nickname)));
     }
 
     @Operation(summary = "프로필 수정", description = "닉네임, 생년월일, 성별, 지역, 프로필 이미지, 한 줄 소개, 외부 링크를 저장합니다. 온보딩 및 마이페이지에서 공통으로 사용합니다. 저장 후 onboarded 여부를 응답에 포함합니다.")
@@ -78,6 +94,15 @@ public class UserController {
         Long userId = SecurityUtils.getCurrentUserId();
         userService.updateStyles(userId, request);
         return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    @Operation(summary = "온보딩 완료 저장", description = "온보딩 마지막 단계에서 프로필, 선호 스타일, 마케팅 동의 여부를 하나의 트랜잭션으로 저장합니다.")
+    @PostMapping("/onboarding")
+    public ResponseEntity<ApiResponse<MyProfileResponse>> completeOnboarding(
+            @Valid @RequestBody CompleteOnboardingRequest request
+    ) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.ok(userService.completeOnboarding(userId, request)));
     }
 
     @Operation(summary = "회원 탈퇴", description = "회원 상태를 WITHDRAWN으로 변경하고 인증 쿠키를 삭제합니다.")

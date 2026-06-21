@@ -65,6 +65,18 @@ public enum ClothesItemType {
         return ClothesItemType.valueOf(code);
     }
 
+    public static ClothesItemType fromCodeOrDefault(String code) {
+        if (code == null || code.isBlank()) return LONG_SLEEVE;
+        try {
+            return ClothesItemType.valueOf(code.toUpperCase().replace(" ", "_"));
+        } catch (IllegalArgumentException e) {
+            for (ClothesItemType type : values()) {
+                if (type.getLabel().equals(code)) return type;
+            }
+            return LONG_SLEEVE;
+        }
+    }
+
     public static List<ClothesItemType> byCategory(ClothesCategory category) {
         return Arrays.stream(values())
                 .filter(itemType -> itemType.category == category)

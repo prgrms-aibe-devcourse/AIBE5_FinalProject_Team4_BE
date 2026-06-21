@@ -24,10 +24,12 @@ public class WeatherCompatibilityTable {
         return switch (type) {
             case "SHORT_SLEEVE", "SLEEVELESS", "SHORTS", "SANDALS_SLIPPERS" -> 1.0;
             case "COLLAR_TEE", "SKIRT" -> 0.9;
+            case "FLAT", "LOAFER" -> 0.9;
+            case "BOOTS", "ANKLE_BOOTS" -> 0.2;
             case "SHIRT", "COTTON", "DENIM" -> 0.6;
-            case "LONG_SLEEVE", "KNIT", "SWEAT", "HOODIE", "SLACKS" -> 0.3;
-            case "PADDING", "COAT", "HEAVY", "LEATHER_JACKET" -> 0.0;
-            default -> 0.5;
+            case "LONG_SLEEVE", "KNIT", "SWEAT", "HOODIE", "SLACKS" -> 0.2;
+            case "PADDING", "COAT", "HEAVY", "LEATHER_JACKET", "CARDIGAN", "JACKET", "BLAZER", "WINDBREAKER", "HOOD_ZIPUP", "DENIM_JACKET", "VARSITY_JACKET", "WORK_JACKET", "MA1", "BLOUSON" -> 0.0;
+            default -> 0.3;
         };
     }
 
@@ -46,7 +48,9 @@ public class WeatherCompatibilityTable {
         return switch (type) {
             case "LONG_SLEEVE", "KNIT", "SHIRT", "SWEAT", "HOODIE" -> 1.0;
             case "DENIM_JACKET", "BLOUSON", "BLAZER", "VEST", "MA1", "WINDBREAKER", "HOOD_ZIPUP", "VARSITY_JACKET", "WORK_JACKET" -> 0.9;
+            case "BOOTS", "ANKLE_BOOTS" -> 0.9;
             case "DENIM", "SLACKS", "COTTON", "CARGO", "SKIRT" -> 0.8;
+            case "FLAT", "LOAFER", "SNEAKERS" -> 0.8;
             case "SLEEVELESS", "SHORTS" -> 0.2;
             case "PADDING", "HEAVY" -> 0.1;
             default -> 0.5;
@@ -66,8 +70,10 @@ public class WeatherCompatibilityTable {
     private static double scoreForCold(String type) {
         return switch (type) {
             case "PADDING", "HEAVY", "SHEARLING", "DOUBLE_COAT", "TTEOKBOKKI_COAT", "KNIT", "FLEECE_JACKET" -> 1.0;
+            case "BOOTS", "ANKLE_BOOTS" -> 1.0;
             case "SINGLE_COAT", "BALMACAAN_COAT", "MA1", "SWEAT", "HOODIE" -> 0.7;
             case "DENIM", "SLACKS", "COTTON" -> 0.6;
+            case "FLAT", "LOAFER" -> 0.5;
             case "SHORT_SLEEVE", "SHORTS", "SLEEVELESS", "SANDALS_SLIPPERS" -> 0.0;
             default -> 0.5;
         };

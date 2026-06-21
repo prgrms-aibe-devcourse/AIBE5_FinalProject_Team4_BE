@@ -6,16 +6,31 @@ import com.closetnangam.be.domain.clothes.dto.response.ClothesResponse;
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothingColor;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
+import com.closetnangam.be.domain.clothes.enums.ClothesGender;
+import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.clothes.scoring.ClothesTagSnapshot;
 import com.closetnangam.be.domain.recommendation.dto.response.SimilarProductRecommendationResponse;
+import com.closetnangam.be.domain.recommendation.entity.RecommendationFeedback;
+import com.closetnangam.be.domain.recommendation.repository.RecommendationFeedbackRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
 import com.closetnangam.be.global.external.naver.service.NaverApiService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 
 /**
@@ -30,7 +45,18 @@ import java.util.stream.Stream;
 @Transactional(readOnly = true)
 public class SimilarProductRecommendationService {
 
+    private static final int RECOMMENDATION_COUNT = 50;
+    private static final int INTERNAL_CANDIDATE_COUNT = 300;
+    private static final int INTERNAL_RECOMMENDATION_LIMIT = 40;
+    private static final int NAVER_RECOMMENDATION_LIMIT = 10;
+    private static final int SEARCH_DISPLAY_COUNT = 50;
+    private static final int SEARCH_PAGE_COUNT = 2;
+    private static final List<Integer> SEARCH_START_INDEXES = List.of(1, 51, 101, 151, 201);
+    private static final List<String> SEARCH_SORT_OPTIONS = List.of("sim", "date");
+
     private final WardrobeClothesRepository wardrobeClothesRepository;
+    private final ClothesRepository clothesRepository;
+    private final RecommendationFeedbackRepository recommendationFeedbackRepository;
     private final NaverApiService naverApiService;
 
     /**
@@ -46,7 +72,12 @@ public class SimilarProductRecommendationService {
 
         Clothes baseClothes = wardrobeClothes.getClothes();
         String query = buildSearchQuery(wardrobeClothes);
-        List<NaverShoppingProductResponse> products = naverApiService.searchShoppingProducts(query);
+        List<NaverShoppingProductResponse> products = searchSimilarProducts(
+                userId,
+                baseClothes,
+                wardrobeClothes.getWardrobe().getUser().getGender(),
+                query
+        );
 
         return new SimilarProductRecommendationResponse(
                 ClothesResponse.from(baseClothes, wardrobeClothes),
@@ -83,6 +114,231 @@ public class SimilarProductRecommendationService {
     }
 
     /**
+     * 새로고침마다 같은 상품만 반복되지 않도록 네이버 검색 페이지와 정렬 기준을 섞어 후보를 모은다.
+     *
+     * <p>최종 응답도 셔플해 같은 후보군이어도 노출 순서가 고정되지 않게 한다. 네이버 API 기본 검색 개수는
+     * 다른 기능에 영향을 줄 수 있으므로 유사상품 추천에서만 50개를 명시적으로 요청한다.</p>
+     */
+    private List<NaverShoppingProductResponse> searchSimilarProducts(
+            Long userId,
+            Clothes baseClothes,
+            User.Gender userGender,
+            String query
+    ) {
+        List<Integer> starts = new ArrayList<>(SEARCH_START_INDEXES);
+        Collections.shuffle(starts);
+
+        Map<String, NaverShoppingProductResponse> internalProductByKey = new LinkedHashMap<>();
+        List<Long> excludedClothesIds = findExcludedClothesIds(userId);
+        clothesRepository.findSimilarProductInternalCandidates(
+                        baseClothes.getId(),
+                        excludedClothesIds,
+                        baseClothes.getCategory(),
+                        allowedClothesGenders(userGender),
+                        PageRequest.of(0, INTERNAL_CANDIDATE_COUNT)
+                ).stream()
+                .map(candidate -> new InternalSimilarityCandidate(candidate, calculateInternalSimilarityScore(baseClothes, candidate)))
+                .filter(candidate -> candidate.score() > 0)
+                .sorted(Comparator
+                        .comparingInt(InternalSimilarityCandidate::score).reversed()
+                        .thenComparing(candidate -> candidate.clothes().getCreatedAt(), Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(candidate -> candidate.clothes().getId(), Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(INTERNAL_RECOMMENDATION_LIMIT)
+                .map(InternalSimilarityCandidate::clothes)
+                .map(this::toInternalProductResponse)
+                .forEach(product -> internalProductByKey.putIfAbsent(deduplicationKey(product), product));
+
+        Map<String, NaverShoppingProductResponse> naverProductByKey = new LinkedHashMap<>();
+        for (int index = 0; index < Math.min(SEARCH_PAGE_COUNT, starts.size()); index++) {
+            String sort = randomSort();
+            List<NaverShoppingProductResponse> products = naverApiService.searchShoppingProducts(
+                    query,
+                    SEARCH_DISPLAY_COUNT,
+                    starts.get(index),
+                    sort
+            );
+            for (NaverShoppingProductResponse product : products) {
+                String key = deduplicationKey(product);
+                if (!internalProductByKey.containsKey(key)) {
+                    naverProductByKey.putIfAbsent(key, product);
+                }
+            }
+        }
+
+        List<NaverShoppingProductResponse> products = new ArrayList<>(RECOMMENDATION_COUNT);
+        products.addAll(internalProductByKey.values().stream()
+                .limit(INTERNAL_RECOMMENDATION_LIMIT)
+                .toList());
+        products.addAll(naverProductByKey.values().stream()
+                .limit(NAVER_RECOMMENDATION_LIMIT)
+                .toList());
+
+        if (products.size() < RECOMMENDATION_COUNT) {
+            Set<String> selectedKeys = new HashSet<>();
+            products.forEach(product -> selectedKeys.add(deduplicationKey(product)));
+            Stream.concat(internalProductByKey.values().stream(), naverProductByKey.values().stream())
+                    .filter(product -> selectedKeys.add(deduplicationKey(product)))
+                    .limit(RECOMMENDATION_COUNT - products.size())
+                    .forEach(products::add);
+        }
+        return products;
+    }
+
+    private int calculateInternalSimilarityScore(Clothes baseClothes, Clothes candidate) {
+        int score = 0;
+
+        if (equalsNormalized(baseClothes.getItemType(), candidate.getItemType())) {
+            score += 30;
+        }
+
+        List<String> baseColors = sortedColorCodes(baseClothes);
+        List<String> candidateColors = sortedColorCodes(candidate);
+        if (!baseColors.isEmpty() && !candidateColors.isEmpty()) {
+            if (baseColors.get(0).equals(candidateColors.get(0))) {
+                score += 20;
+            }
+            score += 8 * intersectionCount(
+                    new HashSet<>(baseColors.subList(Math.min(1, baseColors.size()), baseColors.size())),
+                    new HashSet<>(candidateColors.subList(Math.min(1, candidateColors.size()), candidateColors.size()))
+            );
+        }
+
+        List<String> baseStyles = sortedStyleCodes(baseClothes);
+        List<String> candidateStyles = sortedStyleCodes(candidate);
+        if (!baseStyles.isEmpty() && !candidateStyles.isEmpty()) {
+            if (baseStyles.get(0).equals(candidateStyles.get(0))) {
+                score += 20;
+            }
+            score += 10 * intersectionCount(
+                    new HashSet<>(baseStyles.subList(Math.min(1, baseStyles.size()), baseStyles.size())),
+                    new HashSet<>(candidateStyles.subList(Math.min(1, candidateStyles.size()), candidateStyles.size()))
+            );
+        }
+
+        if (baseClothes.getSeason() != null
+                && candidate.getSeason() != null
+                && baseClothes.getSeason() == candidate.getSeason()) {
+            score += 8;
+        }
+
+        score += 10 * intersectionCount(
+                extractDesignKeywordSet(baseClothes),
+                extractDesignKeywordSet(candidate)
+        );
+
+        if (equalsNormalized(baseClothes.getBrandName(), candidate.getBrandName())) {
+            score += 3;
+        }
+
+        return score;
+    }
+
+    private List<String> sortedColorCodes(Clothes clothes) {
+        return clothes.getSortedColorTags().stream()
+                .map(ClothingColor::getColorCode)
+                .map(this::normalizeComparisonValue)
+                .filter(value -> !value.isBlank())
+                .toList();
+    }
+
+    private List<String> sortedStyleCodes(Clothes clothes) {
+        return clothes.getSortedStyleTags().stream()
+                .map(styleTag -> styleTag.getStyle().getCode())
+                .map(this::normalizeComparisonValue)
+                .filter(value -> !value.isBlank())
+                .toList();
+    }
+
+    private Set<String> extractDesignKeywordSet(Clothes clothes) {
+        String keywords = extractDesignKeywords(clothes);
+        if (!StringUtils.hasText(keywords)) {
+            return Set.of();
+        }
+        return Set.of(keywords.split("\\s+"));
+    }
+
+    private int intersectionCount(Set<String> left, Set<String> right) {
+        if (left.isEmpty() || right.isEmpty()) {
+            return 0;
+        }
+        Set<String> copied = new HashSet<>(left);
+        copied.retainAll(right);
+        return copied.size();
+    }
+
+    private boolean equalsNormalized(String left, String right) {
+        String normalizedLeft = normalizeComparisonValue(left);
+        return !normalizedLeft.isBlank() && normalizedLeft.equals(normalizeComparisonValue(right));
+    }
+
+    private String normalizeComparisonValue(String value) {
+        return normalize(value).toUpperCase();
+    }
+
+    private List<ClothesGender> allowedClothesGenders(User.Gender userGender) {
+        if (userGender == null || userGender == User.Gender.OTHER) {
+            return List.of(ClothesGender.values());
+        }
+        ClothesGender targetGender = ClothesGender.fromUserGender(userGender);
+        return List.of(targetGender, ClothesGender.UNISEX);
+    }
+
+    private List<Long> findExcludedClothesIds(Long userId) {
+        List<Long> excluded = new ArrayList<>();
+        excluded.addAll(wardrobeClothesRepository.findOwnedClothesIdsByUserId(userId, com.closetnangam.be.domain.clothes.enums.OwnershipStatus.OWNED));
+        excluded.addAll(wardrobeClothesRepository.findOwnedClothesIdsByUserId(userId, com.closetnangam.be.domain.clothes.enums.OwnershipStatus.WISHLIST));
+        recommendationFeedbackRepository.findAllByUserId(userId).stream()
+                .filter(RecommendationFeedback::isExcluded)
+                .map(feedback -> feedback.getClothes().getId())
+                .forEach(excluded::add);
+        if (excluded.isEmpty()) {
+            return List.of(-1L);
+        }
+        return excluded.stream().distinct().toList();
+    }
+
+    private NaverShoppingProductResponse toInternalProductResponse(Clothes clothes) {
+        String productId = StringUtils.hasText(clothes.getExternalProductId()) && !"NONE".equalsIgnoreCase(clothes.getExternalProductId())
+                ? clothes.getExternalProductId()
+                : "CLOTHES_" + clothes.getId();
+        ClothesTagSnapshot tagSnapshot = clothes.getRecommendationTagSnapshot();
+        return new NaverShoppingProductResponse(
+                clothes.getName(),
+                normalize(clothes.getExternalProductUrl()),
+                normalize(clothes.getImageUrl()),
+                null,
+                null,
+                normalize(clothes.getExternalSource()),
+                productId,
+                "INTERNAL",
+                normalize(clothes.getBrandName()),
+                normalize(clothes.getBrandName()),
+                "패션의류",
+                getGenderCategoryLabel(clothes),
+                normalize(clothes.getCategory()),
+                getItemTypeLabel(clothes),
+                clothes.getId(),
+                "INTERNAL",
+                tagSnapshot.primaryColor(),
+                tagSnapshot.primaryStyleCode()
+        );
+    }
+
+    private String randomSort() {
+        return SEARCH_SORT_OPTIONS.get(ThreadLocalRandom.current().nextInt(SEARCH_SORT_OPTIONS.size()));
+    }
+
+    private String deduplicationKey(NaverShoppingProductResponse product) {
+        if (product.productId() != null && !product.productId().isBlank()) {
+            return product.productId().trim();
+        }
+        if (product.link() != null && !product.link().isBlank()) {
+            return product.link().trim();
+        }
+        return product.title() == null ? "" : product.title().trim();
+    }
+
+    /**
      * 성별 키워드는 네이버 쇼핑 결과의 성별 카테고리를 좁히는 데 효과가 크다.
      * OTHER 또는 미입력 상태는 성별을 강제로 제한하지 않는다.
      */
@@ -97,6 +353,14 @@ public class SimilarProductRecommendationService {
         return "";
     }
 
+    private String getGenderCategoryLabel(Clothes clothes) {
+        return switch (clothes.getGender()) {
+            case MALE -> "남성의류";
+            case FEMALE -> "여성의류";
+            case UNISEX -> "공용의류";
+        };
+    }
+
     /**
      * DB에는 색상 코드(BLACK, WHITE 등)가 저장되므로 쇼핑 검색에 자연스러운 한국어 라벨로 바꾼다.
      * 혹시 enum에 없는 값이 저장되어 있어도 추천 API 전체가 실패하지 않도록 원본 값을 사용한다.
@@ -108,7 +372,7 @@ public class SimilarProductRecommendationService {
                 .orElse("");
 
         try {
-            return ClothesColor.fromCode(primaryColorCode).getLabel();
+            return ClothesColor.fromCodeOrDefault(primaryColorCode).getLabel();
         } catch (IllegalArgumentException e) {
             return normalize(primaryColorCode);
         }
@@ -182,7 +446,7 @@ public class SimilarProductRecommendationService {
      */
     private String getItemTypeLabel(Clothes clothes) {
         try {
-            return ClothesItemType.fromCode(clothes.getItemType()).getLabel();
+            return ClothesItemType.fromCodeOrDefault(clothes.getItemType()).getLabel();  // 수정
         } catch (IllegalArgumentException e) {
             return normalize(clothes.getItemType());
         }
@@ -197,5 +461,8 @@ public class SimilarProductRecommendationService {
             return "";
         }
         return value.trim();
+    }
+
+    private record InternalSimilarityCandidate(Clothes clothes, int score) {
     }
 }

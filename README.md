@@ -185,6 +185,24 @@ docker compose up -d
 http://localhost:8080/swagger-ui.html
 ```
 
+<h2 align="center"> 🚀 AWS Deployment </h2>
+
+<p align="center">
+  운영 환경은 <strong>EC2 + RDS + S3</strong> 기준입니다. 이미지 업로드는 우선 EC2 디스크를 사용하고, <code>img_url</code> S3 연동은 후속 작업입니다.
+</p>
+
+| 문서 | 설명 |
+| --- | --- |
+| [docs/deploy/aws-setup.md](docs/deploy/aws-setup.md) | RDS·S3·EC2 생성 및 OAuth 설정 |
+| [deploy/README.md](deploy/README.md) | Docker Compose 배포 스크립트 |
+
+```bash
+cd deploy
+cp env.prod.example .env
+cp ../src/main/resources/application-prod.yml.example application-prod.yml
+./scripts/deploy.sh
+```
+
 <h2 align="center"> 🦖 "Team 우주 최강 공룡" 🚀</h2>
 
 <table align="center">

@@ -3,7 +3,6 @@ package com.closetnangam.be.domain.recommendation.dto.request;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -21,7 +20,7 @@ public record AiMdOutfitSaveRequest(
         @Size(max = 50) String season,
         String reason,
         String stylingTip,
-        @NotEmpty List<Long> wardrobeClothesIds,
+        List<Long> wardrobeClothesIds,
         List<@Valid NaverShoppingProductResponse> externalProducts
 ) {
 }

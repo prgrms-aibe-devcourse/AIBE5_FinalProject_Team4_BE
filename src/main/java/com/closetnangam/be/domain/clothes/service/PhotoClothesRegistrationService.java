@@ -22,7 +22,8 @@ import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
-import com.closetnangam.be.global.storage.LocalImageStorageService;
+import com.closetnangam.be.global.storage.ImageStorageService;
+import com.closetnangam.be.global.storage.StoredImage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -46,13 +47,13 @@ public class PhotoClothesRegistrationService {
     private final WardrobeDuplicateGuard wardrobeDuplicateGuard;
     private final WardrobeService wardrobeService;
     private final UserRepository userRepository;
-    private final LocalImageStorageService localImageStorageService;
+    private final ImageStorageService imageStorageService;
     private final ObjectMapper objectMapper;
 
     @Transactional
     public PhotoUploadResponse uploadPhoto(Long userId, MultipartFile file) {
         User user = getUser(userId);
-        LocalImageStorageService.StoredImage storedImage = localImageStorageService.storeClothesPhoto(userId, file);
+        StoredImage storedImage = imageStorageService.storeClothesPhoto(userId, file);
 
         ClothingAiPhoto photo = clothingAiPhotoRepository.save(ClothingAiPhoto.builder()
                 .user(user)

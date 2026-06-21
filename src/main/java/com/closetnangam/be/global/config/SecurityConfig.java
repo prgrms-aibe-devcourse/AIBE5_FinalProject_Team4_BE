@@ -1,14 +1,17 @@
 package com.closetnangam.be.global.config;
 
 import com.closetnangam.be.global.auth.jwt.CookieBearerTokenResolver;
+import com.closetnangam.be.global.auth.oauth.OAuth2FailureHandler;
 import com.closetnangam.be.global.auth.oauth.OAuth2SuccessHandler;
 import com.closetnangam.be.global.auth.oauth.OAuth2UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -31,18 +34,22 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/swagger-resources/**",
             "/webjars/**",
-            "/login/**",
+            "/login/oauth2/**",
             "/oauth2/**",
             "/api/v1/categories/**",
             "/api/categories/**",
             "/api/v1/clothes/registration-methods",
             "/api/naver/**",
             "/api/weather/**",
-            "/api/v1/auth/**"
+            "/api/v1/auth/**",
+            "/actuator/health",
+            "/actuator/health/**",
+            "/api/v1/legal/**",
     };
 
     private final OAuth2UserService oAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final OAuth2FailureHandler oAuth2FailureHandler;
     private final Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter;
     private final CookieBearerTokenResolver cookieBearerTokenResolver;
     private final CorsConfigurationSource corsConfigurationSource;
@@ -58,6 +65,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -67,11 +75,30 @@ public class SecurityConfig {
                 .oauth2Login(oauth -> oauth
                         .userInfoEndpoint(e -> e.userService(oAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
+                        .failureHandler(oAuth2FailureHandler)
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .bearerTokenResolver(cookieBearerTokenResolver)
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                );
+
+        return http.build();
+    }
+
+    /**
+     * 비-local 프로파일 탈퇴 계정 복구 체인 (@Order 0): OAuth 세션의 복구 대기 정보를 읽습니다.
+     */
+    @Bean
+    @Profile("!local")
+    @Order(0)
+    public SecurityFilterChain authRestoreSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/api/v1/auth/restore-withdrawn")
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().permitAll()
                 );
 
         return http.build();
@@ -86,10 +113,7 @@ public class SecurityConfig {
     @Order(1)
     public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher(request -> {
-                    String uri = request.getRequestURI();
-                    return uri != null && uri.startsWith("/api/");
-                })
+                .securityMatcher(SecurityConfig::isApiRequest)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
@@ -111,29 +135,38 @@ public class SecurityConfig {
     }
 
     /**
-     * 비-local 프로파일 OAuth 체인 (@Order 2): /api/** 이외 경로(소셜 로그인 콜백 등)를 처리합니다.
-     * PUBLIC_URLS를 공유해 /oauth2/**, /login/** 외 공개 경로도 누락 없이 허용합니다.
+     * 비-local 프로파일 OAuth 체인 (@Order 2): 소셜 로그인 시작/콜백 경로만 처리합니다.
      */
     @Bean
     @Profile("!local")
     @Order(2)
     public SecurityFilterChain oauthSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher(request -> {
-                    String uri = request.getRequestURI();
-                    return uri == null || !uri.startsWith("/api/");
-                })
+                .securityMatcher(SecurityConfig::isOAuthRequest)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(PUBLIC_URLS).permitAll()
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 )
                 .oauth2Login(oauth -> oauth
                         .userInfoEndpoint(e -> e.userService(oAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
+                        .failureHandler(oAuth2FailureHandler)
                 );
 
         return http.build();
+    }
+
+    static boolean isApiRequest(HttpServletRequest request) {
+        return hasPathPrefix(request, "/api");
+    }
+
+    static boolean isOAuthRequest(HttpServletRequest request) {
+        return hasPathPrefix(request, "/oauth2") || hasPathPrefix(request, "/login/oauth2");
+    }
+
+    private static boolean hasPathPrefix(HttpServletRequest request, String prefix) {
+        String uri = request.getRequestURI();
+        return uri != null && (uri.equals(prefix) || uri.startsWith(prefix + "/"));
     }
 }

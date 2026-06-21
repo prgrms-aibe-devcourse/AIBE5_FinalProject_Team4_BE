@@ -92,6 +92,8 @@ erd_version: v2.3
 
 ### `USER_STYLES`
 
+사용자별 전체 스타일 row를 보장하고, 선택하지 않은 스타일의 `preference_weight`는 0으로 둡니다.
+
 | 컬럼 | 의미 |
 | --- | --- |
 | `preference_weight` | 온보딩/마이페이지에서 사용자가 선택한 스타일 점수 |

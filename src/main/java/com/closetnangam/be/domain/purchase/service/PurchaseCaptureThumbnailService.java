@@ -1,9 +1,9 @@
 package com.closetnangam.be.domain.purchase.service;
 
-import com.closetnangam.be.global.config.StorageProperties;
 import com.closetnangam.be.global.external.gemini.dto.GeminiPurchaseCaptureItem;
 import com.closetnangam.be.global.external.gemini.dto.GeminiThumbnailRegion;
-import com.closetnangam.be.global.storage.LocalImageStorageService;
+import com.closetnangam.be.global.storage.ImageStorageService;
+import com.closetnangam.be.global.storage.StoredImage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -13,10 +13,8 @@ import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,15 +27,10 @@ public class PurchaseCaptureThumbnailService {
     private static final int MIN_USEFUL_CROP_PX = 96;
     private static final double REGION_PADDING_RATIO = 0.12;
 
-    private final LocalImageStorageService localImageStorageService;
-    private final StorageProperties storageProperties;
+    private final ImageStorageService imageStorageService;
 
-    public PurchaseCaptureThumbnailService(
-            LocalImageStorageService localImageStorageService,
-            StorageProperties storageProperties
-    ) {
-        this.localImageStorageService = localImageStorageService;
-        this.storageProperties = storageProperties;
+    public PurchaseCaptureThumbnailService(ImageStorageService imageStorageService) {
+        this.imageStorageService = imageStorageService;
     }
 
     /**
@@ -61,7 +54,7 @@ public class PurchaseCaptureThumbnailService {
             return items;
         }
 
-        byte[] sourceBytes = localImageStorageService.readStoredImage(storedPath);
+        byte[] sourceBytes = imageStorageService.readStoredImage(storedPath);
         BufferedImage sourceImage = readImage(sourceBytes);
         if (sourceImage == null) {
             log.warn("[구매내역AI] 캡처 원본을 읽지 못해 상품 썸네일을 생성하지 않습니다. captureId={}", captureId);
@@ -191,18 +184,13 @@ public class PurchaseCaptureThumbnailService {
             BufferedImage cropped = sourceImage.getSubimage(crop.x(), crop.y(), crop.width(), crop.height());
             BufferedImage rgb = toRgbImage(cropped);
 
-            String fileName = captureId + "-item-" + itemIndex + ".jpg";
-            Path targetDirectory = Paths.get(
-                    storageProperties.getLocal().getBasePath(),
-                    "purchase-captures",
-                    String.valueOf(userId)
+            StoredImage storedImage = imageStorageService.storePurchaseCaptureThumbnail(
+                    userId,
+                    captureId,
+                    itemIndex,
+                    toJpegBytes(rgb)
             );
-            Files.createDirectories(targetDirectory);
-            Path targetPath = targetDirectory.resolve(fileName);
-            ImageIO.write(rgb, "jpg", targetPath.toFile());
-
-            return storageProperties.getLocal().getBaseUrl()
-                    + "/purchase-captures/" + userId + "/" + fileName;
+            return storedImage.publicUrl();
         } catch (IOException | RuntimeException exception) {
             log.warn(
                     "[구매내역AI] 상품 썸네일 크롭 실패. userId={}, captureId={}, itemIndex={}: {}",
@@ -277,6 +265,12 @@ public class PurchaseCaptureThumbnailService {
         graphics.drawImage(source, 0, 0, null);
         graphics.dispose();
         return rgb;
+    }
+
+    private static byte[] toJpegBytes(BufferedImage image) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ImageIO.write(image, "jpg", outputStream);
+        return outputStream.toByteArray();
     }
 
     private static GeminiPurchaseCaptureItem copyItem(GeminiPurchaseCaptureItem item, String imageUrl) {

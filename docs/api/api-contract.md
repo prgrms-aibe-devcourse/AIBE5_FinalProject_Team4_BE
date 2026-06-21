@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-15
+last_updated: 2026-06-19
 ---
 
 # API 계약
@@ -67,11 +67,23 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 - Refresh Token은 `refresh_token` HttpOnly 쿠키로 전달되며 `/api/v1/auth` 경로에서만 전송됩니다.
 - Access Token이 만료(401)되면 `POST /api/v1/auth/refresh`를 호출해 재발급합니다.
 - 로그아웃 시 `POST /api/v1/auth/logout`을 호출해 서버에서 Refresh Token을 삭제합니다.
+- 탈퇴 후 30일 이내 계정으로 OAuth 로그인을 시도하면 자동 로그인하지 않고 FE에 복구 확인 상태를 전달합니다. 사용자가 복구를 확정하면 `POST /api/v1/auth/restore-withdrawn`으로 계정을 복구하고 인증 쿠키를 발급합니다.
+- OAuth 인증 실패(provider 오류, token 교환 실패, 사용자 정보 조회 실패 등)는 FE redirect URI로 `error=oauth_failed` query를 붙여 전달합니다. FE는 해당 query를 감지하면 로그인 실패 안내를 표시하고 URL query를 정리합니다.
 - 사용자별 리소스는 JWT의 사용자 ID와 path의 `userId`가 일치해야 합니다.
+
+### OAuth redirect query
+
+OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합니다.
+
+| Query | 발생 조건 | FE 처리 기준 |
+| --- | --- | --- |
+| 없음 | OAuth 로그인 성공 및 인증 쿠키 발급 완료 | 사용자 프로필 조회 후 온보딩 또는 메인 화면으로 분기 |
+| `withdrawn=restore_required` | 탈퇴 후 30일 이내 계정으로 로그인해 복구 확인이 필요한 경우 | 복구 확인 UI를 표시하고 사용자가 확정하면 `POST /api/v1/auth/restore-withdrawn` 호출 |
+| `error=oauth_failed` | OAuth provider 인증 오류, token 교환 실패, 사용자 정보 조회 실패 등 로그인 실패 | 로그인 실패 안내를 표시하고 query를 제거해 재시도 가능한 상태로 정리 |
 
 ## 이미지 업로드 기준
 
-- 옷 사진과 구매내역 캡처는 multipart form-data로 업로드합니다.
+- 옷 사진, 구매내역 캡처, 피드 이미지, 프로필 이미지는 multipart form-data로 업로드합니다.
 - 요청 part 이름은 `file`입니다.
 - 이미지 파일 크기는 10MB 이하입니다.
 - 이미지 저장은 AWS S3 기준으로 관리합니다.
@@ -83,8 +95,10 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | Method | Path                               | 설명              |
 |--------|------------------------------------|-----------------|
 | GET    | `/oauth2/authorization/{provider}` | OAuth 로그인 시작    |
+| GET    | `/login/oauth2/code/{provider}`    | OAuth provider callback. 직접 호출하지 않으며 성공/실패 후 FE redirect URI로 이동 |
 | POST   | `/api/v1/auth/refresh`             | Access Token 재발급 |
 | POST   | `/api/v1/auth/logout`              | 로그아웃            |
+| POST   | `/api/v1/auth/restore-withdrawn`   | 탈퇴 계정 복구 확정 |
 
 ### 사용자
 | Method | Path | 설명 |
@@ -113,9 +127,9 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
-| `nickname` | Y | 닉네임 (50자 이하) |
+| `nickname` | Y | 닉네임. 영문 소문자, 숫자, 마침표(`.`), 밑줄(`_`)만 3~30자 |
 | `birthDate` | Y | 생년월일 (yyyy-MM-dd) |
-| `gender` | Y | `MALE` / `FEMALE` / `OTHER` |
+| `gender` | Y | `MALE` / `FEMALE` |
 | `regionName` | Y | 지역명 (예: 서울) |
 | `regionCode` | Y | 지역 코드 |
 | `profileImageUrl` | N | 프로필 이미지 URL. 생략 시 기존 값 유지 |
@@ -127,6 +141,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
 | `userId` | Long | 사용자 ID |
+| `email` | String | 사용자 계정 이메일 |
 | `nickname` | String | 저장된 닉네임 |
 | `onboarded` | boolean | 온보딩 완료 여부. 저장 후 true이면 메인 페이지로 이동 |
 | `guideTourCompletedHome` | boolean | 홈 화면 가이드 투어 완료 여부 |
@@ -139,7 +154,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 
 | 필드 | 필수 | 설명 |
 | --- | --- | --- |
-| `styleCodes` | Y | 스타일 코드 배열 (1~3개, 예: `["CASUAL", "MINIMAL"]`). 배열 순서 기준 첫 번째가 대표 스타일(+7), 나머지가 보조 스타일(+3)로 반영됩니다. |
+| `styleCodes` | Y | 스타일 코드 배열 (2~10개, 예: `["CASUAL", "MINIMAL"]`). 저장 시 사용자별 전체 스타일 row를 보장하고, 배열 순서 기준 첫 번째는 대표 스타일(+7), 나머지는 보조 스타일(+3), 선택하지 않은 스타일은 0점으로 반영합니다. |
 
 허용 스타일 코드: `CASUAL`, `STREET`, `MINIMAL`, `SPORTY`, `CLASSIC`, `CHIC`, `WORKWEAR`, `CITYBOY`, `GORPCORE`, `RETRO`
 
@@ -176,7 +191,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 
 #### 마케팅 정보 수신 동의 변경
 
-필수 약관인 이용약관과 개인정보 처리방침은 회원가입 시 자동 동의 기준으로 처리하며, 사용자별 약관 버전/동의 시각은 별도로 저장하지 않습니다. 선택 동의인 마케팅 정보 수신 동의는 `USERS.marketing_agreed`, `USERS.marketing_agreed_at` 기준으로 관리합니다.
+필수 약관인 이용약관과 개인정보 처리방침은 회원가입 시 자동 동의 기준으로 처리하며, 사용자별 약관 버전/동의 시각은 별도로 저장하지 않습니다. 선택 동의인 마케팅 정보 수신 동의는 `USERS.marketing_agreed`, `USERS.marketing_agreed_at` 기준으로 관리합니다. `marketing_agreed_at`은 동의 상태일 때 실제 동의 시각을 저장하고, 미동의 또는 철회 상태에서는 `NULL`로 관리합니다.
 
 **PATCH** `/api/v1/users/{userId}/marketing-consent`
 
@@ -195,6 +210,32 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
   "success": true,
   "data": {
     "marketingAgreed": true
+  },
+  "message": null
+}
+```
+
+### 약관
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| GET | `/api/v1/legal/terms` | 서비스 이용약관 markdown 원문 조회 |
+| GET | `/api/v1/legal/privacy-policy` | 개인정보 처리방침 markdown 원문 조회 |
+| GET | `/api/v1/legal/marketing-consent` | 마케팅 정보 수신 동의 markdown 원문 조회 |
+
+약관 원본은 BE `docs/legal/`에 두고, 실제 적용된 버전은 `docs/legal/versions/`에 보관합니다. API는 최신본의 frontmatter를 metadata로 분리하고 markdown 본문을 `content`로 반환합니다.
+
+응답 예시:
+
+```json
+{
+  "success": true,
+  "data": {
+    "policyType": "terms",
+    "version": "2026.06.15",
+    "effectiveDate": "2026-06-15",
+    "lastUpdated": "2026-06-15",
+    "content": "# 서비스 이용약관\n\n..."
   },
   "message": null
 }
@@ -346,6 +387,12 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save` | 선택한 AI MD 코디 후보 저장 |
 
+#### 유사 상품 추천 (`GET .../similar-products`)
+
+JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해당 사용자의 활성 옷장 항목이어야 하며, `WARDROBE_CLOTHES.ownership_status`가 `OWNED` 또는 `WISHLIST`인 옷을 모두 기준 옷으로 사용할 수 있습니다. 응답의 `products`는 네이버쇼핑 후보와 `EXTERNAL_SHOPPING` 공용 `CLOTHES` 후보를 함께 정리한 유사상품 목록이며 최대 50개입니다. 내부 공용 후보는 기준 사용자의 성별과 `UNISEX` 상품만 포함하되, 사용자 성별이 `OTHER`이거나 없으면 내부 후보 성별을 제한하지 않습니다. 이 단계에서는 추천 상품을 저장하지 않습니다.
+
+`products[]`는 기존 `NaverShoppingProduct` 형태를 유지하지만, 내부 DB 후보를 구분하기 위해 `clothesId`와 `candidateSource`를 함께 반환합니다. `candidateSource=NAVER`인 후보는 `clothesId=null`일 수 있고 DB 태그가 없어 `primaryColor`/`primaryStyle`은 `null`입니다. `candidateSource=INTERNAL`인 후보는 피드백·위시리스트 연결에 사용할 수 있는 `clothesId`를 포함하며, DB 태그가 있으면 `primaryColor`/`primaryStyle`에 대표 색상·대표 스타일 코드가 내려옵니다. 내부 후보는 가격 정보가 없어 `lowestPrice`/`highestPrice`가 `null`일 수 있고, 구매 링크가 없는 데이터는 `link=""`로 내려올 수 있으므로 FE는 가격·구매 버튼을 nullable 기준으로 렌더링해야 합니다.
+
 #### 옷장 기반 어울리는 옷 추천 (`GET .../recommendations`)
 
 옷장에 등록한 보유 옷 1벌을 기준으로 **같은 카테고리를 제외한 `EXTERNAL_SHOPPING` 공용 DB 후보**를 점수화해 카테고리별로 반환합니다. `PHOTO`·`PURCHASE_HISTORY` 등 다른 사용자 개인 등록 마스터는 후보에 포함하지 않습니다. 옷장에 이미 등록된 `clothesId`(본인 보유)는 후보에서 제외됩니다.
@@ -444,7 +491,12 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "reason": "Style Match: 0.9, Weather Match: 1.0",
       "brandName": "브랜드명",
       "category": "카테고리",
-      "primaryColor": "대표 색상",
+      "primaryColor": "GRAY",
+      "primaryColorDisplay": {
+        "code": "GRAY",
+        "name": "그레이",
+        "hex": "#9E9E9E"
+      },
       "primaryStyle": "스타일",
       "clothesId": 123
     }
@@ -488,6 +540,18 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
           "favorite": false
         },
         "outer": null,
+        "shoes": {
+          "clothesId": 103,
+          "wardrobeClothesId": 3,
+          "name": "신발 이름",
+          "brand": "브랜드",
+          "color": "WHITE",
+          "imageUrl": "https://...",
+          "externalProductUrl": "https://...",
+          "category": "SHOES",
+          "itemType": "SNEAKERS",
+          "favorite": false
+        },
         "totalScore": 2.5
       }
     ],
@@ -498,7 +562,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: `outer` 필드는 기온에 따라 외투가 필요 없는 경우(HOT, WARM) `null`로 반환됩니다.
+> **Note**: `outer` 필드는 기온에 따라 외투가 필요 없는 경우(HOT, WARM) `null`로 반환됩니다. `shoes` 필드는 외부 쇼핑몰 후보를 포함해 신발 후보가 전혀 없는 경우 `null`로 반환될 수 있으므로, FE는 `outer` 및 `shoes` 필드 모두 `null` 가능성을 고려해 렌더링을 분기해야 합니다. `wardrobeClothesId`는 보유 옷이 부족해 외부 쇼핑몰 상품으로 보충된 경우 `null`로 반환될 수 있습니다.
 
 #### 추천 피드백 제출
 
@@ -579,7 +643,9 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
           "category1": "패션의류",
           "category2": "남성의류",
           "category3": "티셔츠",
-          "category4": ""
+          "category4": "",
+          "clothesId": null,
+          "candidateSource": "NAVER"
         },
         "reason": "MD 말투가 반영된 추천 이유"
       }
@@ -589,7 +655,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색을 여러 번 수행하고, 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 10개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 10개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 사용자가 상품 카드에서 저장 버튼을 누르면 `POST /api/users/{userId}/wishlist-clothes`로 미보유 옷을 저장합니다. 유사 상품 추천 결과도 같은 저장 API를 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
+> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색과 내부 `EXTERNAL_SHOPPING` 공용 후보를 함께 사용하고, 내부 후보는 선택한 MD 성별과 `UNISEX` 상품만 포함합니다. 내부 후보는 DB 태그가 있으면 `product.primaryColor`/`product.primaryStyle`에 대표 색상·대표 스타일 코드를 포함하고, 네이버 후보는 해당 값이 `null`입니다. 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 40개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 40개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 상품 카드 액션은 `candidateSource` 기준으로 분기합니다. `candidateSource=INTERNAL`이고 `clothesId`가 있으면 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`로 기존 공용 옷을 위시리스트에 연결하고, 같은 `clothesId`로 `POST /api/v1/users/{userId}/recommendations/feedback`에 저장/싫어요/추천 제외 피드백을 제출할 수 있습니다. `candidateSource=NAVER`이고 `clothesId=null`인 후보만 `POST /api/users/{userId}/wishlist-clothes` 신규 생성 플로우를 사용합니다. `link=""`이면 구매 버튼을 숨기거나 비활성화합니다. 유사 상품 추천 결과도 동일한 `candidateSource` 분기 기준을 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
 
 #### AI MD 코디 추천 응답 (AiMdOutfitRecommendationResponse)
 
@@ -639,7 +705,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 보유 옷을 최소 1개 포함해야 하며, 보유 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부 상품은 필수가 아니므로 보유 옷만으로 필수 세 카테고리가 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
+> **Note**: 코디 추천은 Gemini가 4개 코디 후보를 구성하지만 이 단계에서는 `OUTFITS`, `OUTFIT_ITEMS`, 외부 `Clothes`를 저장하지 않습니다. 각 후보는 사용자 옷장 등록 옷(`OWNED`, `WISHLIST`)과 외부/내부 추천 상품 후보를 자유롭게 섞을 수 있으며, `ownedItems`가 빈 배열이어도 유효합니다. 옷장 등록 옷과 외부 상품을 합친 전체 구성에 `TOP`, `BOTTOM`, `SHOES`가 각각 최소 1개 있어야 합니다. `OUTER`는 선택 사항입니다. 외부/내부 추천 상품만으로 필수 세 카테고리가 완성된 후보도 유효하며, 옷장 등록 옷만으로 완성된 후보도 유효합니다. 프론트는 사용자가 선택한 후보만 저장 API로 전달합니다.
 
 #### AI MD 추천 코디 저장 요청/응답
 
@@ -651,12 +717,73 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
   "season": "ALL_SEASON",
   "reason": "MD 말투가 반영된 코디 추천 이유",
   "stylingTip": "스타일링 팁",
-  "wardrobeClothesIds": [1, 2, 3],
-  "externalProducts": []
+  "wardrobeClothesIds": [],
+  "externalProducts": [
+    {
+      "title": "추천 상의",
+      "link": "https://example.com/top",
+      "image": "https://example.com/top.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_100",
+      "productType": "INTERNAL",
+      "brand": "브랜드",
+      "maker": "브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "TOP",
+      "category4": "반팔티",
+      "clothesId": 100,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "BLACK",
+      "primaryStyle": "STREET"
+    },
+    {
+      "title": "추천 하의",
+      "link": "https://example.com/bottom",
+      "image": "https://example.com/bottom.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_101",
+      "productType": "INTERNAL",
+      "brand": "브랜드",
+      "maker": "브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "BOTTOM",
+      "category4": "팬츠",
+      "clothesId": 101,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "BLACK",
+      "primaryStyle": "STREET"
+    },
+    {
+      "title": "추천 신발",
+      "link": "https://example.com/shoes",
+      "image": "https://example.com/shoes.jpg",
+      "lowestPrice": null,
+      "highestPrice": null,
+      "mallName": "INTERNAL",
+      "productId": "CLOTHES_102",
+      "productType": "INTERNAL",
+      "brand": "브랜드",
+      "maker": "브랜드",
+      "category1": "패션의류",
+      "category2": "남성의류",
+      "category3": "SHOES",
+      "category4": "스니커즈",
+      "clothesId": 102,
+      "candidateSource": "INTERNAL",
+      "primaryColor": "WHITE",
+      "primaryStyle": "STREET"
+    }
+  ]
 }
 ```
 
-위 예시의 `wardrobeClothesIds`는 각각 `TOP`, `BOTTOM`, `SHOES`인 보유 옷을 의미합니다. 저장 요청도 추천 후보와 동일하게 사용자 보유 옷을 최소 1개 포함하고, `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부 상품 없이 보유 옷만으로 완성할 수 있으며, 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
+`wardrobeClothesIds`는 선택 사항이며 `null` 또는 빈 배열일 수 있습니다. 값이 있으면 현재 사용자의 `OWNED` 또는 `WISHLIST` 옷장 항목만 사용됩니다. 저장 요청은 `wardrobeClothesIds`와 `externalProducts`를 합쳐 `TOP`, `BOTTOM`, `SHOES`가 모두 구성되어야 합니다. 외부/내부 추천 상품만으로 완성할 수 있고, 외부 상품 없이 옷장 등록 옷만으로도 완성할 수 있습니다. 필수 카테고리가 누락되면 `400 Bad Request`를 반환합니다.
 
 저장 성공 시에는 선택된 코디 1개가 `OUTFITS`, `OUTFIT_ITEMS`에 저장되고, 응답은 저장된 `outfit`과 구성 옷 목록을 포함합니다. 저장된 구성 옷은 코디북 조회 응답의 `outfits[].items`에서도 다시 조회할 수 있습니다.
 
@@ -781,6 +908,125 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | --- | --- | --- |
 | GET | `/api/v1/images/clothes/{userId}/{filename}` | 옷 이미지 조회 |
 | GET | `/api/v1/images/purchase-captures/{userId}/{filename}` | 구매내역 캡처 이미지 조회 |
+| GET | `/api/v1/images/feed/{userId}/{filename}` | 피드 이미지 조회 |
+| GET | `/api/v1/images/profile/{userId}/{filename}` | 프로필 이미지 조회 |
+
+### 룩피드 (FEED-001~008)
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| POST | `/api/v1/feed/posts` | FEED-001 피드 업로드 |
+| GET | `/api/v1/feed/posts` | FEED-002 공개 피드 목록 |
+| GET | `/api/v1/feed/posts/{postId}` | FEED-003 피드 상세 |
+| PUT | `/api/v1/feed/posts/{postId}` | 피드 수정 |
+| DELETE | `/api/v1/feed/posts/{postId}` | 피드 삭제 |
+| GET | `/api/v1/feed/users/{userId}/posts` | 사용자 공유 피드 목록 |
+| POST | `/api/v1/feed/images` | 피드 이미지 업로드 (`multipart/form-data`, field: `file`) |
+| POST | `/api/v1/feed/posts/{postId}/likes` | FEED-004 좋아요 토글 |
+| POST | `/api/v1/feed/posts/{postId}/saves` | FEED-005 저장 토글 |
+| GET | `/api/v1/feed/posts/{postId}/comments` | FEED-006/007 댓글·대댓글 목록 |
+| POST | `/api/v1/feed/posts/{postId}/comments` | FEED-006/007 댓글·대댓글 작성 |
+| PUT | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 수정 (작성자 본인만) |
+| DELETE | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 삭제 |
+| POST | `/api/v1/feed/users/{followeeId}/follows` | FEED-008 팔로우 토글 |
+
+#### POST /api/v1/feed/posts — 피드 업로드
+
+```json
+{
+  "outfitId": 1,
+  "caption": "오늘의 데일리룩",
+  "imageUrls": [
+    "http://localhost:8080/api/v1/images/feed/1/sample.jpg"
+  ]
+}
+```
+
+- `outfitId`는 선택. 본인 코디북의 활성 코디만 연결 가능
+- `imageUrls`는 최소 1장, 최대 10장
+
+#### GET /api/v1/feed/posts — 피드 목록
+
+Query: `page`(default 0), `size`(default 20, max 50)
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "feedPostId": 1,
+        "author": {
+          "userId": 1,
+          "nickname": "closet",
+          "profileImageUrl": "https://..."
+        },
+        "outfit": { "...": "OutfitResponse 또는 null" },
+        "caption": "오늘의 데일리룩",
+        "images": [
+          {
+            "feedPostImageId": 1,
+            "imageUrl": "http://localhost:8080/api/v1/images/feed/1/sample.jpg",
+            "sortOrder": 0
+          }
+        ],
+        "likeCount": 3,
+        "commentCount": 1,
+        "likedByMe": false,
+        "savedByMe": false,
+        "hidden": false,
+        "mine": false,
+        "createdAt": "2026-06-09T12:00:00",
+        "updatedAt": "2026-06-09T12:00:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "hasNext": false
+  }
+}
+```
+
+> **Note**: FEED-009 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
+
+#### PUT /api/v1/feed/posts/{postId}/comments/{commentId} — 댓글 수정
+
+작성자 본인만 수정 가능. `parentCommentId`는 수정 시 무시됩니다.
+
+요청:
+
+```json
+{
+  "content": "수정된 댓글 내용 (최대 1000자)"
+}
+```
+
+응답:
+
+```json
+{
+  "success": true,
+  "data": {
+    "feedCommentId": 1,
+    "feedPostId": 10,
+    "author": {
+      "userId": 1,
+      "nickname": "closet",
+      "profileImageUrl": "https://..."
+    },
+    "parentCommentId": null,
+    "content": "수정된 댓글 내용",
+    "replies": [],
+    "createdAt": "2026-06-09T12:00:00",
+    "isOwner": true
+  }
+}
+```
+
+- 본인이 아니면 403 반환
+- 존재하지 않는 댓글이면 404 반환
 
 ## API 변경 규칙
 
