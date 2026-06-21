@@ -44,7 +44,8 @@ public class UserService {
                 user.isGuideTourCompletedHome(),
                 user.isGuideTourCompletedWardrobe(),
                 user.isGuideTourCompletedFeed(),
-                user.isGuideTourCompletedMypage()
+                user.isGuideTourCompletedMypage(),
+                user.isGuideTourCompletedOutfitBook()   // 추가
         );
     }
 
@@ -92,7 +93,8 @@ public class UserService {
                 user.isGuideTourCompletedHome(),
                 user.isGuideTourCompletedWardrobe(),
                 user.isGuideTourCompletedFeed(),
-                user.isGuideTourCompletedMypage()
+                user.isGuideTourCompletedMypage(),
+                user.isGuideTourCompletedOutfitBook()
         );
     }
 
@@ -140,7 +142,7 @@ public class UserService {
     public void updateGuideTour(Long userId, UpdateGuideTourRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다. userId=" + userId));
-        user.updateGuideTour(request.home(), request.wardrobe(), request.feed(), request.mypage());
+        user.updateGuideTour(request.home(), request.wardrobe(), request.feed(), request.mypage(), request.outfitBook());
     }
 
     @Transactional

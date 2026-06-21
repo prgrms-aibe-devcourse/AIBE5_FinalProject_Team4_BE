@@ -4,5 +4,6 @@ public record UpdateGuideTourRequest(
         Boolean home,
         Boolean wardrobe,
         Boolean feed,
-        Boolean mypage
+        Boolean mypage,
+        Boolean outfitBook
 ) {}

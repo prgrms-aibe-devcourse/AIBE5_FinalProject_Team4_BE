@@ -127,6 +127,7 @@ erd_version: v2.3
 | `guide_tour_completed_wardrobe` | 옷장 화면 가이드 투어 완료 여부. 최초 false, 완료/건너뛰기 시 true |
 | `guide_tour_completed_feed` | 피드 화면 가이드 투어 완료 여부. 최초 false, 완료/건너뛰기 시 true |
 | `guide_tour_completed_mypage` | 마이페이지 가이드 투어 완료 여부. 당분간 미사용 (마이페이지 미완성) |
+| `guide_tour_completed_outfit_book` | 코디북 화면 가이드 투어 완료 여부. 당분간 미사용 (코디북 미완성) |
 
 ### `SOCIAL_ACCOUNTS`
 

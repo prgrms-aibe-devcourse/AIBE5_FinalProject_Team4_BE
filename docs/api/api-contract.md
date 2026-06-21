@@ -107,6 +107,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `guideTourCompletedWardrobe` | boolean | 옷장 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
 | `guideTourCompletedFeed`     | boolean | 피드 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
 | `guideTourCompletedMypage`   | boolean | 마이페이지 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true (마이페이지 미완성으로 당분간 미사용) |
+| `guideTourCompletedOutfitBook` | boolean | 코디북 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
 
 #### PATCH /api/v1/users/profile 요청 필드
 
@@ -132,6 +133,7 @@ BE API는 기본적으로 `ApiResponse<T>` 형식을 사용합니다.
 | `guideTourCompletedWardrobe` | boolean | 옷장 화면 가이드 투어 완료 여부 |
 | `guideTourCompletedFeed` | boolean | 피드 화면 가이드 투어 완료 여부 |
 | `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
+| `guideTourCompletedOutfitBook` | boolean | 코디북 화면 가이드 투어 완료 여부 |
 
 #### POST /api/v1/users/styles 요청 필드
 

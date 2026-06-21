@@ -7,5 +7,6 @@ public record MyProfileResponse(
         boolean guideTourCompletedHome,
         boolean guideTourCompletedWardrobe,
         boolean guideTourCompletedFeed,
-        boolean guideTourCompletedMypage
+        boolean guideTourCompletedMypage,
+        boolean guideTourCompletedOutfitBook
 ) {}
