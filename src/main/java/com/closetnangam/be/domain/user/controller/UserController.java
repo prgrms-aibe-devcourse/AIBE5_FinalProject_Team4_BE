@@ -87,6 +87,15 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
+    @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지를 업로드하고 저장된 이미지 URL을 반환합니다. 반환된 URL을 PATCH /profile의 profileImageUrl 필드에 사용하세요.")
+    @PostMapping(value = "/profile/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ProfileImageUploadResponse>> uploadProfileImage(
+            @RequestPart("file") MultipartFile file
+    ) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.ok(userService.uploadProfileImage(userId, file)));
+    }
+
     @Operation(summary = "스타일 선호도 저장", description = "선택한 스타일 코드 목록을 저장합니다. 기존 UserStyle row를 보존하면서 preference_weight만 갱신합니다. 배열 순서 기준 첫 번째 스타일은 대표(+7), 나머지는 보조(+3), 선택 해제된 스타일은 0으로 낮춥니다. wardrobe_weight, feedback_weight는 유지됩니다.")
     @PostMapping("/styles")
     public ResponseEntity<ApiResponse<Void>> updateStyles(

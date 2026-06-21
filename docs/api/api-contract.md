@@ -105,7 +105,10 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 | --- | --- | --- |
 | GET | `/api/v1/users/profile` | 현재 로그인한 사용자 프로필 반환 (userId, nickname, onboarded, guideTour 완료 여부) |
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
+| GET | `/api/v1/users/nickname/check` | 닉네임 규칙 및 중복 여부 확인 |
 | PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 userId, nickname, onboarded 반환 |
+| POST | `/api/v1/users/profile/image` | 프로필 이미지 업로드. 저장된 이미지 URL 반환 |
+| POST | `/api/v1/users/onboarding` | 온보딩 완료 저장 (프로필 + 스타일 + 마케팅 동의 일괄 저장) |
 | POST | `/api/v1/users/styles` | 스타일 선호도 저장 (기존 row 보존, preference_weight만 갱신) |
 | PATCH | `/api/v1/users/guide-tour` | 페이지별 가이드 투어 완료 상태 업데이트 |
 | DELETE | `/api/v1/users/me` | 회원 탈퇴 (소프트 삭제, 쿠키 만료) |
@@ -122,6 +125,17 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 | `guideTourCompletedFeed`     | boolean | 피드 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
 | `guideTourCompletedMypage`   | boolean | 마이페이지 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true (마이페이지 미완성으로 당분간 미사용) |
 | `guideTourCompletedOutfitBook` | boolean | 코디북 화면 가이드 투어 완료 여부. 완료 또는 건너뛰기 시 true |
+| `email`                        | String  | 사용자 계정 이메일 |
+| `gender`                       | String  | `MALE` / `FEMALE` / `OTHER` |
+| `birthDate`                    | String  | 생년월일 (yyyy-MM-dd). 온보딩 미완료 시 기본값 2000-01-01 |
+| `regionName`                   | String  | 지역명 |
+| `regionCode`                   | String  | 지역 코드 |
+| `profileImageUrl`              | String  | 프로필 이미지 URL |
+| `profileBio`                   | String  | 한 줄 소개 |
+| `externalLinkUrl`              | String  | 외부 링크 URL |
+| `styleCodes`                   | String[] | 선호 스타일 코드 목록 (preference_weight > 0인 항목, 선호도 내림차순) |
+| `socialProviders`              | String[] | 연결된 소셜 로그인 제공자 목록 |
+| `socialAccounts`               | Object[] | 소셜 계정 상세 목록 (`provider`, `providerEmail`) |
 
 #### PATCH /api/v1/users/profile 요청 필드
 
@@ -149,6 +163,61 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 | `guideTourCompletedFeed` | boolean | 피드 화면 가이드 투어 완료 여부 |
 | `guideTourCompletedMypage` | boolean | 마이페이지 가이드 투어 완료 여부 |
 | `guideTourCompletedOutfitBook` | boolean | 코디북 화면 가이드 투어 완료 여부 |
+| `email` | String | 사용자 계정 이메일 |
+| `gender` | String | `MALE` / `FEMALE` / `OTHER` |
+| `birthDate` | String | 생년월일 (yyyy-MM-dd) |
+| `regionName` | String | 지역명 |
+| `regionCode` | String | 지역 코드 |
+| `profileImageUrl` | String | 프로필 이미지 URL |
+| `profileBio` | String | 한 줄 소개 |
+| `externalLinkUrl` | String | 외부 링크 URL |
+| `styleCodes` | String[] | 선호 스타일 코드 목록 |
+| `socialProviders` | String[] | 연결된 소셜 로그인 제공자 목록 |
+| `socialAccounts` | Object[] | 소셜 계정 상세 목록 (`provider`, `providerEmail`) |
+
+#### POST /api/v1/users/profile/image 요청
+
+`multipart/form-data` 형식으로 전송합니다.
+
+| 파트 | 필수 | 설명 |
+| --- | --- | --- |
+| `file` | Y | 업로드할 이미지 파일 (jpg, png 등) |
+
+#### POST /api/v1/users/profile/image 응답 필드
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `imageUrl` | String | 업로드된 이미지의 공개 URL. PATCH /profile의 profileImageUrl에 사용 |
+
+#### POST /api/v1/users/onboarding 요청 필드
+
+| 필드 | 필수 | 설명 |
+| --- | --- | --- |
+| `nickname` | Y | 닉네임 |
+| `birthDate` | Y | 생년월일 (yyyy-MM-dd) |
+| `gender` | Y | `MALE` / `FEMALE` |
+| `regionName` | Y | 지역명 |
+| `regionCode` | Y | 지역 코드 |
+| `styleCodes` | Y | 선호 스타일 코드 배열 (1~3개) |
+| `marketingAgreed` | Y | 마케팅 정보 수신 동의 여부 |
+
+#### POST /api/v1/users/onboarding 응답 필드
+
+GET /api/v1/users/profile 응답 필드와 동일합니다.
+
+#### GET /api/v1/users/nickname/check 쿼리 파라미터
+
+| 파라미터 | 필수 | 설명 |
+| --- | --- | --- |
+| `nickname` | Y | 확인할 닉네임 |
+
+#### GET /api/v1/users/nickname/check 응답 필드
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `nickname` | String | 정규화된 닉네임 |
+| `available` | boolean | 사용 가능 여부 |
+| `message` | String | 사용 가능/불가 사유 메시지 |
 
 #### POST /api/v1/users/styles 요청 필드
 
