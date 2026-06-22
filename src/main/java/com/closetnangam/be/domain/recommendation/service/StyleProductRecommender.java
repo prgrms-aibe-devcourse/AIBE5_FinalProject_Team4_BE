@@ -46,6 +46,7 @@ public class StyleProductRecommender {
     private final RecommendationFeedbackRepository recommendationFeedbackRepository;
     private final WardrobeStatisticsService wardrobeStatisticsService;
 
+    @Transactional
     public List<RecommendResponse> recommendByStyle(Long currentUserId, Long wardrobeId, double currentTemp) {
         wardrobeStatisticsService.getStatistics(currentUserId);
         Wardrobe wardrobe = wardrobeRepository.findById(wardrobeId)
