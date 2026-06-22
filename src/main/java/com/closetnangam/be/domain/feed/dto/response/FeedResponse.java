@@ -29,11 +29,12 @@ public record FeedResponse(
             long commentCount,
             boolean likedByMe,
             boolean savedByMe,
+            Boolean authorFollowedByMe,
             Long viewerUserId
     ) {
         return new FeedResponse(
                 post.getId(),
-                FeedAuthorResponse.from(post.getAuthor()),
+                FeedAuthorResponse.from(post.getAuthor(), authorFollowedByMe),
                 outfit,
                 post.getCaption(),
                 post.getImages().stream().map(FeedImageResponse::from).toList(),

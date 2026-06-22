@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.feed.dto.response.FeedImageUploadResponse;
 import com.closetnangam.be.domain.feed.dto.response.FeedInteractionResponse;
 import com.closetnangam.be.domain.feed.dto.response.FeedPageResponse;
 import com.closetnangam.be.domain.feed.dto.response.FeedResponse;
+import com.closetnangam.be.domain.feed.dto.response.FeedUserProfileResponse;
 import com.closetnangam.be.domain.feed.entity.FeedComment;
 import com.closetnangam.be.domain.feed.entity.FeedPost;
 import com.closetnangam.be.domain.feed.entity.FeedPostImage;
@@ -131,6 +132,36 @@ public class FeedService {
         findUser(userId);
         Pageable pageable = PageRequest.of(page, normalizeSize(size));
         Page<FeedPost> posts = feedPostRepository.findPublicFeedByAuthorId(userId, pageable);
+        return mapFeedPage(posts, viewerUserId);
+    }
+
+    public FeedUserProfileResponse getUserFeedProfile(Long userId, Long viewerUserId) {
+        User user = findUser(userId);
+        long postCount = feedPostRepository.countPublicByAuthorId(userId);
+        long followerCount = userFollowRepository.countByFollowee_Id(userId);
+        long followingCount = userFollowRepository.countByFollower_Id(userId);
+        boolean mine = viewerUserId != null && viewerUserId.equals(userId);
+        boolean followedByMe = viewerUserId != null
+                && !mine
+                && userFollowRepository.existsByFollower_IdAndFollowee_Id(viewerUserId, userId);
+
+        return FeedUserProfileResponse.of(
+                user,
+                postCount,
+                followerCount,
+                followingCount,
+                followedByMe,
+                mine
+        );
+    }
+
+    public FeedPageResponse getUserLikedFeed(Long userId, int page, int size, Long viewerUserId) {
+        if (viewerUserId == null || !viewerUserId.equals(userId)) {
+            throw new AccessDeniedException("좋아요한 피드는 본인만 조회할 수 있습니다.");
+        }
+        findUser(userId);
+        Pageable pageable = PageRequest.of(page, normalizeSize(size));
+        Page<FeedPost> posts = feedPostLikeRepository.findLikedFeedByUserId(userId, pageable);
         return mapFeedPage(posts, viewerUserId);
     }
 
@@ -300,7 +331,25 @@ public class FeedService {
             outfitResponse = buildOutfitResponse(post.getOutfit(), post.getAuthor().getId());
         }
 
-        return FeedResponse.of(post, outfitResponse, likeCount, commentCount, likedByMe, savedByMe, viewerUserId);
+        boolean mine = viewerUserId != null && viewerUserId.equals(post.getAuthor().getId());
+        Boolean authorFollowedByMe = null;
+        if (viewerUserId != null && !mine) {
+            authorFollowedByMe = userFollowRepository.existsByFollower_IdAndFollowee_Id(
+                    viewerUserId,
+                    post.getAuthor().getId()
+            );
+        }
+
+        return FeedResponse.of(
+                post,
+                outfitResponse,
+                likeCount,
+                commentCount,
+                likedByMe,
+                savedByMe,
+                authorFollowedByMe,
+                viewerUserId
+        );
     }
 
     private OutfitResponse buildOutfitResponse(Outfit outfit, Long ownerUserId) {

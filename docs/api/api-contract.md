@@ -990,6 +990,8 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | PUT | `/api/v1/feed/posts/{postId}` | 피드 수정 |
 | DELETE | `/api/v1/feed/posts/{postId}` | 피드 삭제 |
 | GET | `/api/v1/feed/users/{userId}/posts` | 사용자 공유 피드 목록 |
+| GET | `/api/v1/feed/users/{userId}/profile` | 룩피드 공개 프로필 (소개·통계·팔로우 상태) |
+| GET | `/api/v1/feed/users/{userId}/liked-posts` | 본인 좋아요한 피드 목록 (본인만 조회) |
 | POST | `/api/v1/feed/images` | 피드 이미지 업로드 (`multipart/form-data`, field: `file`) |
 | POST | `/api/v1/feed/posts/{postId}/likes` | FEED-004 좋아요 토글 |
 | POST | `/api/v1/feed/posts/{postId}/saves` | FEED-005 저장 토글 |
@@ -1028,7 +1030,8 @@ Query: `page`(default 0), `size`(default 20, max 50)
         "author": {
           "userId": 1,
           "nickname": "closet",
-          "profileImageUrl": "https://..."
+          "profileImageUrl": "https://...",
+          "followedByMe": false
         },
         "outfit": { "...": "OutfitResponse 또는 null" },
         "caption": "오늘의 데일리룩",
@@ -1059,6 +1062,29 @@ Query: `page`(default 0), `size`(default 20, max 50)
 ```
 
 > **Note**: FEED-009 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
+
+#### GET /api/v1/feed/users/{userId}/profile — 룩피드 공개 프로필
+
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 2,
+    "nickname": "closet",
+    "profileImageUrl": "https://...",
+    "profileBio": "데일리룩 공유합니다",
+    "externalLinkUrl": "https://example.com",
+    "postCount": 12,
+    "followerCount": 48,
+    "followingCount": 21,
+    "followedByMe": false,
+    "mine": false
+  }
+}
+```
+
+- `followedByMe`: 조회자가 해당 사용자를 팔로우 중이면 `true`. 본인 프로필(`mine=true`)이면 항상 `false`
+- `profileBio`, `externalLinkUrl`: 룩피드 프로필에 공개된 소개·외부 링크
 
 #### PUT /api/v1/feed/posts/{postId}/comments/{commentId} — 댓글 수정
 
