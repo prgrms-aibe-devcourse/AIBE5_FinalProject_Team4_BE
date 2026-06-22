@@ -52,7 +52,7 @@ public class OotdRecommendationService {
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
-        // 추천 전 옷장 통계 기반 스타일 가중치 동기화
+        // 추천 전 옷장 통계 기반 스타일 가중치 동기화.
         wardrobeStatisticsService.getStatistics(currentUserId);
 
         ClothesGender userClothesGender = ClothesGender.fromUserGender(user.getGender());
