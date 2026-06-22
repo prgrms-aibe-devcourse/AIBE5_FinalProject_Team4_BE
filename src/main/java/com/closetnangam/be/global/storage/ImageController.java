@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Locale;
 
-@Tag(name = "Image", description = "의류 이미지 서빙 API (인증 필요)")
+@Tag(name = "Image", description = "이미지 서빙 API — clothes·purchase-captures: 인증 필요 / feed·profile: 공개")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/images")
@@ -27,10 +27,11 @@ public class ImageController {
     private final ImageStorageService imageStorageService;
 
     @Operation(
-            summary = "의류 사진 조회",
+            summary = "의류 사진 조회 (인증 필요)",
             description = """
-                    CLOTHES 공통 옷 이미지를 반환합니다. 로그인한 사용자는 피드·코디 등에 노출된 \
-                    다른 사용자의 옷 사진도 조회할 수 있습니다. path의 userId는 업로드 소유자 ID입니다."""
+                    CLOTHES 옷 이미지를 반환합니다. 로그인한 사용자라면 피드·코디 등에 노출된 \
+                    다른 사용자의 옷 사진도 조회할 수 있습니다. path의 userId는 업로드 소유자 ID입니다.
+                    <img> 태그는 쿠키를 자동 전송하지 않으므로, FE는 인증 fetch + blob URL 변환을 사용해야 합니다."""
     )
     @GetMapping("/clothes/{userId}/{filename}")
     public ResponseEntity<byte[]> getClothesImage(
@@ -54,10 +55,10 @@ public class ImageController {
     }
 
     @Operation(
-            summary = "피드 사진 조회",
+            summary = "피드 사진 조회 (공개)",
             description = """
-                    공개 피드에 포함된 사진을 반환합니다. 로그인한 사용자는 다른 사용자가 업로드한 \
-                    피드 사진도 조회할 수 있습니다. path의 userId는 업로드 소유자 ID입니다."""
+                    공개 피드에 포함된 사진을 반환합니다. 비로그인 사용자도 접근 가능합니다. \
+                    path의 userId는 업로드 소유자 ID입니다."""
     )
     @GetMapping("/feed/{userId}/{filename}")
     public ResponseEntity<byte[]> getFeedImage(
@@ -68,10 +69,10 @@ public class ImageController {
     }
 
     @Operation(
-            summary = "프로필 이미지 조회",
+            summary = "프로필 이미지 조회 (공개)",
             description = """
-                    사용자 프로필 이미지를 반환합니다. 룩피드와 마이페이지에서 노출되는 공개 프로필 이미지이며, \
-                    path의 userId는 업로드 소유자 ID입니다."""
+                    사용자 프로필 이미지를 반환합니다. 룩피드·마이페이지에 노출되는 공개 이미지이며 \
+                    비로그인 사용자도 접근 가능합니다. path의 userId는 업로드 소유자 ID입니다."""
     )
     @GetMapping("/profile/{userId}/{filename}")
     public ResponseEntity<byte[]> getProfileImage(
