@@ -45,6 +45,12 @@ public class SecurityConfig {
             "/actuator/health",
             "/actuator/health/**",
             "/api/v1/legal/**",
+            // 피드·코디북 등에서 타인 이미지 조회 시 <img> 태그는 쿠키를 전송하지 않으므로
+            // clothes/feed/profile 이미지는 인증 없이 접근 허용한다.
+            // purchase-captures는 민감 정보이므로 인증 유지 (ImageController.getPurchaseCaptureImage 참고)
+            "/api/v1/images/clothes/**",
+            "/api/v1/images/feed/**",
+            "/api/v1/images/profile/**",
     };
 
     private final OAuth2UserService oAuth2UserService;
