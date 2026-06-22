@@ -155,6 +155,16 @@ public class FeedService {
         );
     }
 
+    public FeedPageResponse getUserLikedFeed(Long userId, int page, int size, Long viewerUserId) {
+        if (viewerUserId == null || !viewerUserId.equals(userId)) {
+            throw new AccessDeniedException("좋아요한 피드는 본인만 조회할 수 있습니다.");
+        }
+        findUser(userId);
+        Pageable pageable = PageRequest.of(page, normalizeSize(size));
+        Page<FeedPost> posts = feedPostLikeRepository.findLikedFeedByUserId(userId, pageable);
+        return mapFeedPage(posts, viewerUserId);
+    }
+
     @Transactional
     public FeedImageUploadResponse uploadFeedImage(Long userId, MultipartFile file) {
         StoredImage storedImage = localImageStorageService.storeFeedPhoto(userId, file);

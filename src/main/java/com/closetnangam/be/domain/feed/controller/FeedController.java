@@ -105,6 +105,17 @@ public class FeedController {
         return ResponseEntity.ok(ApiResponse.ok(feedService.getUserFeedProfile(userId, viewerUserId)));
     }
 
+    @Operation(summary = "좋아요한 피드 목록", description = "본인이 좋아요한 공개 피드 목록을 최신 좋아요 순으로 조회합니다.")
+    @GetMapping("/users/{userId}/liked-posts")
+    public ResponseEntity<ApiResponse<FeedPageResponse>> getUserLikedFeed(
+            @PathVariable @Min(1) Long userId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) int size
+    ) {
+        Long viewerUserId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.ok(feedService.getUserLikedFeed(userId, page, size, viewerUserId)));
+    }
+
     @Operation(summary = "피드 이미지 업로드", description = "피드 작성 전 이미지를 업로드하고 URL을 반환합니다.")
     @PostMapping(value = "/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<FeedImageUploadResponse>> uploadFeedImage(

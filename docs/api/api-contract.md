@@ -991,6 +991,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | DELETE | `/api/v1/feed/posts/{postId}` | 피드 삭제 |
 | GET | `/api/v1/feed/users/{userId}/posts` | 사용자 공유 피드 목록 |
 | GET | `/api/v1/feed/users/{userId}/profile` | 룩피드 공개 프로필 (소개·통계·팔로우 상태) |
+| GET | `/api/v1/feed/users/{userId}/liked-posts` | 본인 좋아요한 피드 목록 (본인만 조회) |
 | POST | `/api/v1/feed/images` | 피드 이미지 업로드 (`multipart/form-data`, field: `file`) |
 | POST | `/api/v1/feed/posts/{postId}/likes` | FEED-004 좋아요 토글 |
 | POST | `/api/v1/feed/posts/{postId}/saves` | FEED-005 저장 토글 |
