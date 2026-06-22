@@ -83,4 +83,31 @@ class FeedServiceTest {
         assertThat(response.images()).hasSize(1);
         verify(feedPostRepository).save(any(FeedPost.class));
     }
+
+    @Test
+    @DisplayName("룩피드 프로필 조회 시 게시물·팔로우 통계를 반환한다")
+    void getUserFeedProfile() {
+        User user = org.mockito.Mockito.mock(User.class);
+        given(user.getId()).willReturn(2L);
+        given(user.getNickname()).willReturn("lookfeed-user");
+        given(user.getProfileImageUrl()).willReturn("https://example.com/profile.jpg");
+        given(user.getProfileBio()).willReturn("데일리룩 공유");
+        given(user.getExternalLinkUrl()).willReturn("https://example.com");
+
+        given(userRepository.findById(2L)).willReturn(Optional.of(user));
+        given(feedPostRepository.countPublicByAuthorId(2L)).willReturn(5L);
+        given(userFollowRepository.countByFollowee_Id(2L)).willReturn(10L);
+        given(userFollowRepository.countByFollower_Id(2L)).willReturn(3L);
+        given(userFollowRepository.existsByFollower_IdAndFollowee_Id(1L, 2L)).willReturn(true);
+
+        var response = feedService.getUserFeedProfile(2L, 1L);
+
+        assertThat(response.userId()).isEqualTo(2L);
+        assertThat(response.nickname()).isEqualTo("lookfeed-user");
+        assertThat(response.postCount()).isEqualTo(5L);
+        assertThat(response.followerCount()).isEqualTo(10L);
+        assertThat(response.followingCount()).isEqualTo(3L);
+        assertThat(response.followedByMe()).isTrue();
+        assertThat(response.mine()).isFalse();
+    }
 }

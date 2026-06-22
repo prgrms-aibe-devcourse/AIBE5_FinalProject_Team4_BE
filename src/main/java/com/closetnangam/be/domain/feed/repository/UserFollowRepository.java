@@ -12,4 +12,8 @@ public interface UserFollowRepository extends JpaRepository<UserFollow, Long> {
     boolean existsByFollower_IdAndFollowee_Id(Long followerId, Long followeeId);
 
     void deleteByFollower_IdAndFollowee_Id(Long followerId, Long followeeId);
+
+    long countByFollowee_Id(Long followeeId);
+
+    long countByFollower_Id(Long followerId);
 }

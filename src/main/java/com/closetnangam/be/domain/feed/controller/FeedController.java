@@ -8,6 +8,7 @@ import com.closetnangam.be.domain.feed.dto.response.FeedImageUploadResponse;
 import com.closetnangam.be.domain.feed.dto.response.FeedInteractionResponse;
 import com.closetnangam.be.domain.feed.dto.response.FeedPageResponse;
 import com.closetnangam.be.domain.feed.dto.response.FeedResponse;
+import com.closetnangam.be.domain.feed.dto.response.FeedUserProfileResponse;
 import com.closetnangam.be.domain.feed.service.FeedService;
 import com.closetnangam.be.global.auth.util.SecurityUtils;
 import com.closetnangam.be.global.common.response.ApiResponse;
@@ -93,6 +94,15 @@ public class FeedController {
     ) {
         Long viewerUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.ok(feedService.getUserFeed(userId, page, size, viewerUserId)));
+    }
+
+    @Operation(summary = "룩피드 프로필", description = "특정 사용자의 룩피드 공개 프로필과 게시물·팔로우 통계를 조회합니다.")
+    @GetMapping("/users/{userId}/profile")
+    public ResponseEntity<ApiResponse<FeedUserProfileResponse>> getUserFeedProfile(
+            @PathVariable @Min(1) Long userId
+    ) {
+        Long viewerUserId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.ok(feedService.getUserFeedProfile(userId, viewerUserId)));
     }
 
     @Operation(summary = "피드 이미지 업로드", description = "피드 작성 전 이미지를 업로드하고 URL을 반환합니다.")

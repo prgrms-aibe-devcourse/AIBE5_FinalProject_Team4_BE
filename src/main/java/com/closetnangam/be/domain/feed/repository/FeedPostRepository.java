@@ -71,4 +71,13 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, Long> {
               and fp.deletedAt is null
             """)
     Optional<FeedPost> findActiveByIdAndAuthorId(@Param("postId") Long postId, @Param("userId") Long userId);
+
+    @Query("""
+            select count(fp)
+            from FeedPost fp
+            where fp.author.id = :userId
+              and fp.deletedAt is null
+              and fp.hidden = false
+            """)
+    long countPublicByAuthorId(@Param("userId") Long userId);
 }
