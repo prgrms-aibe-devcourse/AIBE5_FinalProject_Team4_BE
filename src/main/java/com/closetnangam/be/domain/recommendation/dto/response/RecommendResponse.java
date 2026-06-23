@@ -31,6 +31,9 @@ public record RecommendResponse(
         @Schema(description = "카테고리")
         String category,
 
+        @Schema(description = "아이템 타입")
+        String itemType,
+
         @Schema(description = "대표 색상")
         String primaryColor,
 
