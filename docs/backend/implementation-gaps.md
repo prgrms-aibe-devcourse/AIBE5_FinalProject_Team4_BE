@@ -1,7 +1,7 @@
 ---
 doc_type: be_implementation_gaps
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-14
+last_updated: 2026-06-22
 ---
 
 # BE 구현 정합성 현황
@@ -36,11 +36,10 @@ last_updated: 2026-06-14
 | --- | --- | --- | --- |
 | 옷장 통계 범위 | `/statistics` API가 `OWNED` 상태의 보유 옷만 계산하고 `totalOwnedCount`를 반환 | 옷장 전체 요약은 `OWNED`와 `WISHLIST`를 함께 고려 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | `USER_STYLES.wardrobe_weight` 산정 범위 | `/statistics` API 호출 시 보유 옷 기준 스타일 가중치를 계산해 `USER_STYLES.wardrobe_weight`에 동기화 | `wardrobe_weight`는 사용자의 옷장에 등록된 옷 스타일 기반 점수라는 기준을 따름 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
-| `CLOTHES.season` 수정 범위와 계절 기준 | 현재 `season`은 `CLOTHES`에 저장되지만 옷 수정 요청에서 변경 가능. 일부 Swagger/OpenAPI 설명은 `season`을 옷장 정보처럼 설명함. `GET /api/v1/categories` 일반 응답은 계절 목록을 별도 필드로 제공하지 않고, 추천/날씨 계산은 `ClothesSeason` 기준으로 통합됨 | `season`은 `CLOTHES` 공통 정보이며 옷 등록 시 1개 선택하고 생성 후 변경하지 않음 | [requirements-definition.md](../requirements/requirements-definition.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [invariants.md](../domain/invariants.md), [api-contract.md](../api/api-contract.md) |
+| `CLOTHES.season` 수정 범위와 계절 기준 | 배포 UI에서는 생성된 옷의 계절 변경이 불가로 확인됨. 다만 BE 옷 수정 API의 DTO/service는 `season`을 받을 수 있어 API 직접 호출 기준 정합성 확인이 필요함. 일부 Swagger/OpenAPI 설명은 `season`을 옷장 정보처럼 설명함 | `season`은 `CLOTHES` 공통 정보이며 옷 등록 시 1개 선택하고 생성 후 변경하지 않음 | [requirements-definition.md](../requirements/requirements-definition.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [invariants.md](../domain/invariants.md), [api-contract.md](../api/api-contract.md) |
 | 배포/인프라 목표 구조 | GitHub Actions는 테스트/빌드 CI를 수행하고, Docker Compose는 로컬 MySQL/Redis 개발 인프라를 실행. AWS 배포와 CD 자동화는 진행 예정 | 시스템 아키텍처는 AWS EC2/RDS/S3와 GitHub Actions 기반 배포까지 포함한 목표 구조 | [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) |
-| 추천 응답 형식 | `RECO-002` 추천 응답의 `price`는 "0" 고정, `score`는 0~1 문자열, `reason`은 기술적 매칭 결과 반환 | 실제 가격, 백분율 점수, 사용자 친화적 자연어 추천 이유 제공 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) |
-| AI MD 추천 검증 범위 | `RECO-006` API는 완성형 코디 검증과 스타일 가중 상품 후보 구성을 구현했지만, 외부 상품 포함 저장·저장 실패 및 다중 네이버 검색 조합 경로 테스트가 부족 | 외부 상품 혼합 코디 저장, 4개 미만 응답, 저장 실패/롤백, 다중 검색 결과 병합 경로를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
-| 개발/임시 API 경계 | local mock token API가 코드에 존재 | 공식 서비스 API는 [api-contract.md](../api/api-contract.md)의 엔드포인트 인덱스를 기준으로 판단 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) |
+| 추천 응답 형식 | `RECO-002` 추천 응답 DTO에 공식 표시 기준이 아닌 `price` placeholder("0")가 남아 있고, `score`와 `reason`은 기술적 매칭 결과를 반환 | 현재 서비스는 가격 표시를 공식 요구사항으로 두지 않음. 가격 필드는 FE 표시 기준이 아니며, 점수/추천 이유 노출 기준은 별도 확정 필요 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) |
+| AI MD 추천 검증 범위 | `RECO-005` API는 완성형 코디 검증과 스타일 가중 상품 후보 구성을 구현했지만, 외부 상품 포함 저장·저장 실패 및 다중 네이버 검색 조합 경로 테스트가 부족 | 현재 기능 오류가 아니라 후속 테스트 보강 대상. 외부 상품 혼합 코디 저장, 4개 미만 응답, 저장 실패/롤백, 다중 검색 결과 병합 경로를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | 탈퇴 30일 경과 후 개인정보 삭제/익명화 | 회원탈퇴 시 `withdrawn_at`을 기록하고 30일 이내 복구 가능한 상태로 관리하지만, 30일 경과 후 개인정보 삭제/익명화 자동 처리는 별도 구현 없음 | 탈퇴 철회 기간이 지나면 약관과 개인정보 처리방침 기준에 따라 개인정보를 삭제하거나 식별할 수 없게 처리 | [data-lifecycle.md](../database/data-lifecycle.md), [legal/README.md](../legal/README.md), [api-contract.md](../api/api-contract.md) |
 
 ## 요구사항 ID 연결표
@@ -49,12 +48,11 @@ last_updated: 2026-06-14
 | --- | --- | --- | --- | --- |
 | `WARDROBE-002` | `GET /api/v1/wardrobes/users/{userId}/statistics` | `WardrobeStatisticsService`, `WardrobeStatisticsResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | 보유 옷 기준 통계만 반환. 옷장 전체 요약은 미보유 API 조합 또는 BE 계약 확정 필요 |
 | `STYLE-002` | `USER_STYLES.wardrobe_weight` | `WardrobeStatisticsService`, `UserStyle.syncWardrobeWeight`, `WardrobeStatisticsResponse.userStylePayloads` | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [erd.md](../database/erd.md) | 통계 API 호출 시 보유 옷 기준 스타일 가중치를 저장. 옷장 전체 등록 기준 반영 여부 확인 필요 |
-| `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` | 옷 계절 수정 기준 | `Clothes`, `ClothesService`, `ClothesUpdateRequest`, `PhotoClothesRegistrationController`, `PurchaseCaptureRegistrationController`, `CategoryCatalogService`, `ClothesSeason` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [api-contract.md](../api/api-contract.md) | `CLOTHES.season` 저장과 AI 분석 필드 반영은 완료. 옷 수정 요청의 `season` 변경 가능성, 일부 OpenAPI 설명, 카탈로그 일반 응답/계절 호환 계산 기준 확인 필요 |
-| `RECO-005` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 시 `brandName != UNKNOWN` 우선 |
+| `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` | 옷 계절 수정 기준 | `Clothes`, `ClothesService`, `ClothesUpdateRequest`, `PhotoClothesRegistrationController`, `PurchaseCaptureRegistrationController`, `CategoryCatalogService`, `ClothesSeason` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [api-contract.md](../api/api-contract.md) | `CLOTHES.season` 저장과 AI 분석 필드 반영은 완료. 배포 UI에서는 생성 후 변경 불가 확인. BE 수정 API 직접 호출 기준의 `season` 변경 가능성, 일부 OpenAPI 설명, 카탈로그 일반 응답/계절 호환 계산 기준 확인 필요 |
+| `RECO-004` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 시 `brandName != UNKNOWN` 우선 |
 | `DEPLOY-001`~`DEPLOY-005` | 배포/인프라 목표 구조 | `.github/workflows/ci.yml`, `docker-compose.yml` | [requirements-definition.md](../requirements/requirements-definition.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) | 시스템 아키텍처는 목표 구조 기준. 현재 GitHub Actions는 CI, Docker Compose는 로컬 MySQL/Redis 실행, AWS 배포/CD 자동화는 진행 예정 |
-| `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | `price` placeholder("0"), 0~1 점수 형식, 기술적 추천 이유 제공. 기준 문서와 응답 형식 차이 존재 |
-| `RECO-006` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 다중 상품 검색, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
-| 개발/임시 API | `GET /api/v1/auth/mock-token` | `MockAuthController` | [api-contract.md](../api/api-contract.md), [feature-index.md](../requirements/feature-index.md) | 공식 사용자 기능으로 보지 않음. local 개발 경계 확인 필요 |
+| `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | 공식 서비스에 가격 표시 기준은 없으나 응답 DTO에 `price` placeholder("0")가 남아 있음. 0~1 점수 형식과 기술적 추천 이유는 사용자 노출 기준 확인 필요 |
+| `RECO-005` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 다중 상품 검색, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
 | 회원탈퇴 | 탈퇴 후 데이터 보존/삭제 | `UserController`, `UserService`, `User` | [data-lifecycle.md](../database/data-lifecycle.md), [legal/README.md](../legal/README.md), [api-contract.md](../api/api-contract.md) | 탈퇴 시 `withdrawn_at` 기록과 30일 이내 복구 흐름은 구현. 30일 경과 후 개인정보 삭제/익명화 자동 처리 기준은 후속 구현 필요 |
 
 ## BE 코드와 공식 기준 확인 필요
@@ -136,7 +134,7 @@ src/main/java/com/closetnangam/be/global/external/gemini/dto/GeminiPurchaseCaptu
 - season 필드 포함
 ```
 
-다만 현재 옷 수정 요청은 여전히 `season`을 받을 수 있고, 서비스에서 `CLOTHES.season`을 갱신합니다.
+배포 UI 테스트에서는 생성된 옷의 계절 변경이 불가능한 것으로 확인했습니다. 다만 BE API 코드 기준으로는 옷 수정 요청이 여전히 `season`을 받을 수 있고, 서비스에서 `CLOTHES.season`을 갱신하는 경로가 남아 있습니다.
 
 ```text
 src/main/java/com/closetnangam/be/domain/clothes/dto/request/ClothesUpdateRequest.java
@@ -162,12 +160,12 @@ src/main/java/com/closetnangam/be/domain/purchase/controller/PurchaseCaptureRegi
 
 따라서 현재 구현은 아래 기준과 차이가 있습니다.
 
-- 생성된 옷의 계절을 옷 수정 요청에서 변경할 수 있습니다.
+- 배포 UI에서는 생성 후 계절 변경이 불가능하지만, BE API 직접 호출 기준으로는 생성된 옷의 계절을 옷 수정 요청에서 변경할 수 있는 구조가 남아 있습니다.
 - 일부 Swagger/OpenAPI 설명에서 `season`을 옷장 정보처럼 설명합니다.
 - `GET /api/v1/categories` 응답은 계절 code 목록을 별도 필드로 제공하지 않습니다.
 - 추천/날씨 계절 호환 계산은 `ClothesSeason` 기준으로 수행됩니다.
 
-공식 기준을 유지한다면 구현 PR에서 생성 후 수정 요청이 `season`을 변경하지 않도록 API/DTO/서비스 책임과 OpenAPI 설명을 함께 정리해야 합니다. 이때 카탈로그 일반 응답에서 계절 code를 내려줄지, 문서 기준 code만 사용할지 확정하고, 추천/날씨 계절 호환 계산도 `CLOTHES.season` code 기준으로 정리합니다. 반대로 현재 코드 기준을 공식 기준으로 확정한다면 [erd.md](../database/erd.md), [invariants.md](../domain/invariants.md), [catalog.md](../domain/catalog.md), [garment-registration.md](../features/garment-registration.md), [api-contract.md](../api/api-contract.md)를 같은 PR에서 수정합니다.
+공식 기준을 유지한다면 후속 구현 PR에서 API 직접 호출로도 생성 후 `season`을 변경하지 못하도록 DTO/서비스 책임과 OpenAPI 설명을 함께 정리해야 합니다. 이때 카탈로그 일반 응답에서 계절 code를 내려줄지, 문서 기준 code만 사용할지 확정하고, 추천/날씨 계절 호환 계산도 `CLOTHES.season` code 기준으로 정리합니다. 반대로 현재 API 코드 기준을 공식 기준으로 확정한다면 [erd.md](../database/erd.md), [invariants.md](../domain/invariants.md), [catalog.md](../domain/catalog.md), [garment-registration.md](../features/garment-registration.md), [api-contract.md](../api/api-contract.md)를 같은 PR에서 수정합니다.
 
 ### `DEPLOY-001`~`DEPLOY-005` 목표 배포 구조와 현재 로컬/CI 상태
 
@@ -186,25 +184,25 @@ AWS 배포 또는 CD workflow가 구현되면 [system-architecture.md](../archit
 
 ### `RECO-002` 취향 기반 상품 추천 응답 형식
 
-공식 기준 문서 및 [api-contract.md](../api/api-contract.md)에서는 추천 상품의 가격(`price`), 백분율 점수(`score`), 그리고 사용자 친화적인 자연어 추천 이유(`reason`)를 예시로 제시합니다.
+현재 서비스 기준에는 추천 상품의 가격 표시 요구사항이 없습니다. 다만 [api-contract.md](../api/api-contract.md)의 현재 응답 예시와 BE 응답 DTO에는 `price` 필드가 남아 있습니다.
 
 현재 BE 구현(`StyleProductRecommender.java`)은 아래와 같은 placeholder 및 기술적 데이터를 반환합니다.
 
-- `price`: 항상 `"0"` 반환 (현재 상품 엔티티에 가격 정보가 없음)
+- `price`: 항상 `"0"` 반환. 현재 공식 서비스 표시 기준으로 사용하지 않음
 - `score`: `0.00` ~ `1.00` 사이의 점수를 문자열로 반환 (예: `"0.85"`)
-- `reason`: `"Style Match: 0.8, Weather Match: 1.0"` 형태의 기술적 매칭 점수 요약 반환
+- `reason`: `"Style: 0.8, Weather: 1.0, Season: 1.0"` 형태의 기술적 매칭 점수 요약 반환
 - `brandName`, `category`, `primaryColor`, `primaryStyle`: 상품의 기본 메타데이터 정보 포함
 - `clothesId`: 피드백 매핑을 위한 내부 옷 ID 포함
 
 FE는 이 응답을 UI에 그대로 노출하기보다는, 아래와 같은 처리가 필요하거나 BE의 향후 개선을 기다려야 합니다.
 
-- 가격 정보가 `"0"`인 경우 처리 (예: 노출 제외 또는 placeholder 문구)
+- `price`는 공식 표시 기준이 아니므로 노출하지 않거나 무시
 - 점수를 백분율로 환산하여 표시 (예: `score * 100`)
 - 기술적 추천 이유를 사용자에게 적절히 가공하여 표시
 
-실제 가격 데이터 연동 및 자연어 추천 생성 로직이 도입되기 전까지 이 항목을 현재 gap으로 유지합니다.
+추천 응답에서 `price` 필드를 제거할지, 후속 외부 상품 가격 연동 시 사용할지, 또는 FE 비노출 placeholder로 유지할지는 별도 이슈에서 확정합니다.
 
-### `RECO-006` AI MD 추천 검증 범위
+### `RECO-005` AI MD 추천 검증 범위
 
 AI MD 추천 API는 사용자 성별에 맞는 MD 목록 조회, MD별 상품 추천, MD별 코디 후보 추천, 선택 코디 저장을 제공합니다.
 
@@ -258,33 +256,17 @@ src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendati
 
 남은 경로의 테스트가 추가되기 전까지는 해당 부분을 로컬/CI의 Spring context 테스트와 수동 API 테스트로 확인한 상태로 봅니다.
 
-### 개발/임시 API와 공식 API 계약 경계
-
-현재 BE 코드에는 공식 API 계약에 포함하지 않은 개발 성격의 엔드포인트가 있습니다.
-
-```text
-src/main/java/com/closetnangam/be/global/common/controller/MockAuthController.java
-- GET /api/v1/auth/mock-token
-- @Profile("local")
-```
-
-`/api/v1/auth/mock-token`은 local profile에서 사용하는 테스트용 JWT 발급 API입니다. 공식 로그인 기능이나 사용자 제공 API로 보지 않습니다.
-
-`GET /api/weather`는 추천 보조 정보로 사용하는 공식 날씨 조회 API이며, 개발/임시 API로 분류하지 않습니다.
-
-API 문서 검토 시 공식 서비스 API 여부는 [api-contract.md](../api/api-contract.md)의 엔드포인트 인덱스와 [feature-index.md](../requirements/feature-index.md)를 기준으로 판단합니다. 개발 API를 유지하거나 제거하는 판단은 담당자 확인 후 별도 이슈 또는 PR로 진행합니다.
-
 ## 우선 정리 대상
 
 | 우선순위 | 대상 | 이유 |
 | --- | --- | --- |
-| 1 | `CLOTHES.season` 수정 범위와 계절 기준 | ERD v2.3, 옷 등록/수정 API, 추천 계절 계산 기준에 직접 영향 |
+| 1 | `CLOTHES.season` 수정 범위와 계절 기준 | 배포 UI와 API 직접 호출 기준, OpenAPI 설명, 추천 계절 계산 기준에 직접 영향 |
 | 2 | `WARDROBE-002` 통계 범위 | FE 옷장 요약과 API 응답 필드 해석에 직접 영향 |
 | 3 | `USER_STYLES.wardrobe_weight` 산정 범위 | 사용자 취향 점수와 추천 개인화 기준에 영향 |
 | 4 | `DEPLOY-004` 이미지 저장 방식 | 운영 저장소 기준과 현재 로컬 저장 구현 차이에 영향 |
-| 5 | `RECO-002` 추천 응답 형식 | FE 추천 UI의 데이터 표시 및 해석 방식에 직접 영향 |
-| 6 | `RECO-006` AI MD 추천 검증 범위 | Gemini 응답 변형과 코디 저장 롤백 경로에 영향 |
-| 7 | 개발/임시 API 경계 | FE가 local mock endpoint를 공식 서비스 API로 오해할 가능성 |
+| 5 | `RECO-002` 추천 응답 형식 | 공식 가격 표시 기준이 없는 상태에서 `price` placeholder를 UI 표시 데이터로 오해할 가능성 |
+| 6 | `RECO-005` AI MD 추천 검증 범위 | 현재 기능 오류가 아니라 Gemini 응답 변형과 코디 저장 롤백 경로의 후속 테스트 보강 대상 |
+| 7 | 회원탈퇴 30일 경과 후 개인정보 삭제/익명화 | 약관/개인정보 처리방침과 데이터 생명주기 기준에 영향 |
 | 8 | 배포/인프라 목표 구조와 현재 로컬/CI 상태 | AWS 배포 및 CD 구현 시 시스템 문서와 실제 BE 레포 설정 정합성에 영향 |
 
 ## 문서 변경 기준

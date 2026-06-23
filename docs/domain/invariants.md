@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-10
+last_updated: 2026-06-22
 ---
 
 # 도메인 규칙
@@ -76,7 +76,7 @@ last_updated: 2026-06-10
 - 최종 스타일 점수는 아래 기준으로 계산하며, 사용자의 옷장 데이터 보유 여부를 기준으로 전략을 선택합니다.
     - **신규 사용자 (전체 옷장 비어있음)**: `combined_weight = preference_weight + feedback_weight`
     - **기존 사용자 (전체 옷장 데이터 있음)**: `combined_weight = round(preference_weight * 0.3 + wardrobe_weight * 0.7) + feedback_weight`
-- 점수가 같은 추천 후보는 같은 점수 그룹 안에서 랜덤 노출합니다. `RECO-005` 어울리는 옷 추천(`compatibilityScore` 동점)은 `brandName`이 `UNKNOWN`이 아닌 후보를 먼저 노출합니다.
+- 점수가 같은 추천 후보는 같은 점수 그룹 안에서 랜덤 노출합니다. `RECO-004` 어울리는 옷 추천(`compatibilityScore` 동점)은 `brandName`이 `UNKNOWN`이 아닌 후보를 먼저 노출합니다.
 
 ## 추천 피드백과 제외
 

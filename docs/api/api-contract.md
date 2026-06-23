@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-19
+last_updated: 2026-06-22
 ---
 
 # API 계약
@@ -106,8 +106,8 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 | GET | `/api/v1/users/profile` | 현재 로그인한 사용자 프로필 반환 (userId, nickname, onboarded, guideTour 완료 여부) |
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
 | GET | `/api/v1/users/nickname/check` | 닉네임 규칙 및 중복 여부 확인 |
-| PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 userId, nickname, onboarded 반환 |
-| POST | `/api/v1/users/profile/image` | 프로필 이미지 업로드. 저장된 이미지 URL 반환 |
+| PATCH | `/api/v1/users/profile` | 사용자 프로필 저장 (온보딩/내 정보/룩피드 프로필 공통). 저장 후 userId, nickname, onboarded 반환 |
+| POST | `/api/v1/users/profile/image` | 룩피드 프로필 이미지 업로드. 저장된 이미지 URL 반환 |
 | POST | `/api/v1/users/onboarding` | 온보딩 완료 저장 (프로필 + 스타일 + 마케팅 동의 일괄 저장) |
 | POST | `/api/v1/users/styles` | 스타일 선호도 저장 (기존 row 보존, preference_weight만 갱신) |
 | PATCH | `/api/v1/users/guide-tour` | 페이지별 가이드 투어 완료 상태 업데이트 |
@@ -146,9 +146,9 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 | `gender` | Y | `MALE` / `FEMALE` |
 | `regionName` | Y | 지역명 (예: 서울) |
 | `regionCode` | Y | 지역 코드 |
-| `profileImageUrl` | N | 프로필 이미지 URL. 생략 시 기존 값 유지 |
-| `profileBio` | N | 한 줄 소개. 생략 시 기존 값 유지 |
-| `externalLinkUrl` | N | 외부 링크 URL. 생략 시 기존 값 유지 |
+| `profileImageUrl` | N | 룩피드 프로필 이미지 URL. 이미지 업로드 후 받은 URL을 저장할 때 사용하며, 생략 시 기존 값 유지 |
+| `profileBio` | N | 룩피드 프로필 소개. 생략 시 기존 값 유지 |
+| `externalLinkUrl` | N | 룩피드 프로필 외부 링크 URL. 생략 시 기존 값 유지 |
 
 #### PATCH /api/v1/users/profile 응답 필드
 
@@ -187,7 +187,7 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
-| `imageUrl` | String | 업로드된 이미지의 공개 URL. PATCH /profile의 profileImageUrl에 사용 |
+| `imageUrl` | String | 업로드된 이미지의 공개 URL. `PATCH /api/v1/users/profile`의 `profileImageUrl`에 사용 |
 
 #### POST /api/v1/users/onboarding 요청 필드
 
@@ -557,7 +557,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "imageUrl": "https://...",
       "price": "0",
       "score": "0.95",
-      "reason": "Style Match: 0.9, Weather Match: 1.0",
+      "reason": "Style: 0.9, Weather: 1.0, Season: 0.8",
       "brandName": "브랜드명",
       "category": "카테고리",
       "primaryColor": "GRAY",
@@ -574,7 +574,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 현재 `price`는 placeholder("0")이며, `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
+> **Note**: 현재 서비스는 추천 상품 가격 표시를 공식 기준으로 두지 않습니다. `price`는 응답 DTO에 남아 있는 placeholder("0")이므로 FE 표시 기준으로 사용하지 않습니다. `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
 
 #### OOTD 추천 응답 (OotdResponse)
 
