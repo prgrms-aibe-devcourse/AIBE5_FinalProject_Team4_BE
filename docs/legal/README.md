@@ -1,9 +1,9 @@
 ---
 doc_type: legal_policy
 policy_scope: legal
-version: 2026.06.15
-effective_date: 2026-06-15
-last_updated: 2026-06-15
+version: 2026.06.23
+effective_date: 2026-06-23
+last_updated: 2026-06-23
 status: draft
 ---
 

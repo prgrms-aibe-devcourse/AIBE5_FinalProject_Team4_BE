@@ -995,12 +995,14 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/feed/users/{userId}/liked-posts` | 본인 좋아요한 피드 목록 (본인만 조회) |
 | POST | `/api/v1/feed/images` | 피드 이미지 업로드 (`multipart/form-data`, field: `file`) |
 | POST | `/api/v1/feed/posts/{postId}/likes` | FEED-004 좋아요 토글 |
-| POST | `/api/v1/feed/posts/{postId}/saves` | FEED-005 저장 토글 |
-| GET | `/api/v1/feed/posts/{postId}/comments` | FEED-006/007 댓글·대댓글 목록 |
-| POST | `/api/v1/feed/posts/{postId}/comments` | FEED-006/007 댓글·대댓글 작성 |
+| POST | `/api/v1/feed/posts/{postId}/saves` | 피드 저장 토글 (현재 코드 잔존, 후속 정리 대상) |
+| GET | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 목록 |
+| POST | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 작성 |
 | PUT | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 수정 (작성자 본인만) |
 | DELETE | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 삭제 |
-| POST | `/api/v1/feed/users/{followeeId}/follows` | FEED-008 팔로우 토글 |
+| POST | `/api/v1/feed/users/{followeeId}/follows` | FEED-007 팔로우 토글 |
+
+> **Note**: 요구사항 정의서 기준으로 별도 피드 저장 기능은 제외되었으며, `FEED-004` 좋아요가 저장 역할을 대체합니다. 현재 `/saves` API와 `FEED_POST_SAVES` 구조는 코드와 ERD에 남아 있어 [implementation-gaps.md](../backend/implementation-gaps.md)에서 후속 정리 대상으로 관리합니다.
 
 #### POST /api/v1/feed/posts — 피드 업로드
 
@@ -1062,7 +1064,7 @@ Query: `page`(default 0), `size`(default 20, max 50)
 }
 ```
 
-> **Note**: FEED-009 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
+> **Note**: FEED-008 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
 
 #### GET /api/v1/feed/users/{userId}/profile — 룩피드 공개 프로필
 
