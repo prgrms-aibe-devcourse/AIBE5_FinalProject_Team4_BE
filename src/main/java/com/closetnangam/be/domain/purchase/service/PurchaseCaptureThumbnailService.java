@@ -49,8 +49,11 @@ public class PurchaseCaptureThumbnailService {
         if (items.isEmpty()) {
             return items;
         }
-        // 등록 가능 상품이 1개뿐이면 작은 썸네일 크롭 대신 캡처 원본 미리보기를 사용합니다.
-        if (items.size() == 1) {
+        // 단일 상품이라도 thumbnailRegion이 있으면 크롭을 시도합니다.
+        // region도 없으면 캡처 원본 미리보기를 사용합니다.
+        boolean singleItemWithoutRegion = items.size() == 1
+                && (items.get(0).thumbnailRegion() == null || !items.get(0).thumbnailRegion().isValid());
+        if (singleItemWithoutRegion) {
             return items;
         }
 
@@ -98,6 +101,10 @@ public class PurchaseCaptureThumbnailService {
         GeminiThumbnailRegion region = item.thumbnailRegion();
         boolean estimated = false;
         if (region == null || !region.isValid()) {
+            // 단일 상품은 추정 좌표로 크롭하지 않는다 (원본 캡처 URL을 대신 사용)
+            if (layoutRowCount <= 1) {
+                return null;
+            }
             region = GeminiThumbnailRegion.estimateForOrderRow(layoutRowIndex, layoutRowCount);
             estimated = region != null;
         }
