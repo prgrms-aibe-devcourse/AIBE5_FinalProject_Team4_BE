@@ -191,7 +191,7 @@ AWS 배포 또는 CD workflow가 구현되면 [system-architecture.md](../archit
 - `price`: 항상 `"0"` 반환. 현재 공식 서비스 표시 기준으로 사용하지 않음
 - `score`: `0.00` ~ `1.00` 사이의 점수를 문자열로 반환 (예: `"0.85"`)
 - `reason`: `"Style: 0.8, Weather: 1.0, Season: 1.0"` 형태의 기술적 매칭 점수 요약 반환
-- `brandName`, `category`, `primaryColor`, `primaryStyle`: 상품의 기본 메타데이터 정보 포함
+- `brandName`, `category`, `itemType`, `primaryColor`, `primaryStyle`: 상품의 기본 메타데이터 정보 포함
 - `clothesId`: 피드백 매핑을 위한 내부 옷 ID 포함
 
 FE는 이 응답을 UI에 그대로 노출하기보다는, 아래와 같은 처리가 필요하거나 BE의 향후 개선을 기다려야 합니다.
