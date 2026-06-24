@@ -77,9 +77,18 @@ public class PurchaseCaptureThumbnailService {
         for (int index = 0; index < items.size(); index++) {
             layoutRowIndices[index] = resolveLayoutRowIndex(items.get(index), layoutItems, index);
         }
-        // 첫 행을 기준점으로 잡고 행 간격을 일정하게 맞춰 행마다 좌표가 누적 드리프트되는 문제를 보정합니다.
-        // 좌표축은 필터링된 목록의 인덱스가 아니라 실제 화면 행 위치를 사용해야 반품/취소 행이 중간에 있어도 밀리지 않습니다.
-        List<GeminiThumbnailRegion> calibratedRegions = calibrateRowRegions(items, layoutRowIndices);
+        // 1순위: 실제 이미지를 스캔해 썸네일 밴드를 기하학적으로 검출(좌표 드리프트에 영향받지 않음).
+        // 2순위: 검출에 실패하면 Gemini 좌표 기반 행 보정으로 fallback.
+        List<GeminiThumbnailRegion> calibratedRegions = detectRegionsByImage(
+                items,
+                layoutRowIndices,
+                layoutRowCount,
+                sourceImage,
+                captureId
+        );
+        if (calibratedRegions == null) {
+            calibratedRegions = calibrateRowRegions(items, layoutRowIndices);
+        }
         List<GeminiPurchaseCaptureItem> enriched = new ArrayList<>(items.size());
         for (int index = 0; index < items.size(); index++) {
             GeminiPurchaseCaptureItem item = items.get(index);
@@ -99,6 +108,155 @@ public class PurchaseCaptureThumbnailService {
             enriched.add(copyItem(item, imageUrl));
         }
         return enriched;
+    }
+
+    /**
+     * 캡처 이미지를 직접 분석해 주문 행 썸네일 영역을 검출합니다.
+     *
+     * <p>Gemini의 y좌표는 행 간격을 압축해 보고하는 등 신뢰도가 낮아, 첫 행(anchor)이 알려주는 썸네일 좌측 열만
+     * 신뢰합니다. 그 열을 따라 세로로 스캔하면 썸네일(픽셀 변화량 큼)과 행 사이 여백(균일)이 구분되므로,
+     * 연속된 고변화 구간을 썸네일 밴드로 묶습니다. 라이트/다크 테마 모두에서 동작합니다.</p>
+     *
+     * <p>검출된 밴드 수가 실제 화면 행 수({@code layoutRowCount})와 정확히 일치할 때만 사용하고,
+     * 그렇지 않으면 {@code null}을 반환해 Gemini 좌표 기반 보정으로 fallback합니다.</p>
+     *
+     * @return items와 같은 길이의 보정 영역, 또는 검출 실패 시 {@code null}
+     */
+    private static List<GeminiThumbnailRegion> detectRegionsByImage(
+            List<GeminiPurchaseCaptureItem> items,
+            int[] layoutRowIndices,
+            int layoutRowCount,
+            BufferedImage sourceImage,
+            Long captureId
+    ) {
+        if (layoutRowCount <= 1) {
+            return null;
+        }
+        GeminiThumbnailRegion anchor = findAnchorRegion(items);
+        if (anchor == null) {
+            return null;
+        }
+        int width = sourceImage.getWidth();
+        int height = sourceImage.getHeight();
+        int xStart = clamp((int) Math.round(normalizeCoordinate(anchor.xmin()) * width), 0, Math.max(width - 1, 0));
+        int xEnd = clamp((int) Math.round(normalizeCoordinate(anchor.xmax()) * width), xStart + 1, width);
+
+        List<int[]> bands = detectThumbnailBands(sourceImage, xStart, xEnd);
+        if (bands.size() != layoutRowCount) {
+            log.info(
+                    "[구매내역AI] 썸네일 밴드 검출 수 불일치 — 좌표 보정으로 fallback. captureId={}, bands={}, rows={}",
+                    captureId,
+                    bands.size(),
+                    layoutRowCount
+            );
+            return null;
+        }
+
+        double xminN = (double) xStart / width;
+        double xmaxN = (double) xEnd / width;
+        List<GeminiThumbnailRegion> regions = new ArrayList<>(items.size());
+        for (int i = 0; i < items.size(); i++) {
+            int row = layoutRowIndices[i];
+            if (row < 0 || row >= bands.size()) {
+                return null;
+            }
+            int[] band = bands.get(row);
+            double yminN = (double) band[0] / height;
+            double ymaxN = (double) band[1] / height;
+            regions.add(new GeminiThumbnailRegion(yminN, xminN, ymaxN, xmaxN));
+        }
+        log.info("[구매내역AI] 이미지 기반 썸네일 밴드 검출 성공. captureId={}, rows={}", captureId, layoutRowCount);
+        return regions;
+    }
+
+    private static GeminiThumbnailRegion findAnchorRegion(List<GeminiPurchaseCaptureItem> items) {
+        for (GeminiPurchaseCaptureItem item : items) {
+            GeminiThumbnailRegion region = item.thumbnailRegion();
+            if (region != null && region.isValid()) {
+                double top = normalizeCoordinate(region.ymin());
+                double bottom = normalizeCoordinate(region.ymax());
+                double left = normalizeCoordinate(region.xmin());
+                double right = normalizeCoordinate(region.xmax());
+                if (bottom > top && right > left) {
+                    return region;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 썸네일 좌측 열을 세로로 스캔해 행별 변화량(휘도 표준편차)을 구하고, 고변화 구간을 썸네일 밴드로 묶습니다.
+     *
+     * @return [yTopPx, yBottomPx] 밴드 목록(위→아래 순)
+     */
+    private static List<int[]> detectThumbnailBands(BufferedImage image, int xStart, int xEnd) {
+        int height = image.getHeight();
+        int stripWidth = xEnd - xStart;
+        int step = Math.max(1, stripWidth / 40);
+
+        double[] rowScore = new double[height];
+        double maxScore = 0;
+        for (int y = 0; y < height; y++) {
+            double sum = 0;
+            double sumSq = 0;
+            int count = 0;
+            for (int x = xStart; x < xEnd; x += step) {
+                int rgb = image.getRGB(x, y);
+                int r = (rgb >> 16) & 0xff;
+                int g = (rgb >> 8) & 0xff;
+                int b = rgb & 0xff;
+                double lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                sum += lum;
+                sumSq += lum * lum;
+                count++;
+            }
+            if (count == 0) {
+                continue;
+            }
+            double mean = sum / count;
+            double variance = sumSq / count - mean * mean;
+            double stdev = variance <= 0 ? 0 : Math.sqrt(variance);
+            rowScore[y] = stdev;
+            maxScore = Math.max(maxScore, stdev);
+        }
+
+        if (maxScore <= 0) {
+            return List.of();
+        }
+
+        double threshold = Math.max(8.0, maxScore * 0.18);
+        int maxGap = Math.max(2, height / 200);
+        int minBandHeight = Math.max(MIN_USEFUL_CROP_PX, stripWidth / 2);
+
+        List<int[]> bands = new ArrayList<>();
+        int bandStart = -1;
+        int bandEnd = -1;
+        int gap = 0;
+        for (int y = 0; y < height; y++) {
+            boolean content = rowScore[y] >= threshold;
+            if (content) {
+                if (bandStart < 0) {
+                    bandStart = y;
+                }
+                bandEnd = y;
+                gap = 0;
+            } else if (bandStart >= 0) {
+                gap++;
+                if (gap > maxGap) {
+                    if (bandEnd - bandStart >= minBandHeight) {
+                        bands.add(new int[]{bandStart, bandEnd});
+                    }
+                    bandStart = -1;
+                    bandEnd = -1;
+                    gap = 0;
+                }
+            }
+        }
+        if (bandStart >= 0 && bandEnd - bandStart >= minBandHeight) {
+            bands.add(new int[]{bandStart, bandEnd});
+        }
+        return bands;
     }
 
     /**
