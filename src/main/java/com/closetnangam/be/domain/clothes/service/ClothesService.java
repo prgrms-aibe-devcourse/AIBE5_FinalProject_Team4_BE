@@ -220,8 +220,11 @@ public class ClothesService {
         ClothesInfoSource originalInfoSource = linkedClothes.getClothesInfoSource();
 
         Clothes ownedClothes = linkedClothes;
-        if (originalInfoSource == ClothesInfoSource.EXTERNAL_SHOPPING) {
-            ownedClothes = cloneExternalShoppingAsOwned(linkedClothes, request.productCode(), request.isVerified());
+        if (originalInfoSource == ClothesInfoSource.EXTERNAL_SHOPPING
+                || originalInfoSource == ClothesInfoSource.PHOTO) {
+            // 공용 마스터(EXTERNAL_SHOPPING)와 공개 피드 공유 옷(PHOTO)은 원본 행을 보호하기 위해
+            // 사용자 전용 PURCHASE_HISTORY 행을 복제해 재연결합니다.
+            ownedClothes = cloneAsOwned(linkedClothes, request.productCode(), request.isVerified());
             wardrobeClothes.relinkClothes(ownedClothes);
         } else {
             linkedClothes.convertToOwned(request.productCode(), request.isVerified());
@@ -353,10 +356,10 @@ public class ClothesService {
     }
 
     /**
-     * 공용 {@link ClothesInfoSource#EXTERNAL_SHOPPING} 마스터는 그대로 두고,
-     * 사용자 보유 전환용 {@link ClothesInfoSource#PURCHASE_HISTORY} 행을 새로 만듭니다.
+     * 공용/공유 마스터({@link ClothesInfoSource#EXTERNAL_SHOPPING}, {@link ClothesInfoSource#PHOTO})는 원본 행을 보호하고,
+     * 사용자 보유 전환용 {@link ClothesInfoSource#PURCHASE_HISTORY} 행을 복제해 새로 만듭니다.
      */
-    private Clothes cloneExternalShoppingAsOwned(Clothes source, String productCode, Boolean isVerified) {
+    private Clothes cloneAsOwned(Clothes source, String productCode, Boolean isVerified) {
         Clothes owned = Clothes.builder()
                 .name(source.getName())
                 .brandName(source.getBrandName())

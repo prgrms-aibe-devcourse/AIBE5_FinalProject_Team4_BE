@@ -397,7 +397,7 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 | GET | `/api/users/{userId}/wishlist-clothes` | 미보유 옷 목록 조회 |
 | GET | `/api/users/{userId}/wishlist-clothes/favorites` | 즐겨찾기 미보유 옷 조회 |
 | POST | `/api/users/{userId}/wishlist-clothes` | 미보유 옷 저장 (신규 CLOTHES 생성) |
-| POST | `/api/users/{userId}/wishlist-clothes/{clothesId}` | 기존 `EXTERNAL_SHOPPING` CLOTHES를 위시리스트에 연결 (추천 상품 저장) |
+| POST | `/api/users/{userId}/wishlist-clothes/{clothesId}` | 기존 CLOTHES를 위시리스트에 연결. `EXTERNAL_SHOPPING`(추천 상품) 또는 **공개 피드에 노출된 `PHOTO`** 옷만 허용. `PURCHASE_HISTORY` 및 비공개 PHOTO는 차단 |
 | PATCH | `/api/v1/clothes/{clothesId}/convert-to-owned` | 미보유 옷을 보유 옷으로 전환 (**공식 경로**) |
 | PATCH | `/api/clothes/{clothesId}/convert-to-owned` | 위와 동일 (legacy 호환. 신규 FE는 `/api/v1` 사용) |
 
