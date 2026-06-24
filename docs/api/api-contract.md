@@ -567,6 +567,8 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "title": "상품명",
       "link": "https://...",
       "imageUrl": "https://...",
+      "score": "0.92",
+      "reason": "Style: 0.8, Weather: 0.9, Season: 1.0",
       "brandName": "브랜드명",
       "category": "카테고리",
       "itemType": "아이템 타입",
