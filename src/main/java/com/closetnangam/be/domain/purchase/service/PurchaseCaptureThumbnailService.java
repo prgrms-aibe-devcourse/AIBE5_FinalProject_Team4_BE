@@ -11,6 +11,7 @@ import org.springframework.util.StringUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -24,8 +25,14 @@ public class PurchaseCaptureThumbnailService {
     private static final Logger log = LoggerFactory.getLogger(PurchaseCaptureThumbnailService.class);
     private static final int MIN_CROP_SIZE = 8;
     /** 이보다 작으면 확대 시 깨져 보이므로 크롭 대신 캡처 URL fallback을 사용합니다. */
-    private static final int MIN_USEFUL_CROP_PX = 96;
+    private static final int MIN_USEFUL_CROP_PX = 60;
     private static final double REGION_PADDING_RATIO = 0.12;
+
+    static {
+        // TwelveMonkeys ImageIO WebP 플러그인을 명시적으로 로드합니다.
+        // SPI 자동 등록이 headless 서블릿 환경에서 지연될 수 있어 강제 스캔합니다.
+        ImageIO.scanForPlugins();
+    }
 
     private final ImageStorageService imageStorageService;
 
@@ -269,6 +276,7 @@ public class PurchaseCaptureThumbnailService {
     private static BufferedImage toRgbImage(BufferedImage source) {
         BufferedImage rgb = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = rgb.createGraphics();
+        graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         graphics.drawImage(source, 0, 0, null);
         graphics.dispose();
         return rgb;
