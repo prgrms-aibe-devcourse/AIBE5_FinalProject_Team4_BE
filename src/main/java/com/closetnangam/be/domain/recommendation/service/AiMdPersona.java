@@ -102,15 +102,10 @@ public enum AiMdPersona {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 AI MD입니다."));
     }
 
-    public static List<AiMdPersonaResponse> responsesFor(User.Gender gender) {
+    public static List<AiMdPersonaResponse> responses() {
         return Arrays.stream(values())
-                .filter(persona -> persona.gender == gender)
                 .map(AiMdPersona::toResponse)
                 .toList();
-    }
-
-    public boolean supports(User.Gender userGender) {
-        return gender == userGender;
     }
 
     public AiMdPersonaResponse toResponse() {
