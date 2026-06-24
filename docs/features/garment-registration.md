@@ -138,7 +138,7 @@ last_updated: 2026-06-10
 ## 외부 쇼핑몰 상품 저장
 
 ```text
-1. 외부 상품 검색 또는 추천 결과 확인
+1. 외부 상품 조회 또는 추천 결과 확인
 2. 사용자가 상품 저장
 3. BE가 외부 상품 정보를 공통 옷 정보로 저장
 4. 사용자 옷장에는 미보유 또는 보유 상태로 연결
@@ -148,7 +148,7 @@ last_updated: 2026-06-10
 
 | Method | Path | 설명 |
 | --- | --- | --- |
-| GET | `/api/naver/search` | 네이버쇼핑 상품 검색 |
+| GET | `/api/naver/search` | 네이버쇼핑 상품 조회 |
 | POST | `/api/v1/external/clothes/naver` | 네이버쇼핑 상품을 공통 옷 정보로 저장 |
 | POST | `/api/users/{userId}/wishlist-clothes` | 미보유 옷 저장 |
 

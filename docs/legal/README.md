@@ -1,9 +1,9 @@
 ---
 doc_type: legal_policy
 policy_scope: legal
-version: 2026.06.15
-effective_date: 2026-06-15
-last_updated: 2026-06-15
+version: 2026.06.23
+effective_date: 2026-06-23
+last_updated: 2026-06-23
 status: draft
 ---
 
@@ -30,9 +30,9 @@ docs/legal/
 ├── privacy-policy.md
 ├── marketing-consent.md
 └── versions/
-    ├── terms-2026-06-15.md
-    ├── privacy-policy-2026-06-15.md
-    └── marketing-consent-2026-06-15.md
+    ├── terms-2026-06-23.md
+    ├── privacy-policy-2026-06-23.md
+    └── marketing-consent-2026-06-23.md
 ```
 
 ## 버전 관리 기준

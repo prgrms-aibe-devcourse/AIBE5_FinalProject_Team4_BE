@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-19
+last_updated: 2026-06-23
 ---
 
 # API 계약
@@ -106,7 +106,7 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 | GET | `/api/v1/users/profile` | 현재 로그인한 사용자 프로필 반환 (userId, nickname, onboarded, guideTour 완료 여부) |
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
 | GET | `/api/v1/users/nickname/check` | 닉네임 규칙 및 중복 여부 확인 |
-| PATCH | `/api/v1/users/profile` | 프로필 저장 (온보딩/마이페이지 공통). 저장 후 userId, nickname, onboarded 반환 |
+| PATCH | `/api/v1/users/profile` | 사용자 프로필 저장 (온보딩/내 정보/프로필 공통). 저장 후 userId, nickname, onboarded 반환 |
 | POST | `/api/v1/users/profile/image` | 프로필 이미지 업로드. 저장된 이미지 URL 반환 |
 | POST | `/api/v1/users/onboarding` | 온보딩 완료 저장 (프로필 + 스타일 + 마케팅 동의 일괄 저장) |
 | POST | `/api/v1/users/styles` | 스타일 선호도 저장 (기존 row 보존, preference_weight만 갱신) |
@@ -146,9 +146,9 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 | `gender` | Y | `MALE` / `FEMALE` |
 | `regionName` | Y | 지역명 (예: 서울) |
 | `regionCode` | Y | 지역 코드 |
-| `profileImageUrl` | N | 프로필 이미지 URL. 생략 시 기존 값 유지 |
-| `profileBio` | N | 한 줄 소개. 생략 시 기존 값 유지 |
-| `externalLinkUrl` | N | 외부 링크 URL. 생략 시 기존 값 유지 |
+| `profileImageUrl` | N | 프로필 이미지 URL. 이미지 업로드 후 받은 URL을 저장할 때 사용하며, 생략 시 기존 값 유지 |
+| `profileBio` | N | 프로필 소개. 생략 시 기존 값 유지 |
+| `externalLinkUrl` | N | 룩피드 프로필 외부 링크 URL. 생략 시 기존 값 유지 |
 
 #### PATCH /api/v1/users/profile 응답 필드
 
@@ -187,7 +187,7 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
-| `imageUrl` | String | 업로드된 이미지의 공개 URL. PATCH /profile의 profileImageUrl에 사용 |
+| `imageUrl` | String | 업로드된 이미지의 공개 URL. `PATCH /api/v1/users/profile`의 `profileImageUrl`에 사용 |
 
 #### POST /api/v1/users/onboarding 요청 필드
 
@@ -301,9 +301,9 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
   "success": true,
   "data": {
     "policyType": "terms",
-    "version": "2026.06.15",
-    "effectiveDate": "2026-06-15",
-    "lastUpdated": "2026-06-15",
+    "version": "2026.06.23",
+    "effectiveDate": "2026-06-23",
+    "lastUpdated": "2026-06-23",
     "content": "# 서비스 이용약관\n\n..."
   },
   "message": null
@@ -439,7 +439,7 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 
 | Method | Path | 설명 |
 | --- | --- | --- |
-| GET | `/api/naver/search` | 네이버쇼핑 상품 검색 |
+| GET | `/api/naver/search` | 네이버쇼핑 상품 조회 |
 | POST | `/api/v1/external/clothes/naver` | 네이버쇼핑 상품을 공통 옷 정보로 저장 |
 
 ### 추천
@@ -557,7 +557,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "imageUrl": "https://...",
       "price": "0",
       "score": "0.95",
-      "reason": "Style Match: 0.9, Weather Match: 1.0",
+      "reason": "Style: 0.9, Weather: 1.0, Season: 0.8",
       "brandName": "브랜드명",
       "category": "카테고리",
       "itemType": "아이템 타입",
@@ -575,7 +575,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 현재 `price`는 placeholder("0")이며, `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
+> **Note**: 현재 서비스는 추천 상품 가격 표시를 공식 기준으로 두지 않습니다. `price`는 응답 DTO에 남아 있는 placeholder("0")이므로 FE 표시 기준으로 사용하지 않습니다. `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
 
 #### OOTD 추천 응답 (OotdResponse)
 
@@ -995,12 +995,14 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/feed/users/{userId}/liked-posts` | 본인 좋아요한 피드 목록 (본인만 조회) |
 | POST | `/api/v1/feed/images` | 피드 이미지 업로드 (`multipart/form-data`, field: `file`) |
 | POST | `/api/v1/feed/posts/{postId}/likes` | FEED-004 좋아요 토글 |
-| POST | `/api/v1/feed/posts/{postId}/saves` | FEED-005 저장 토글 |
-| GET | `/api/v1/feed/posts/{postId}/comments` | FEED-006/007 댓글·대댓글 목록 |
-| POST | `/api/v1/feed/posts/{postId}/comments` | FEED-006/007 댓글·대댓글 작성 |
+| POST | `/api/v1/feed/posts/{postId}/saves` | 피드 저장 토글 (현재 코드 잔존, 후속 정리 대상) |
+| GET | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 목록 |
+| POST | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 작성 |
 | PUT | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 수정 (작성자 본인만) |
 | DELETE | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 삭제 |
-| POST | `/api/v1/feed/users/{followeeId}/follows` | FEED-008 팔로우 토글 |
+| POST | `/api/v1/feed/users/{followeeId}/follows` | FEED-007 팔로우 토글 |
+
+> **Note**: 요구사항 정의서 기준으로 별도 피드 저장 기능은 제외되었으며, `FEED-004` 좋아요가 저장 역할을 대체합니다. 현재 `/saves` API와 `FEED_POST_SAVES` 구조는 코드와 ERD에 남아 있어 [implementation-gaps.md](../backend/implementation-gaps.md)에서 후속 정리 대상으로 관리합니다.
 
 #### POST /api/v1/feed/posts — 피드 업로드
 
@@ -1062,7 +1064,7 @@ Query: `page`(default 0), `size`(default 20, max 50)
 }
 ```
 
-> **Note**: FEED-009 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
+> **Note**: FEED-008 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
 
 #### GET /api/v1/feed/users/{userId}/profile — 룩피드 공개 프로필
 
@@ -1085,7 +1087,8 @@ Query: `page`(default 0), `size`(default 20, max 50)
 ```
 
 - `followedByMe`: 조회자가 해당 사용자를 팔로우 중이면 `true`. 본인 프로필(`mine=true`)이면 항상 `false`
-- `profileBio`, `externalLinkUrl`: 룩피드 프로필에 공개된 소개·외부 링크
+- `profileBio`: 프로필에 공개된 소개
+- `externalLinkUrl`: 룩피드 프로필에 공개된 외부 링크
 
 #### PUT /api/v1/feed/posts/{postId}/comments/{commentId} — 댓글 수정
 

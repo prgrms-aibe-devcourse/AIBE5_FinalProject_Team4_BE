@@ -48,7 +48,7 @@ last_updated: 2026-06-14
 | 기술 / 도구 | 사용 목적 |
 | --- | --- |
 | Kakao / Google / Naver OAuth | 소셜 로그인 |
-| Naver Shopping API | 외부 상품 검색 |
+| Naver Shopping API | 외부 상품 조회 |
 | Gemini API | 사진 기반 의류 분석, 구매내역 분석, AI 추천 설명 생성 |
 | 기상청 API | 사용자 지역 기반 날씨 보조 정보 조회 |
 
