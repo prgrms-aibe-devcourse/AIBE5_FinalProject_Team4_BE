@@ -11,6 +11,7 @@ import org.springframework.util.StringUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -24,8 +25,14 @@ public class PurchaseCaptureThumbnailService {
     private static final Logger log = LoggerFactory.getLogger(PurchaseCaptureThumbnailService.class);
     private static final int MIN_CROP_SIZE = 8;
     /** 이보다 작으면 확대 시 깨져 보이므로 크롭 대신 캡처 URL fallback을 사용합니다. */
-    private static final int MIN_USEFUL_CROP_PX = 96;
+    private static final int MIN_USEFUL_CROP_PX = 60;
     private static final double REGION_PADDING_RATIO = 0.12;
+
+    static {
+        // TwelveMonkeys ImageIO WebP 플러그인을 명시적으로 로드합니다.
+        // SPI 자동 등록이 headless 서블릿 환경에서 지연될 수 있어 강제 스캔합니다.
+        ImageIO.scanForPlugins();
+    }
 
     private final ImageStorageService imageStorageService;
 
@@ -65,10 +72,19 @@ public class PurchaseCaptureThumbnailService {
         }
 
         int layoutRowCount = layoutItems == null || layoutItems.isEmpty() ? items.size() : layoutItems.size();
+        // 각 등록 대상 상품이 화면에서 차지하는 실제 주문 행 위치(반품/취소 행 포함)를 먼저 구합니다.
+        int[] layoutRowIndices = new int[items.size()];
+        for (int index = 0; index < items.size(); index++) {
+            layoutRowIndices[index] = resolveLayoutRowIndex(items.get(index), layoutItems, index);
+        }
+        // 첫 행을 기준점으로 잡고 행 간격을 일정하게 맞춰 행마다 좌표가 누적 드리프트되는 문제를 보정합니다.
+        // 좌표축은 필터링된 목록의 인덱스가 아니라 실제 화면 행 위치를 사용해야 반품/취소 행이 중간에 있어도 밀리지 않습니다.
+        List<GeminiThumbnailRegion> calibratedRegions = calibrateRowRegions(items, layoutRowIndices);
         List<GeminiPurchaseCaptureItem> enriched = new ArrayList<>(items.size());
         for (int index = 0; index < items.size(); index++) {
             GeminiPurchaseCaptureItem item = items.get(index);
-            int layoutRowIndex = resolveLayoutRowIndex(item, layoutItems, index);
+            int layoutRowIndex = layoutRowIndices[index];
+            GeminiThumbnailRegion calibratedRegion = calibratedRegions == null ? null : calibratedRegions.get(index);
             String imageUrl = resolveItemSpecificImageUrl(
                     item,
                     captureImageUrl,
@@ -77,11 +93,119 @@ public class PurchaseCaptureThumbnailService {
                     index,
                     layoutRowIndex,
                     layoutRowCount,
-                    sourceImage
+                    sourceImage,
+                    calibratedRegion
             );
             enriched.add(copyItem(item, imageUrl));
         }
         return enriched;
+    }
+
+    /**
+     * 주문 행 썸네일 좌표를 보정합니다.
+     *
+     * <p>Gemini가 반환하는 행별 bounding box는 첫 행은 정확하지만 아래로 갈수록 누적 오차가 생기는 경향이 있습니다.
+     * 첫 유효 행을 기준점(anchor)으로, 유효 행 간 간격의 중앙값을 pitch로 삼아 모든 행을 균일 간격으로 재배치합니다.
+     * x 범위와 썸네일 높이는 기준 행 값을 재사용합니다.</p>
+     *
+     * <p>좌표축은 등록 대상 목록의 인덱스가 아니라 {@code layoutRowIndices}(반품/취소 행을 포함한 실제 화면 행 위치)를
+     * 기준으로 한다. 중간에 등록 불가 행이 빠져 있어도 뒤 상품 좌표가 한 행씩 밀리지 않도록 하기 위함이다.
+     * 화면 행 위치를 신뢰할 수 없으면(유효 행의 행 인덱스가 단조 증가하지 않으면) 보정을 포기하고 기존 경로로 fallback한다.</p>
+     *
+     * @param layoutRowIndices items와 같은 길이의 실제 화면 행 위치 배열
+     * @return items와 같은 길이로 정렬된 보정 영역. 유효한 기준 행이 없거나 행 위치를 신뢰할 수 없으면 {@code null}(기존 추정 경로 사용).
+     */
+    private static List<GeminiThumbnailRegion> calibrateRowRegions(
+            List<GeminiPurchaseCaptureItem> items,
+            int[] layoutRowIndices
+    ) {
+        int n = items.size();
+        double[] tops = new double[n];
+        boolean[] valid = new boolean[n];
+        double xmin = 0;
+        double xmax = 0;
+        double height = 0;
+        int anchorIndex = -1;
+
+        for (int i = 0; i < n; i++) {
+            GeminiThumbnailRegion region = items.get(i).thumbnailRegion();
+            if (region == null || !region.isValid()) {
+                continue;
+            }
+            double top = normalizeCoordinate(region.ymin());
+            double bottom = normalizeCoordinate(region.ymax());
+            double left = normalizeCoordinate(region.xmin());
+            double right = normalizeCoordinate(region.xmax());
+            if (bottom <= top || right <= left) {
+                continue;
+            }
+            tops[i] = top;
+            valid[i] = true;
+            if (anchorIndex < 0) {
+                anchorIndex = i;
+                xmin = left;
+                xmax = right;
+                height = bottom - top;
+            }
+        }
+
+        if (anchorIndex < 0) {
+            return null;
+        }
+
+        // 유효 행의 화면 행 위치가 단조 증가하지 않으면(행 매핑을 신뢰할 수 없으면) 보정을 포기한다.
+        int previousRow = -1;
+        for (int i = 0; i < n; i++) {
+            if (!valid[i]) {
+                continue;
+            }
+            if (layoutRowIndices[i] <= previousRow) {
+                return null;
+            }
+            previousRow = layoutRowIndices[i];
+        }
+
+        List<Double> deltas = new ArrayList<>();
+        int previous = -1;
+        for (int i = 0; i < n; i++) {
+            if (!valid[i]) {
+                continue;
+            }
+            if (previous >= 0) {
+                int rowSpan = layoutRowIndices[i] - layoutRowIndices[previous];
+                double delta = (tops[i] - tops[previous]) / rowSpan;
+                if (delta > 0) {
+                    deltas.add(delta);
+                }
+            }
+            previous = i;
+        }
+
+        double pitch;
+        if (!deltas.isEmpty()) {
+            deltas.sort(Double::compareTo);
+            pitch = deltas.get(deltas.size() / 2);
+        } else {
+            // 기준 행만 유효한 경우: 화면 전체 행 수 기준 균등 분할과 썸네일 높이 추정 중 작은 값으로 행 간격을 잡습니다.
+            int rowCount = 1;
+            for (int i = 0; i < n; i++) {
+                rowCount = Math.max(rowCount, layoutRowIndices[i] + 1);
+            }
+            pitch = Math.min(0.86 / rowCount, height * 1.8);
+            if (pitch <= 0) {
+                pitch = height;
+            }
+        }
+
+        double anchorTop = tops[anchorIndex];
+        int anchorRow = layoutRowIndices[anchorIndex];
+        List<GeminiThumbnailRegion> calibrated = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            double top = anchorTop + pitch * (layoutRowIndices[i] - anchorRow);
+            top = Math.max(0.0, Math.min(top, 1.0 - height));
+            calibrated.add(new GeminiThumbnailRegion(top, xmin, top + height, xmax));
+        }
+        return calibrated;
     }
 
     private String resolveItemSpecificImageUrl(
@@ -92,13 +216,14 @@ public class PurchaseCaptureThumbnailService {
             int itemIndex,
             int layoutRowIndex,
             int layoutRowCount,
-            BufferedImage sourceImage
+            BufferedImage sourceImage,
+            GeminiThumbnailRegion calibratedRegion
     ) {
         if (isDistinctItemImage(item.imageUrl(), captureImageUrl)) {
             return item.imageUrl().trim();
         }
 
-        GeminiThumbnailRegion region = item.thumbnailRegion();
+        GeminiThumbnailRegion region = calibratedRegion != null ? calibratedRegion : item.thumbnailRegion();
         boolean estimated = false;
         if (region == null || !region.isValid()) {
             // 단일 상품은 추정 좌표로 크롭하지 않는다 (원본 캡처 URL을 대신 사용)
@@ -269,6 +394,7 @@ public class PurchaseCaptureThumbnailService {
     private static BufferedImage toRgbImage(BufferedImage source) {
         BufferedImage rgb = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = rgb.createGraphics();
+        graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         graphics.drawImage(source, 0, 0, null);
         graphics.dispose();
         return rgb;
