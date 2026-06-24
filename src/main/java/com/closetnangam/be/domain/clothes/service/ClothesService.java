@@ -21,6 +21,8 @@ import com.closetnangam.be.domain.feed.repository.FeedPostRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.NoSuchElementException;
@@ -32,6 +34,8 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ClothesService {
+
+    private static final Logger log = LoggerFactory.getLogger(ClothesService.class);
 
     private final ClothesRepository clothesRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
@@ -174,15 +178,21 @@ public class ClothesService {
     @Transactional
     public ClothesResponse addExistingClothesToWishlist(Long userId, Long clothesId) {
         Clothes clothes = clothesRepository.findById(clothesId)
-                .orElseThrow(() -> new NoSuchElementException("옷을 찾을 수 없습니다."));
+                .orElseThrow(() -> {
+                    log.warn("[위시리스트연결] 거부: clothes 미존재. userId={}, clothesId={}", userId, clothesId);
+                    return new NoSuchElementException("옷을 찾을 수 없습니다.");
+                });
 
         ClothesInfoSource source = clothes.getClothesInfoSource();
         if (source == ClothesInfoSource.PURCHASE_HISTORY) {
+            log.warn("[위시리스트연결] 거부: PURCHASE_HISTORY 출처. userId={}, clothesId={}", userId, clothesId);
             throw new NoSuchElementException("옷을 찾을 수 없습니다.");
         }
         if (source == ClothesInfoSource.PHOTO && !feedPostRepository.existsByClothesIdInPublicFeed(clothesId)) {
+            log.warn("[위시리스트연결] 거부: 공개 피드에 없는 PHOTO 옷. userId={}, clothesId={}", userId, clothesId);
             throw new NoSuchElementException("옷을 찾을 수 없습니다.");
         }
+        log.info("[위시리스트연결] 허용: userId={}, clothesId={}, source={}", userId, clothesId, source);
 
         var existingLink = wardrobeClothesRepository.findByClothesIdAndUserIdIgnoringSoftDelete(clothesId, userId);
         if (existingLink.isPresent()) {

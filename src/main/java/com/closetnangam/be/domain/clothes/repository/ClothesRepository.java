@@ -16,7 +16,10 @@ public interface ClothesRepository extends JpaRepository<Clothes, Long> {
 
     long countByClothesInfoSource(ClothesInfoSource clothesInfoSource);
 
-    @Query("SELECT c FROM Clothes c WHERE c.clothesInfoSource IN ('EXTERNAL_SHOPPING', 'PURCHASE_HISTORY') ORDER BY c.createdAt DESC")
+    // 추천 후보는 공용 마스터(EXTERNAL_SHOPPING)만 사용한다.
+    // PURCHASE_HISTORY는 개인 구매 데이터라 타 사용자 추천 풀 노출 시 개인정보 노출 우려가 있고,
+    // addExistingClothesToWishlist에서 항상 차단되므로 추천에 섞이면 위시리스트 추가 시 404가 발생한다.
+    @Query("SELECT c FROM Clothes c WHERE c.clothesInfoSource = 'EXTERNAL_SHOPPING' ORDER BY c.createdAt DESC")
     List<Clothes> findAllForRecommendation(Pageable pageable);
 
     /**
