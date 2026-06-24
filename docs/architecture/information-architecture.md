@@ -1,7 +1,7 @@
 ---
 doc_type: be_information_architecture
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-14
+last_updated: 2026-06-23
 ---
 
 # 정보 구조도
@@ -22,8 +22,8 @@ last_updated: 2026-06-14
 | 홈/추천 | OOTD, 취향 기반 추천, 유사 상품, 어울리는 옷, AI MD 추천, 추천 상세 |
 | 옷장 | 보유 옷, 미보유 옷, 통계, 상세, 수정, 즐겨찾기, 삭제, 보유 전환 |
 | 옷 등록 | 사진 기반 등록, 구매내역 캡처 등록, 외부 상품 저장 |
-| 룩피드 | 피드 목록, 피드 상세, 작성, 좋아요, 댓글, 저장 |
-| 마이페이지 | 내 정보 확인/수정, 룩피드 프로필 확인/편집, 소셜 계정, 외부 링크, 약관/도움말, 로그아웃, 회원 탈퇴 |
+| 룩피드 | 피드 목록, 피드 상세, 작성, 좋아요, 댓글, 대댓글, 팔로우 |
+| 마이페이지 | 내 정보 확인/수정, 룩피드 프로필 확인/편집, 소셜 계정, 약관/도움말, 로그아웃, 회원 탈퇴 |
 | 오류 화면 | 서버 오류, 네트워크 오류, 404 |
 
 ## 다이어그램
@@ -75,7 +75,7 @@ flowchart TD
   Feed --> FeedList["룩피드 목록"]
   Feed --> FeedDetail["피드 상세"]
   Feed --> FeedWrite["피드 작성"]
-  Feed --> FeedAction["좋아요 / 댓글 / 저장"]
+  Feed --> FeedAction["좋아요 / 댓글 / 대댓글 / 팔로우"]
 
   Profile --> BasicInfoEdit["기본 정보 수정"]
   Profile --> StylePreferenceEdit["선호 스타일 수정"]
