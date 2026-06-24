@@ -160,13 +160,12 @@ public class ClothesService {
     }
 
     /**
-     * 추천 후보 등 이미 {@link Clothes} 마스터에 존재하는 옷을 사용자 위시리스트에 연결합니다.
-     * 공개 추천 풀과 동일하게 {@link ClothesInfoSource#EXTERNAL_SHOPPING}만 허용합니다.
+     * 추천 후보·피드 등 이미 {@link Clothes} 마스터에 존재하는 옷을 사용자 위시리스트에 연결합니다.
+     * 본인 소유(PHOTO/PURCHASE_HISTORY)가 아닌 공유 가능한 옷이면 소스 타입 제한 없이 허용합니다.
      */
     @Transactional
     public ClothesResponse addExistingClothesToWishlist(Long userId, Long clothesId) {
         Clothes clothes = clothesRepository.findById(clothesId)
-                .filter(candidate -> candidate.getClothesInfoSource() == ClothesInfoSource.EXTERNAL_SHOPPING)
                 .orElseThrow(() -> new NoSuchElementException("옷을 찾을 수 없습니다."));
 
         var existingLink = wardrobeClothesRepository.findByClothesIdAndUserIdIgnoringSoftDelete(clothesId, userId);
