@@ -133,23 +133,34 @@ public class GeminiService {
                 모델이 없으면 옷 종류·상품명으로 추정하세요. 남녀 공용이면 UNISEX.
                 3) season — 두께·소재·소매 길이·보온성으로 착용 시즌을 판별하세요. 불확실하면 ALL_SEASON.
 
+                [중요] styles는 이 옷에 어울리는 스타일 코드를 최소 2개 이상, 최대 5개까지 배열로 반환하세요.
+                명확히 한 가지 스타일만 해당되는 경우에도 가장 근접한 스타일을 2개 이상 선택하세요.
+
+                [의류 여부 판단] isClothing 필드를 반드시 포함하세요.
+                - 이미지가 의류(상의·하의·아우터·신발·가방 등 패션 아이템)이면 isClothing: true
+                - 음식, 풍경, 동물, 인물(얼굴), 전자기기 등 의류가 아니면 isClothing: false
+                - isClothing이 false이면 나머지 필드는 모두 null로 반환하세요.
+
                 %s
 
                 반드시 아래 JSON 형식만 반환하세요.
                 {
+                  "isClothing": true,
                   "name": "string",
                   "brandName": "string",
                   "category": "TOP",
                   "itemType": "SHORT_SLEEVE",
                   "primaryColor": "WHITE",
                   "secondaryColors": ["NAVY"],
-                  "styles": ["CASUAL"],
+                  "styles": ["CASUAL", "STREET"],
                   "gender": "UNISEX",
                   "season": "ALL_SEASON"
                 }
                 """.formatted(classificationGuide);
 
-        return generateJsonFromImage(imageBytes, mimeType, prompt, GeminiClothingClassificationResult.class);
+        // 의류 단품 이미지는 리사이즈해서 토큰 절약 (구매내역 캡처는 리사이즈 금지)
+        GeminiImageResizer.ResizedImage resized = GeminiImageResizer.resize(imageBytes, mimeType);
+        return generateJsonFromImage(resized.bytes(), resized.contentType(), prompt, GeminiClothingClassificationResult.class);
     }
 
     /**
@@ -171,7 +182,9 @@ public class GeminiService {
                 shoppingCategory
         );
 
-        return generateJsonFromImage(imageBytes, mimeType, prompt, GeminiClothingClassificationResult.class);
+        // 쇼핑 상품 이미지도 리사이즈해서 토큰 절약
+        GeminiImageResizer.ResizedImage resized = GeminiImageResizer.resize(imageBytes, mimeType);
+        return generateJsonFromImage(resized.bytes(), resized.contentType(), prompt, GeminiClothingClassificationResult.class);
     }
 
     public GeminiPurchaseCaptureExtractionResult extractPurchaseCaptureInfo(
