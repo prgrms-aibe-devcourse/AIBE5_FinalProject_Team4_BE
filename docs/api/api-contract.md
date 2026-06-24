@@ -1094,7 +1094,7 @@ Query: `page`(default 0), `size`(default 20, max 50)
 }
 ```
 
-- `followedByMe`: 조회자가 해당 사용자를 팔로우 중이면 `true`, 팔로우 중이 아니면 `false`. 본인 프로필(`mine=true`) 또는 비로그인 조회처럼 팔로우 상태를 계산하지 않는 경우 `null`일 수 있음
+- `followedByMe`: 조회자가 해당 사용자를 팔로우 중이면 `true`, 팔로우 중이 아니면 `false`. 현재 BE 응답은 본인 프로필(`mine=true`) 또는 비로그인 조회처럼 팔로우 대상이 아니거나 조회자가 없는 경우도 `false`로 반환함
 - `profileBio`: 프로필에 공개된 소개
 - `externalLinkUrl`: 룩피드 프로필에 공개된 외부 링크
 
