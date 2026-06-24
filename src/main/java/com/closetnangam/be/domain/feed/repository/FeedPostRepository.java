@@ -80,4 +80,18 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, Long> {
               and fp.hidden = false
             """)
     long countPublicByAuthorId(@Param("userId") Long userId);
+
+    /**
+     * 해당 옷이 공개 피드 게시물(hidden=false, 삭제되지 않음)의 코디 아이템으로 포함되어 있으면 true를 반환합니다.
+     * DB 컬럼 추가 없이 피드 공개 여부를 공유 가능성의 기준으로 사용합니다.
+     */
+    @Query("""
+            select case when count(oi) > 0 then true else false end
+            from FeedPost fp
+            join OutfitItem oi on oi.outfit = fp.outfit
+            where fp.hidden = false
+              and fp.deletedAt is null
+              and oi.clothes.id = :clothesId
+            """)
+    boolean existsByClothesIdInPublicFeed(@Param("clothesId") Long clothesId);
 }

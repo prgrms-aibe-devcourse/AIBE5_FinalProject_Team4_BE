@@ -17,6 +17,7 @@ import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.feed.repository.FeedPostRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class ClothesService {
     private final ClothesTagHelper clothesTagHelper;
     private final WardrobeExclusionMatcher wardrobeExclusionMatcher;
     private final WardrobeService wardrobeService;
+    private final FeedPostRepository feedPostRepository;
 
     public List<ClothesResponse> getOwnedClothes(Long userId) {
         return wardrobeClothesRepository.findAllByUserIdAndOwnershipStatus(userId, OwnershipStatus.OWNED).stream()
@@ -161,14 +163,26 @@ public class ClothesService {
 
     /**
      * 추천 후보·피드 등 이미 {@link Clothes} 마스터에 존재하는 옷을 사용자 위시리스트에 연결합니다.
-     * {@link ClothesInfoSource#EXTERNAL_SHOPPING} 공용 마스터와 {@link ClothesInfoSource#PHOTO} 기반 옷을 허용합니다.
-     * 구매내역({@link ClothesInfoSource#PURCHASE_HISTORY}) 기반 개인 데이터는 타 사용자 메타데이터 노출 방지를 위해 차단합니다.
+     *
+     * <ul>
+     *   <li>{@link ClothesInfoSource#EXTERNAL_SHOPPING}: 공용 추천 마스터이므로 무조건 허용합니다.</li>
+     *   <li>{@link ClothesInfoSource#PHOTO}: 공개 피드 게시물에 노출된 옷은 공유 전제이므로 허용합니다.
+     *       피드에 없는 PHOTO 옷(비공개/미게시)은 타 사용자 개인 데이터 노출 방지를 위해 차단합니다.</li>
+     *   <li>{@link ClothesInfoSource#PURCHASE_HISTORY}: 개인 구매내역 데이터이므로 항상 차단합니다.</li>
+     * </ul>
      */
     @Transactional
     public ClothesResponse addExistingClothesToWishlist(Long userId, Long clothesId) {
         Clothes clothes = clothesRepository.findById(clothesId)
-                .filter(c -> c.getClothesInfoSource() != ClothesInfoSource.PURCHASE_HISTORY)
                 .orElseThrow(() -> new NoSuchElementException("옷을 찾을 수 없습니다."));
+
+        ClothesInfoSource source = clothes.getClothesInfoSource();
+        if (source == ClothesInfoSource.PURCHASE_HISTORY) {
+            throw new NoSuchElementException("옷을 찾을 수 없습니다.");
+        }
+        if (source == ClothesInfoSource.PHOTO && !feedPostRepository.existsByClothesIdInPublicFeed(clothesId)) {
+            throw new NoSuchElementException("옷을 찾을 수 없습니다.");
+        }
 
         var existingLink = wardrobeClothesRepository.findByClothesIdAndUserIdIgnoringSoftDelete(clothesId, userId);
         if (existingLink.isPresent()) {
