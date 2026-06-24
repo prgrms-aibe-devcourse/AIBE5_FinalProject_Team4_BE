@@ -177,6 +177,24 @@ public class User extends BaseEntity {
         this.withdrawnAt = null;
     }
 
+    public void anonymizeAfterWithdrawalRetention() {
+        if (this.id == null) {
+            throw new IllegalStateException("사용자 식별자가 없는 계정은 익명화할 수 없습니다.");
+        }
+
+        this.email = "withdrawn-" + this.id + "@deleted.closetnangam.local";
+        this.nickname = null;
+        this.profileImageUrl = "";
+        this.profileBio = "";
+        this.externalLinkUrl = "";
+        this.birthDate = null;
+        this.gender = Gender.OTHER;
+        this.regionName = "";
+        this.regionCode = "";
+        this.marketingAgreed = false;
+        this.marketingAgreedAt = null;
+    }
+
     public boolean isOnboarded() {
         return this.nickname != null
                 && this.birthDate != null

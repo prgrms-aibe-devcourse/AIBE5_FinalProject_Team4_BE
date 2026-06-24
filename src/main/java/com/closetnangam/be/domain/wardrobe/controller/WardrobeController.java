@@ -54,7 +54,8 @@ public class WardrobeController {
                     - itemTypes: itemType별 옷장 등록 개수
                     - userStylePayloads: USER_STYLES.wardrobe_weight 반영용 값
                       (PRIMARY 태그 0.7, SECONDARY 태그 0.3 합산 후 0~100 정규화)
-                    preference_weight, feedback_weight, combined_weight는 미구현 상태입니다.
+                    preference_weight, feedback_weight, combined_weight는 USER_STYLES 내부 계산값으로 관리하며
+                    이 API 응답에는 포함하지 않습니다.
                     """
     )
     @GetMapping("/users/{userId}/statistics")

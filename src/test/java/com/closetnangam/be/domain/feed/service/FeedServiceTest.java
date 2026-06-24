@@ -4,7 +4,6 @@ import com.closetnangam.be.domain.feed.dto.request.FeedCreateRequest;
 import com.closetnangam.be.domain.feed.entity.FeedPost;
 import com.closetnangam.be.domain.feed.repository.FeedPostLikeRepository;
 import com.closetnangam.be.domain.feed.repository.FeedPostRepository;
-import com.closetnangam.be.domain.feed.repository.FeedPostSaveRepository;
 import com.closetnangam.be.domain.feed.repository.FeedCommentRepository;
 import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitBook;
@@ -36,7 +35,6 @@ class FeedServiceTest {
     @Mock private FeedPostRepository feedPostRepository;
     @Mock private FeedCommentRepository feedCommentRepository;
     @Mock private FeedPostLikeRepository feedPostLikeRepository;
-    @Mock private FeedPostSaveRepository feedPostSaveRepository;
     @Mock private com.closetnangam.be.domain.feed.repository.UserFollowRepository userFollowRepository;
     @Mock private UserRepository userRepository;
     @Mock private OutfitRepository outfitRepository;

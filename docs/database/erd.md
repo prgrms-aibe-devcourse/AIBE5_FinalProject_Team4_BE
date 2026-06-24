@@ -1,7 +1,7 @@
 ---
 doc_type: be_database
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-23
+last_updated: 2026-06-24
 erd_version: v2.3
 ---
 
@@ -157,7 +157,8 @@ erd_version: v2.3
 | `USERS` | `User` | `profile_bio`, `external_link_url`, `guide_tour_completed_*` 매핑 완료 |
 | `SOCIAL_ACCOUNTS` | `SocialAccount` | `created_at` + `last_login_at`만 매핑 |
 | `USER_EXTERNAL_LINKS` | `UserExternalLink` | 엔티티·Repository만. **마이페이지 CRUD API는 후속 (USER-002)** |
-| `FEED_*`, `USER_FOLLOWS` | 미구현 | 엔티티 셸 또는 없음. 룩피드 도메인 후속 |
+| `FEED_POSTS`, `FEED_POST_IMAGES`, `FEED_COMMENTS`, `FEED_LIKES` | `FeedPost`, `FeedPostImage`, `FeedComment`, `FeedPostLike` | 룩피드 게시글, 이미지, 댓글/대댓글, 좋아요 구현 |
+| `USER_FOLLOWS` | `UserFollow` | 사용자 팔로우 구현 |
 | `RECOMMENDATION_FEEDBACKS` | `RecommendationFeedback` | saved/disliked/excluded 피드백 구현 완료 |
 
 ## 데이터 보존 기준

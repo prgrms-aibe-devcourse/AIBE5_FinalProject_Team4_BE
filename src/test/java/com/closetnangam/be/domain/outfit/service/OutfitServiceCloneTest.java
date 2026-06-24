@@ -1,8 +1,11 @@
 package com.closetnangam.be.domain.outfit.service;
 
 import com.closetnangam.be.domain.clothes.entity.Clothes;
+import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.outfit.dto.request.OutfitCreateRequest;
+import com.closetnangam.be.domain.outfit.dto.request.OutfitItemRequest;
 import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitBook;
 import com.closetnangam.be.domain.outfit.entity.OutfitItem;
@@ -45,76 +48,45 @@ class OutfitServiceCloneTest {
     private OutfitService outfitService;
 
     @Test
-    @DisplayName("피드 저장으로 코디 복제 시 OUTFIT_STYLES가 생성된다")
-    void cloneOutfitToUserBook_savesOutfitStyles() {
-        Long ownerId = 1L;
-        Long saverId = 2L;
+    @DisplayName("코디 생성 시 구성 옷 스타일이 OUTFIT_STYLES에 저장된다")
+    void createOutfit_savesOutfitStyles() {
+        Long bookId = 1L;
+        Long userId = 1L;
 
-        // 원본 코디 소유자
-        User owner = mock(User.class);
-        given(owner.getId()).willReturn(ownerId);
+        OutfitBook book = mock(OutfitBook.class);
+        given(book.getId()).willReturn(bookId);
+        given(outfitBookRepository.findByIdAndUserId(bookId, userId)).willReturn(Optional.of(book));
 
-        OutfitBook ownerBook = mock(OutfitBook.class);
-        given(ownerBook.getUser()).willReturn(owner);
+        OutfitCreateRequest request = mock(OutfitCreateRequest.class);
+        OutfitItemRequest itemRequest = new OutfitItemRequest(10L, "TOP", 1);
+        given(request.getItems()).willReturn(List.of(itemRequest));
+
+        Outfit outfit = Outfit.builder()
+                .outfitBook(book)
+                .title("코디")
+                .description("설명")
+                .thumbnailUrl("")
+                .situation("DAILY")
+                .season("SPRING")
+                .favorite(false)
+                .build();
+        given(request.toEntity(book)).willReturn(outfit);
+        given(outfitRepository.save(any(Outfit.class))).willReturn(outfit);
 
         Clothes clothes = mock(Clothes.class);
         given(clothes.getId()).willReturn(10L);
+        WardrobeClothes wardrobeClothes = mock(WardrobeClothes.class);
+        given(wardrobeClothes.getClothes()).willReturn(clothes);
+        given(wardrobeClothesRepository.findAllByClothesIdsAndUserId(List.of(10L), userId))
+                .willReturn(List.of(wardrobeClothes));
+        given(outfitItemRepository.saveAll(anyList())).willReturn(List.of());
 
-        OutfitItem sourceItem = mock(OutfitItem.class);
-        given(sourceItem.getClothes()).willReturn(clothes);
-        given(sourceItem.getItemRole()).willReturn("TOP");
-        given(sourceItem.getLayerOrder()).willReturn(1);
+        outfitService.createOutfit(bookId, userId, request);
 
-        Outfit source = mock(Outfit.class);
-        given(source.getOutfitBook()).willReturn(ownerBook);
-        given(source.getOutfitId()).willReturn(100L);
-        given(source.getTitle()).willReturn("피드 코디");
-        given(source.getDescription()).willReturn("설명");
-        given(source.getThumbnailUrl()).willReturn("http://example.com/img.jpg");
-        given(source.getSituation()).willReturn("DAILY");
-        given(source.getSeason()).willReturn("ALL");
-
-        // 저장자 코디북
-        OutfitBook saverBook = mock(OutfitBook.class);
-        given(outfitBookRepository.findByUser_Id(saverId)).willReturn(Optional.of(saverBook));
-
-        given(outfitItemRepository.findAllByOutfit_OutfitId(100L)).willReturn(List.of(sourceItem));
-        given(wardrobeClothesRepository.findAllByClothesIdsAndUserId(List.of(10L), saverId))
-                .willReturn(List.of());
-        given(clothesRepository.findById(10L)).willReturn(Optional.of(clothes));
-
-        Outfit clone = mock(Outfit.class);
-        given(outfitRepository.save(any(Outfit.class))).willReturn(clone);
-
-        OutfitItem savedItem = mock(OutfitItem.class);
-        given(outfitItemRepository.saveAll(anyList())).willReturn(List.of(savedItem));
-
-        // 실행
-        outfitService.cloneOutfitToUserBook(source, saverId);
-
-        // 검증: saveOutfitStyles(clone, savedItems)가 호출되었는지
         ArgumentCaptor<List<OutfitItem>> itemsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(outfitStyleService).saveOutfitStyles(eq(clone), itemsCaptor.capture());
-        assertThat(itemsCaptor.getValue()).containsExactly(savedItem);
-    }
-
-    @Test
-    @DisplayName("본인 코디 저장 시 복제 없이 원본을 반환하고 스타일 저장을 호출하지 않는다")
-    void cloneOutfitToUserBook_ownOutfit_returnsSourceWithoutClone() {
-        Long userId = 1L;
-
-        User owner = mock(User.class);
-        given(owner.getId()).willReturn(userId);
-
-        OutfitBook book = mock(OutfitBook.class);
-        given(book.getUser()).willReturn(owner);
-
-        Outfit source = mock(Outfit.class);
-        given(source.getOutfitBook()).willReturn(book);
-
-        Outfit result = outfitService.cloneOutfitToUserBook(source, userId);
-
-        assertThat(result).isSameAs(source);
-        org.mockito.Mockito.verifyNoInteractions(outfitStyleService);
+        verify(outfitItemRepository).saveAll(itemsCaptor.capture());
+        assertThat(itemsCaptor.getValue()).hasSize(1);
+        assertThat(itemsCaptor.getValue().getFirst().getClothes()).isSameAs(clothes);
+        verify(outfitStyleService).saveOutfitStyles(eq(outfit), eq(List.of()));
     }
 }
