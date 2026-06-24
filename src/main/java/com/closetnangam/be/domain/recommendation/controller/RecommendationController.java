@@ -59,7 +59,7 @@ public class RecommendationController {
 
     @Operation(
             summary = "AI MD 목록 조회",
-            description = "사용자 성별에 맞는 AI MD 목록을 조회합니다."
+            description = "사용자 성별과 관계없이 전체 AI MD 목록을 조회합니다. gender는 MD 페르소나 성별이며 추천 옷 성별 필터가 아닙니다."
     )
     @GetMapping("/users/{userId}/recommendations/ai-md/personas")
     public ResponseEntity<ApiResponse<List<AiMdPersonaResponse>>> getAiMdPersonas(@PathVariable Long userId) {
