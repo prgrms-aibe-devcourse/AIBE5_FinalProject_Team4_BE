@@ -1,7 +1,7 @@
 ---
 doc_type: be_database
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-24
+last_updated: 2026-06-25
 erd_version: v2.3
 ---
 
@@ -66,7 +66,7 @@ erd_version: v2.3
 | `product_code` | 상품 품번 |
 | `image_url` | 대표 이미지 URL |
 | `category` | 옷 카테고리 코드 |
-| `gender` | 옷 대상 성별 코드: `MALE`, `FEMALE`, `UNISEX`. 사용자 화면 표시 대상이 아닌 내부 분류/추천용 값 |
+| `gender` | 옷 대상 성별 코드: `MALE`, `FEMALE`, `UNISEX`. 등록/수정 또는 초안 확인 화면에서 선택·확정할 수 있으며 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않음 |
 | `season` | 옷 자체의 대상 계절 code: `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON`. 옷 등록 시 1개 선택하며 생성 후 변경하지 않음 |
 | `item_type` | 카테고리 하위 옷 타입 코드 |
 | `clothes_info_source` | 옷 정보 출처: `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |

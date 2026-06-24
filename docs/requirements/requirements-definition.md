@@ -1,7 +1,7 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-24
+last_updated: 2026-06-25
 ---
 
 # 요구사항 정의서
@@ -15,7 +15,7 @@ last_updated: 2026-06-24
 - `feature-index.md`는 이 문서의 세부기능 ID를 API, 데이터, 화면과 연결하는 빠른 참조 문서입니다.
 - 요구사항 ID 또는 세부기능 ID의 의미가 바뀌면 이 문서를 먼저 수정하거나 같은 PR에서 함께 수정합니다.
 - 옷 계절(`CLOTHES.season`)은 옷 등록 시 1개 선택하는 공통 옷 정보이며, 생성된 옷의 계절은 변경하지 않습니다.
-- 옷 성별(`CLOTHES.gender`)은 사용자 화면 표시나 직접 수정 대상이 아니라, 옷 분류/추천과 저장 요청에 사용하는 내부 code입니다.
+- 옷 성별(`CLOTHES.gender`)은 옷 등록/수정 또는 등록 초안 확인 화면에서 사용자가 선택·확정할 수 있는 code이며, 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않습니다.
 
 ## ID 체계
 

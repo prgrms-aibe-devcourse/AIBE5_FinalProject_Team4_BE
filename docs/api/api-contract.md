@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-23
+last_updated: 2026-06-25
 ---
 
 # API 계약
@@ -362,12 +362,12 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 | `category` | Y | 대분류 code (`TOP`, `BOTTOM`, `OUTER`, `SHOES`) |
 | `itemType` | Y | 소분류 code. 선택한 `category` 하위 값 |
 | `season` | N | 옷 자체의 대상 계절 code (`SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON`). 생략 시 `ALL_SEASON`으로 저장하며, 최종 저장 후 변경하지 않음 |
-| `gender` | Y | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 사용자 화면 표시 대상 아님 |
+| `gender` | Y | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 등록/수정 또는 초안 확인 화면에서 선택·확정 가능 |
 | `primaryColor` | Y | 대표 색상 code |
 | `secondaryColors` | N | 보조 색상 code 배열 |
 | `styles` | Y | 스타일 code 배열 (최소 1개) |
 
-허용 code 목록은 [카탈로그 사용 가이드](../domain/catalog.md)를 따릅니다. 저장 요청 시 validation이 적용됩니다. `gender`는 사용자에게 노출하지 않고 옷 분류/추천과 저장 요청에 사용하는 내부 code입니다.
+허용 code 목록은 [카탈로그 사용 가이드](../domain/catalog.md)를 따릅니다. 저장 요청 시 validation이 적용됩니다. `gender`는 옷 분류/추천과 저장 요청에 사용하는 code이며, 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않습니다.
 
 #### 옷 수정 기준
 
@@ -375,7 +375,7 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 
 #### 옷 조회 응답 (`ClothesResponse`)
 
-옷 목록/상세/저장 성공 응답에는 분류 필드와 함께 `season`, `gender`가 포함됩니다. `season`은 `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON` code이고, `gender`는 `MALE`, `FEMALE`, `UNISEX` enum code입니다. FE는 `gender`를 사용자 화면에 표시하지 않고 내부 분류/추천 처리 기준으로만 사용합니다.
+옷 목록/상세/저장 성공 응답에는 분류 필드와 함께 `season`, `gender`가 포함됩니다. `season`은 `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON` code이고, `gender`는 `MALE`, `FEMALE`, `UNISEX` enum code입니다. FE는 `gender`를 등록/수정 또는 초안 확인 화면에서 선택·확정할 수 있으며, 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않습니다.
 
 ```json
 {
@@ -432,7 +432,7 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/save` | 구매내역 기반 옷 저장 (`itemIndex` 선택, 생략 시 0) |
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/items/{itemIndex}/skip` | 구매내역 캡처 상품 건너뛰기 |
 
-단일 상품 draft/analyze 응답은 `name`, `category`, `itemType`, `season`, `gender` 등 flat 필드와 `items[0]` 모두에 분류 값을 포함합니다. 복수 상품 시 flat 분류 필드는 `null`이며 `items[]`(`itemIndex`, `season`, `gender`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 사용합니다. `season`은 옷 등록 시 확정되는 공통 옷 정보이고, `gender`는 사용자에게 노출하지 않는 내부 code입니다.
+단일 상품 draft/analyze 응답은 `name`, `category`, `itemType`, `season`, `gender` 등 flat 필드와 `items[0]` 모두에 분류 값을 포함합니다. 복수 상품 시 flat 분류 필드는 `null`이며 `items[]`(`itemIndex`, `season`, `gender`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 사용합니다. `season`은 옷 등록 시 확정되는 공통 옷 정보이고, `gender`는 등록 초안 확인 화면에서 선택·확정할 수 있는 code입니다.
 
 #### 구매내역 저장 요청 (`PurchaseCaptureSaveRequest`)
 
@@ -503,7 +503,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | `primaryColor`, `primaryColorDisplay`, `secondaryColors` | 색상 |
 | `styleCodes` | 스타일 code 배열 |
 | `season` | `CLOTHES.season` code. 옷 등록 시 확정하며 `WARDROBE_CLOTHES`에는 저장하지 않음 |
-| `gender` | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 사용자 화면 표시 대상 아님 |
+| `gender` | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 등록/수정 또는 초안 확인 화면에서 선택·확정 가능 |
 | `compatibilityScore` | 어울림 점수 (0~100, 내림차순 정렬) |
 
 ```json
@@ -555,7 +555,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 점수는 색상(35%)·스타일(30%)·itemType(20%)·시즌(15%) 가중 합산입니다. 동점(`compatibilityScore` 동일) 후보는 `brandName`이 `UNKNOWN`이 아닌 상품을 먼저 노출합니다. FE는 사용자 프로필 성별에 맞지 않는 `gender` 후보를 내부적으로 제외할 수 있지만, 해당 값을 사용자 화면에 표시하지 않습니다.
+> **Note**: 점수는 색상(35%)·스타일(30%)·itemType(20%)·시즌(15%) 가중 합산입니다. 동점(`compatibilityScore` 동일) 후보는 `brandName`이 `UNKNOWN`이 아닌 상품을 먼저 노출합니다. FE는 사용자 프로필 성별에 맞지 않는 `gender` 후보를 내부적으로 제외할 수 있지만, 해당 값을 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않습니다.
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 
@@ -1072,6 +1072,7 @@ Query: `page`(default 0), `size`(default 20, max 50)
 ```
 
 > **Note**: FEED-008 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
+> `FeedAuthor.followedByMe`는 조회자가 작성자를 팔로우 중이면 `true`, 팔로우 중이 아니면 `false`입니다. 본인 게시물 또는 비로그인 조회처럼 팔로우 상태를 계산하지 않는 경우 `null`일 수 있습니다.
 
 #### GET /api/v1/feed/users/{userId}/profile — 룩피드 공개 프로필
 
@@ -1093,7 +1094,7 @@ Query: `page`(default 0), `size`(default 20, max 50)
 }
 ```
 
-- `followedByMe`: 조회자가 해당 사용자를 팔로우 중이면 `true`. 본인 프로필(`mine=true`)이면 항상 `false`
+- `followedByMe`: 조회자가 해당 사용자를 팔로우 중이면 `true`, 팔로우 중이 아니면 `false`. 본인 프로필(`mine=true`) 또는 비로그인 조회처럼 팔로우 상태를 계산하지 않는 경우 `null`일 수 있음
 - `profileBio`: 프로필에 공개된 소개
 - `externalLinkUrl`: 룩피드 프로필에 공개된 외부 링크
 
