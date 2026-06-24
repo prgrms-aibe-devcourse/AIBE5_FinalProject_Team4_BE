@@ -17,6 +17,7 @@ import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.feed.repository.FeedPostRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
@@ -58,14 +59,51 @@ class ClothesServiceTest {
     @Mock
     private WardrobeService wardrobeService;
 
+    @Mock
+    private FeedPostRepository feedPostRepository;
+
     @InjectMocks
     private ClothesService clothesService;
 
+
     @Test
-    @DisplayName("기존 CLOTHES 위시리스트 연결은 EXTERNAL_SHOPPING만 허용한다")
-    void addExistingClothesToWishlist_rejectsNonExternalShoppingMaster() {
-        Clothes privateClothes = createClothes(10L, ClothesInfoSource.PHOTO);
-        given(clothesRepository.findById(10L)).willReturn(Optional.of(privateClothes));
+    @DisplayName("구매내역(PURCHASE_HISTORY) 기반 옷은 위시리스트 연결을 거부한다")
+    void addExistingClothesToWishlist_rejectsPurchaseHistorySource() {
+        Clothes purchaseClothes = createClothes(10L, ClothesInfoSource.PURCHASE_HISTORY);
+        given(clothesRepository.findById(10L)).willReturn(Optional.of(purchaseClothes));
+
+        assertThatThrownBy(() -> clothesService.addExistingClothesToWishlist(1L, 10L))
+                .isInstanceOf(NoSuchElementException.class)
+                .hasMessageContaining("옷을 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("PHOTO 기반 옷이 공개 피드에 노출된 경우 위시리스트 연결을 허용한다")
+    void addExistingClothesToWishlist_allowsPhotoClothesInPublicFeed() {
+        Clothes photoClothes = createClothes(10L, ClothesInfoSource.PHOTO);
+        User user = User.builder().nickname("u").email("u@e.com")
+                .gender(User.Gender.MALE).birthDate(LocalDate.of(1990, 1, 1)).build();
+        ReflectionTestUtils.setField(user, "id", 1L);
+        Wardrobe wardrobe = Wardrobe.create(user);
+        ReflectionTestUtils.setField(wardrobe, "id", 100L);
+        given(clothesRepository.findById(10L)).willReturn(Optional.of(photoClothes));
+        given(feedPostRepository.existsByClothesIdInPublicFeed(10L)).willReturn(true);
+        given(wardrobeClothesRepository.findByClothesIdAndUserIdIgnoringSoftDelete(10L, 1L))
+                .willReturn(java.util.Optional.empty());
+        given(wardrobeService.getOrCreateWardrobe(1L)).willReturn(wardrobe);
+        given(wardrobeClothesRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        clothesService.addExistingClothesToWishlist(1L, 10L);
+
+        verify(wardrobeClothesRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("PHOTO 기반 옷이 공개 피드에 없으면 위시리스트 연결을 거부한다")
+    void addExistingClothesToWishlist_rejectsPhotoClothesNotInPublicFeed() {
+        Clothes photoClothes = createClothes(10L, ClothesInfoSource.PHOTO);
+        given(clothesRepository.findById(10L)).willReturn(Optional.of(photoClothes));
+        given(feedPostRepository.existsByClothesIdInPublicFeed(10L)).willReturn(false);
 
         assertThatThrownBy(() -> clothesService.addExistingClothesToWishlist(1L, 10L))
                 .isInstanceOf(NoSuchElementException.class)

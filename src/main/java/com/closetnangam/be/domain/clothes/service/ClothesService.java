@@ -17,6 +17,7 @@ import com.closetnangam.be.domain.clothes.helper.ClothesTagHelper;
 import com.closetnangam.be.domain.clothes.helper.WardrobeExclusionMatcher;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
+import com.closetnangam.be.domain.feed.repository.FeedPostRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class ClothesService {
     private final ClothesTagHelper clothesTagHelper;
     private final WardrobeExclusionMatcher wardrobeExclusionMatcher;
     private final WardrobeService wardrobeService;
+    private final FeedPostRepository feedPostRepository;
 
     public List<ClothesResponse> getOwnedClothes(Long userId) {
         return wardrobeClothesRepository.findAllByUserIdAndOwnershipStatus(userId, OwnershipStatus.OWNED).stream()
@@ -160,14 +162,27 @@ public class ClothesService {
     }
 
     /**
-     * 추천 후보 등 이미 {@link Clothes} 마스터에 존재하는 옷을 사용자 위시리스트에 연결합니다.
-     * 공개 추천 풀과 동일하게 {@link ClothesInfoSource#EXTERNAL_SHOPPING}만 허용합니다.
+     * 추천 후보·피드 등 이미 {@link Clothes} 마스터에 존재하는 옷을 사용자 위시리스트에 연결합니다.
+     *
+     * <ul>
+     *   <li>{@link ClothesInfoSource#EXTERNAL_SHOPPING}: 공용 추천 마스터이므로 무조건 허용합니다.</li>
+     *   <li>{@link ClothesInfoSource#PHOTO}: 공개 피드 게시물에 노출된 옷은 공유 전제이므로 허용합니다.
+     *       피드에 없는 PHOTO 옷(비공개/미게시)은 타 사용자 개인 데이터 노출 방지를 위해 차단합니다.</li>
+     *   <li>{@link ClothesInfoSource#PURCHASE_HISTORY}: 개인 구매내역 데이터이므로 항상 차단합니다.</li>
+     * </ul>
      */
     @Transactional
     public ClothesResponse addExistingClothesToWishlist(Long userId, Long clothesId) {
         Clothes clothes = clothesRepository.findById(clothesId)
-                .filter(candidate -> candidate.getClothesInfoSource() == ClothesInfoSource.EXTERNAL_SHOPPING)
                 .orElseThrow(() -> new NoSuchElementException("옷을 찾을 수 없습니다."));
+
+        ClothesInfoSource source = clothes.getClothesInfoSource();
+        if (source == ClothesInfoSource.PURCHASE_HISTORY) {
+            throw new NoSuchElementException("옷을 찾을 수 없습니다.");
+        }
+        if (source == ClothesInfoSource.PHOTO && !feedPostRepository.existsByClothesIdInPublicFeed(clothesId)) {
+            throw new NoSuchElementException("옷을 찾을 수 없습니다.");
+        }
 
         var existingLink = wardrobeClothesRepository.findByClothesIdAndUserIdIgnoringSoftDelete(clothesId, userId);
         if (existingLink.isPresent()) {
@@ -205,8 +220,11 @@ public class ClothesService {
         ClothesInfoSource originalInfoSource = linkedClothes.getClothesInfoSource();
 
         Clothes ownedClothes = linkedClothes;
-        if (originalInfoSource == ClothesInfoSource.EXTERNAL_SHOPPING) {
-            ownedClothes = cloneExternalShoppingAsOwned(linkedClothes, request.productCode(), request.isVerified());
+        if (originalInfoSource == ClothesInfoSource.EXTERNAL_SHOPPING
+                || originalInfoSource == ClothesInfoSource.PHOTO) {
+            // 공용 마스터(EXTERNAL_SHOPPING)와 공개 피드 공유 옷(PHOTO)은 원본 행을 보호하기 위해
+            // 사용자 전용 PURCHASE_HISTORY 행을 복제해 재연결합니다.
+            ownedClothes = cloneAsOwned(linkedClothes, request.productCode(), request.isVerified());
             wardrobeClothes.relinkClothes(ownedClothes);
         } else {
             linkedClothes.convertToOwned(request.productCode(), request.isVerified());
@@ -338,10 +356,10 @@ public class ClothesService {
     }
 
     /**
-     * 공용 {@link ClothesInfoSource#EXTERNAL_SHOPPING} 마스터는 그대로 두고,
-     * 사용자 보유 전환용 {@link ClothesInfoSource#PURCHASE_HISTORY} 행을 새로 만듭니다.
+     * 공용/공유 마스터({@link ClothesInfoSource#EXTERNAL_SHOPPING}, {@link ClothesInfoSource#PHOTO})는 원본 행을 보호하고,
+     * 사용자 보유 전환용 {@link ClothesInfoSource#PURCHASE_HISTORY} 행을 복제해 새로 만듭니다.
      */
-    private Clothes cloneExternalShoppingAsOwned(Clothes source, String productCode, Boolean isVerified) {
+    private Clothes cloneAsOwned(Clothes source, String productCode, Boolean isVerified) {
         Clothes owned = Clothes.builder()
                 .name(source.getName())
                 .brandName(source.getBrandName())
