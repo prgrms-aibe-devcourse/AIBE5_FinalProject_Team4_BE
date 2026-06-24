@@ -871,7 +871,7 @@ public class AiMdRecommendationService {
         if (userGender == User.Gender.FEMALE) {
             return "여성";
         }
-        return "";
+        return "유니섹스";
     }
 
     private String targetClothesGenderLabel(User.Gender userGender) {
@@ -1008,7 +1008,7 @@ public class AiMdRecommendationService {
                 규칙:
                 - outfits 배열 길이는 반드시 4입니다.
                 - MD의 성별은 말투와 스타일 취향을 정하는 페르소나일 뿐입니다. 추천할 옷의 성별 기준은 반드시 [추천 대상 옷 성별]을 따릅니다.
-                - 사용자가 남성이면 남성/공용 옷으로, 사용자가 여성이면 여성/공용 옷으로 코디합니다.
+                - 사용자가 남성이면 남성/공용 옷으로, 사용자가 여성이면 여성/공용 옷으로, 그 외 성별이면 공용 옷으로 코디합니다.
                 - wardrobeClothesIds에는 ownershipStatus가 OWNED인 보유 옷과 WISHLIST인 미보유 관심 상품을 모두 사용할 수 있습니다.
                 - wardrobeClothesIds는 비어 있어도 됩니다. 옷장 등록 옷을 억지로 넣지 말고, 외부 상품 후보만으로 더 자연스러운 룩이 되면 externalProductIds만으로 코디를 구성하세요.
                 - 각 코디는 옷장 등록 옷과 외부 상품을 합쳐 TOP(상의), BOTTOM(하의), SHOES(신발)를 각각 최소 1개 포함해야 합니다.
@@ -1178,7 +1178,7 @@ public class AiMdRecommendationService {
                 규칙:
                 - products 배열은 가능한 한 40개를 반환합니다.
                 - MD의 성별은 말투와 스타일 취향을 정하는 페르소나일 뿐입니다. 추천할 상품의 성별 기준은 반드시 [추천 대상 옷 성별]을 따릅니다.
-                - 사용자가 남성이면 남성/공용 상품으로, 사용자가 여성이면 여성/공용 상품으로 추천합니다.
+                - 사용자가 남성이면 남성/공용 상품으로, 사용자가 여성이면 여성/공용 상품으로, 그 외 성별이면 공용 상품으로 추천합니다.
                 - productId는 상품 후보 목록에 있는 값만 사용합니다.
                 - source가 INTERNAL인 상품은 서비스가 미리 분류해 둔 내부 상품 후보입니다. MD 스타일, 사용자 스타일 가중치, 옷장 색상과 맞는 INTERNAL 상품을 우선 추천합니다.
                 - 네이버 검색 후보는 내부 상품으로 채우기 어려운 카테고리나 분위기를 보강할 때 사용합니다. 단순히 외부 검색 상품이라는 이유만으로 INTERNAL 후보보다 우선하지 않습니다.
