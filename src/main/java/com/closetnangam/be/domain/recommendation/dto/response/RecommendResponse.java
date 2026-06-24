@@ -16,15 +16,6 @@ public record RecommendResponse(
         @Schema(description = "이미지 URL")
         String imageUrl,
 
-        @Schema(description = "가격")
-        String price,
-
-        @Schema(description = "추천 점수")
-        String score,
-
-        @Schema(description = "추천 이유")
-        String reason,
-
         @Schema(description = "브랜드명")
         String brandName,
 

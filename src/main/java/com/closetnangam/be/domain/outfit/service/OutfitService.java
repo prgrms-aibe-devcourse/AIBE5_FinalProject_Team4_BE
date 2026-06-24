@@ -134,67 +134,7 @@ public class OutfitService {
         outfit.softDelete();
     }
 
-    /**
-     * 피드 등에서 다른 사용자 코디를 내 코디북으로 복제한다.
-     * 본인 코디면 그대로 반환하고, 저장 가능한 아이템이 없으면 예외를 던진다.
-     */
-    @Transactional
-    public Outfit cloneOutfitToUserBook(Outfit source, Long userId) {
-        if (source.getOutfitBook().getUser().getId().equals(userId)) {
-            return source;
-        }
-
-        OutfitBook book = outfitBookRepository.findByUser_Id(userId)
-                .orElseGet(() -> {
-                    User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
-                    return outfitBookRepository.save(OutfitBook.create(user));
-                });
-
-        List<OutfitItem> sourceItems = outfitItemRepository.findAllByOutfit_OutfitId(source.getOutfitId());
-        List<OutfitItemRequest> resolvableItems = resolveSavableItems(sourceItems, userId);
-
-        if (resolvableItems.isEmpty() && !sourceItems.isEmpty()) {
-            throw new IllegalArgumentException("내 옷장에서 저장할 수 있는 옷이 없습니다.");
-        }
-
-        Outfit clone = outfitRepository.save(Outfit.builder()
-                .outfitBook(book)
-                .title(StringUtils.hasText(source.getTitle()) ? source.getTitle() : "저장한 코디")
-                .description(StringUtils.hasText(source.getDescription()) ? source.getDescription() : "")
-                .thumbnailUrl(StringUtils.hasText(source.getThumbnailUrl()) ? source.getThumbnailUrl() : "")
-                .situation(StringUtils.hasText(source.getSituation()) ? source.getSituation() : "DAILY")
-                .season(StringUtils.hasText(source.getSeason()) ? source.getSeason() : "ALL")
-                .favorite(false)
-                .build());
-
-        if (!resolvableItems.isEmpty()) {
-            List<OutfitItem> savedItems = saveOutfitItems(clone, userId, resolvableItems, true);
-            outfitStyleService.saveOutfitStyles(clone, savedItems);
-        }
-        return clone;
-    }
-
-    private List<OutfitItemRequest> resolveSavableItems(List<OutfitItem> sourceItems, Long userId) {
-        if (sourceItems.isEmpty()) {
-            return List.of();
-        }
-
-        return sourceItems.stream()
-                .map(item -> new OutfitItemRequest(item.getClothes().getId(), item.getItemRole(), item.getLayerOrder()))
-                .toList();
-    }
-
     private List<OutfitItem> saveOutfitItems(Outfit outfit, Long userId, List<OutfitItemRequest> itemRequests) {
-        return saveOutfitItems(outfit, userId, itemRequests, false);
-    }
-
-    private List<OutfitItem> saveOutfitItems(
-            Outfit outfit,
-            Long userId,
-            List<OutfitItemRequest> itemRequests,
-            boolean allowDirectClothesFallback
-    ) {
         List<Long> clothesIds = itemRequests.stream()
                 .map(OutfitItemRequest::getClothesId)
                 .toList();
@@ -209,14 +149,13 @@ public class OutfitService {
                 .map(itemRequest -> {
                     Clothes clothes = clothesMap.get(itemRequest.getClothesId());
 
-                    // 2. WardrobeClothes에 없으면 EXTERNAL_SHOPPING만 폴백 허용 (피드 저장 시에는 타인 옷 직접 참조)
+                    // 2. WardrobeClothes에 없으면 외부 상품으로 저장된 공통 옷 정보만 허용
                     if (clothes == null) {
                         clothes = clothesRepository.findById(itemRequest.getClothesId())
                                 .orElseThrow(() -> new EntityNotFoundException(
                                         "옷을 찾을 수 없습니다. ID: " + itemRequest.getClothesId()));
 
-                        if (!allowDirectClothesFallback
-                                && clothes.getClothesInfoSource() != ClothesInfoSource.EXTERNAL_SHOPPING) {
+                        if (clothes.getClothesInfoSource() != ClothesInfoSource.EXTERNAL_SHOPPING) {
                             throw new EntityNotFoundException(
                                     "사용자 옷장에서 옷을 찾을 수 없습니다. ID: " + itemRequest.getClothesId());
                         }

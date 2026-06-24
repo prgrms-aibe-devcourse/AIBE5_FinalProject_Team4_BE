@@ -327,6 +327,18 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 | POST | `/api/v1/wardrobes/users/{userId}` | 사용자 옷장 생성 |
 | GET | `/api/v1/wardrobes/users/{userId}/statistics` | 사용자 옷장 통계 조회 |
 
+#### 옷장 통계 응답
+
+`GET /api/v1/wardrobes/users/{userId}/statistics`는 사용자의 옷장에 등록된 보유/미보유 옷 전체를 기준으로 집계합니다.
+
+| 필드 | 설명 |
+| --- | --- |
+| `totalOwnedCount` | 보유 옷 개수 |
+| `totalWishlistCount` | 미보유 옷 개수 |
+| `totalWardrobeClothesCount` | 보유/미보유 전체 옷장 등록 개수 |
+| `itemTypes` | `itemType`별 옷장 등록 개수 |
+| `userStylePayloads` | `USER_STYLES.wardrobe_weight` 반영용 스타일 가중치 |
+
 ### 옷
 
 | Method | Path | 설명 |
@@ -555,9 +567,6 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "title": "상품명",
       "link": "https://...",
       "imageUrl": "https://...",
-      "price": "0",
-      "score": "0.95",
-      "reason": "Style: 0.9, Weather: 1.0, Season: 0.8",
       "brandName": "브랜드명",
       "category": "카테고리",
       "itemType": "아이템 타입",
@@ -574,8 +583,6 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
   "message": null
 }
 ```
-
-> **Note**: 현재 서비스는 추천 상품 가격 표시를 공식 기준으로 두지 않습니다. `price`는 응답 DTO에 남아 있는 placeholder("0")이므로 FE 표시 기준으로 사용하지 않습니다. `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
 
 #### OOTD 추천 응답 (OotdResponse)
 
@@ -995,14 +1002,13 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/feed/users/{userId}/liked-posts` | 본인 좋아요한 피드 목록 (본인만 조회) |
 | POST | `/api/v1/feed/images` | 피드 이미지 업로드 (`multipart/form-data`, field: `file`) |
 | POST | `/api/v1/feed/posts/{postId}/likes` | FEED-004 좋아요 토글 |
-| POST | `/api/v1/feed/posts/{postId}/saves` | 피드 저장 토글 (현재 코드 잔존, 후속 정리 대상) |
 | GET | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 목록 |
 | POST | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 작성 |
 | PUT | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 수정 (작성자 본인만) |
 | DELETE | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 삭제 |
 | POST | `/api/v1/feed/users/{followeeId}/follows` | FEED-007 팔로우 토글 |
 
-> **Note**: 요구사항 정의서 기준으로 별도 피드 저장 기능은 제외되었으며, `FEED-004` 좋아요가 저장 역할을 대체합니다. 현재 `/saves` API와 `FEED_POST_SAVES` 구조는 코드와 ERD에 남아 있어 [implementation-gaps.md](../backend/implementation-gaps.md)에서 후속 정리 대상으로 관리합니다.
+> **Note**: 요구사항 정의서 기준으로 별도 피드 저장 기능은 제공하지 않으며, `FEED-004` 좋아요가 저장 역할을 대체합니다.
 
 #### POST /api/v1/feed/posts — 피드 업로드
 
@@ -1048,7 +1054,6 @@ Query: `page`(default 0), `size`(default 20, max 50)
         "likeCount": 3,
         "commentCount": 1,
         "likedByMe": false,
-        "savedByMe": false,
         "hidden": false,
         "mine": false,
         "createdAt": "2026-06-09T12:00:00",

@@ -11,11 +11,13 @@ public record WardrobeStatisticsResponse(
         Long userId,
         Long wardrobeId,
         int totalOwnedCount,
+        int totalWishlistCount,
+        int totalWardrobeClothesCount,
         List<ItemTypeCount> itemTypes,
         List<UserStyleWardrobePayload> userStylePayloads
 ) {
 
-    /** itemType(소분류)별 보유 옷 개수 */
+    /** itemType(소분류)별 옷장 등록 옷 개수 */
     public record ItemTypeCount(
             String itemType,
             String itemTypeLabel,

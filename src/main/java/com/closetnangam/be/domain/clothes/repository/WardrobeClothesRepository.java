@@ -20,6 +20,13 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             """)
     boolean existsByUserIdAndOwnershipStatus(@Param("userId") Long userId, @Param("ownershipStatus") OwnershipStatus ownershipStatus);
 
+    @Query("""
+            select count(wc) > 0 from WardrobeClothes wc
+            join wc.wardrobe w
+            where w.user.id = :userId
+              and wc.deletedAt is null
+            """)
+    boolean existsActiveByUserId(@Param("userId") Long userId);
 
     @Query("""
             select wc from WardrobeClothes wc
@@ -211,7 +218,26 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
     );
 
     /**
-     * 옷장 통계용: 보유 옷 + 스타일 태그 + Style 을 한 번에 로딩합니다.
+     * 옷장 통계용: 지정한 보유 상태의 옷장 등록 옷 + 스타일 태그 + Style 을 한 번에 로딩합니다.
+     */
+    @Query("""
+            select distinct wc from WardrobeClothes wc
+            join fetch wc.clothes c
+            join fetch wc.wardrobe w
+            join fetch w.user
+            left join fetch c.styleTags st
+            left join fetch st.style
+            where w.user.id = :userId
+              and wc.ownershipStatus in :ownershipStatuses
+              and wc.deletedAt is null
+            """)
+    List<WardrobeClothes> findAllForStatistics(
+            @Param("userId") Long userId,
+            @Param("ownershipStatuses") List<OwnershipStatus> ownershipStatuses
+    );
+
+    /**
+     * 추천용: 보유 옷 + 스타일 태그 + Style 을 한 번에 로딩합니다.
      */
     @Query("""
             select distinct wc from WardrobeClothes wc

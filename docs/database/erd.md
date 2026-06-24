@@ -36,7 +36,6 @@ erd_version: v2.3
 | 룩피드 | `FEED_POST_IMAGES` | 피드 게시글 이미지 |
 | 룩피드 | `FEED_COMMENTS` | 피드 댓글과 대댓글 |
 | 룩피드 | `FEED_LIKES` | 피드 좋아요 |
-| 룩피드 | `FEED_POST_SAVES` | 피드 저장 잔존 구조. 요구사항 기준에서는 `FEED-004` 좋아요가 저장 역할을 대체하며 후속 정리 대상 |
 | 룩피드 | `USER_FOLLOWS` | 사용자 팔로우 관계 |
 
 ## 핵심 관계

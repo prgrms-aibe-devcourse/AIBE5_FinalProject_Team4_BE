@@ -86,7 +86,7 @@ public class UserStyle extends BaseEntity {
 
     private void calculateCombinedWeight(boolean hasWardrobeData) {
         // 옷장 통계가 있는 경우 (hasWardrobeData == true)
-        // 보유 옷 비율 70% + 온보딩 가중치 30% 배분 전략 적용
+        // 옷장 스타일 가중치 70% + 온보딩 가중치 30% 배분 전략 적용
         if (hasWardrobeData) {
             // (preferenceWeight * 0.3) + (wardrobeWeight * 0.7) + (feedbackWeight)
             double combined = (this.preferenceWeight * 0.3) + (this.wardrobeWeight * 0.7);

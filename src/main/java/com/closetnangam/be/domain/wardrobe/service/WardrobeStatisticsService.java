@@ -49,14 +49,23 @@ public class WardrobeStatisticsService {
         Wardrobe wardrobe = wardrobeRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new IllegalArgumentException("옷장을 찾을 수 없습니다."));
 
-        List<WardrobeClothes> ownedClothes = wardrobeClothesRepository.findOwnedForStatistics(
-                userId, OwnershipStatus.OWNED
+        List<WardrobeClothes> wardrobeClothesList = wardrobeClothesRepository.findAllForStatistics(
+                userId,
+                List.of(OwnershipStatus.OWNED, OwnershipStatus.WISHLIST)
         );
 
         Map<String, Integer> itemTypeCounts = new HashMap<>();
         Map<Long, StyleAccumulator> styleAccumulators = new LinkedHashMap<>();
+        int ownedCount = 0;
+        int wishlistCount = 0;
 
-        for (WardrobeClothes wardrobeClothes : ownedClothes) {
+        for (WardrobeClothes wardrobeClothes : wardrobeClothesList) {
+            if (OwnershipStatus.OWNED.equals(wardrobeClothes.getOwnershipStatus())) {
+                ownedCount++;
+            } else if (OwnershipStatus.WISHLIST.equals(wardrobeClothes.getOwnershipStatus())) {
+                wishlistCount++;
+            }
+
             Clothes clothes = wardrobeClothes.getClothes();
             if (clothes == null || !StringUtils.hasText(clothes.getItemType())) {
                 continue;
@@ -80,13 +89,15 @@ public class WardrobeStatisticsService {
         }
 
         List<UserStyleWardrobePayload> stylePayloads = toUserStylePayloads(styleAccumulators);
-        boolean hasWardrobeData = !ownedClothes.isEmpty();
+        boolean hasWardrobeData = !wardrobeClothesList.isEmpty();
         syncUserStyles(userId, stylePayloads, hasWardrobeData);
 
         return new WardrobeStatisticsResponse(
                 userId,
                 wardrobe.getId(),
-                ownedClothes.size(),
+                ownedCount,
+                wishlistCount,
+                wardrobeClothesList.size(),
                 toItemTypeCounts(itemTypeCounts),
                 stylePayloads
         );

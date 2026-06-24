@@ -34,25 +34,17 @@ last_updated: 2026-06-24
 
 | 영역 | 현재 코드에 남아 있는 형태 | 목표 기준 | 관련 문서 |
 | --- | --- | --- | --- |
-| 옷장 통계 범위 | `/statistics` API가 `OWNED` 상태의 보유 옷만 계산하고 `totalOwnedCount`를 반환 | 옷장 전체 요약은 `OWNED`와 `WISHLIST`를 함께 고려 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
-| `USER_STYLES.wardrobe_weight` 산정 범위 | `/statistics` API 호출 시 보유 옷 기준 스타일 가중치를 계산해 `USER_STYLES.wardrobe_weight`에 동기화 | `wardrobe_weight`는 사용자의 옷장에 등록된 옷 스타일 기반 점수라는 기준을 따름 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | 배포/인프라 자동화 범위 | GitHub Actions는 테스트/빌드 CI를 수행. EC2/RDS/S3 운영 배포 가이드, prod compose, S3 저장소 구현은 존재하지만 GitHub Actions 기반 CD workflow는 아직 없음 | 시스템 아키텍처는 운영 배포 구조와 현재 자동화 수준을 구분 | [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md), [aws-setup.md](../deploy/aws-setup.md) |
-| 추천 응답 형식 | `RECO-002` 추천 응답 DTO에 공식 표시 기준이 아닌 `price` placeholder("0")가 남아 있고, `score`와 `reason`은 기술적 매칭 결과를 반환 | 현재 서비스는 가격 표시를 공식 요구사항으로 두지 않음. 가격 필드는 FE 표시 기준이 아니며, 점수/추천 이유 노출 기준은 별도 확정 필요 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | AI MD 추천 검증 범위 | `RECO-005` API는 완성형 코디 검증과 스타일 가중 상품 후보 구성을 구현했지만, 외부 상품 포함 저장·저장 실패 및 다중 네이버 검색 조합 경로 테스트가 부족 | 현재 기능 오류가 아니라 후속 테스트 보강 대상. 외부 상품 혼합 코디 저장, 4개 미만 응답, 저장 실패/롤백, 다중 검색 결과 병합 경로를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
-| 룩피드 피드 저장 기능 | 현재 코드와 ERD에는 `FEED_POST_SAVES`와 `/api/v1/feed/posts/{postId}/saves` 저장 토글 API가 남아 있음 | 요구사항 정의서 기준 별도 피드 저장 기능은 제외되고 `FEED-004` 좋아요가 저장 역할을 대체 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [erd.md](../database/erd.md) |
 | 탈퇴 30일 경과 후 개인정보 삭제/익명화 | 회원탈퇴 시 `withdrawn_at`을 기록하고 30일 이내 복구 가능한 상태로 관리하지만, 30일 경과 후 개인정보 삭제/익명화 자동 처리는 별도 구현 없음 | 탈퇴 철회 기간이 지나면 약관과 개인정보 처리방침 기준에 따라 개인정보를 삭제하거나 식별할 수 없게 처리 | [data-lifecycle.md](../database/data-lifecycle.md), [legal/README.md](../legal/README.md), [api-contract.md](../api/api-contract.md) |
 
 ## 요구사항 ID 연결표
 
 | 세부기능 ID | API/도메인 | 현재 주요 코드 | 기준 문서 | 현재 구현 상태 |
 | --- | --- | --- | --- | --- |
-| `WARDROBE-002` | `GET /api/v1/wardrobes/users/{userId}/statistics` | `WardrobeStatisticsService`, `WardrobeStatisticsResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | 보유 옷 기준 통계만 반환. 옷장 전체 요약은 미보유 API 조합 또는 BE 계약 확정 필요 |
-| `STYLE-002` | `USER_STYLES.wardrobe_weight` | `WardrobeStatisticsService`, `UserStyle.syncWardrobeWeight`, `WardrobeStatisticsResponse.userStylePayloads` | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [erd.md](../database/erd.md) | 통계 API 호출 시 보유 옷 기준 스타일 가중치를 저장. 옷장 전체 등록 기준 반영 여부 확인 필요 |
 | `RECO-004` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 시 `brandName != UNKNOWN` 우선 |
 | `DEPLOY-001`~`DEPLOY-005` | 배포/인프라 자동화 범위 | `.github/workflows/ci.yml`, `deploy/`, `S3ImageStorageService`, `docker-compose.yml` | [requirements-definition.md](../requirements/requirements-definition.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md), [aws-setup.md](../deploy/aws-setup.md) | EC2/RDS/S3 운영 배포 문서와 S3 저장소 구현은 존재. 현재 GitHub Actions는 CI 중심이며 자동 CD workflow는 후속 정리 필요 |
-| `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | 공식 서비스에 가격 표시 기준은 없으나 응답 DTO에 `price` placeholder("0")가 남아 있음. 0~1 점수 형식과 기술적 추천 이유는 사용자 노출 기준 확인 필요 |
 | `RECO-005` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 상품 후보 조회, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
-| `FEED-004`~`FEED-007` | 룩피드 반응 | `FeedController`, `FeedService`, `FeedPostSave`, `FeedPostSaveRepository` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [erd.md](../database/erd.md) | WBS 기준 별도 저장 기능은 제외됐지만 현재 코드/API/ERD에 피드 저장 기능이 남아 있어 후속 정리 필요 |
 | 회원탈퇴 | 탈퇴 후 데이터 보존/삭제 | `UserController`, `UserService`, `User` | [data-lifecycle.md](../database/data-lifecycle.md), [legal/README.md](../legal/README.md), [api-contract.md](../api/api-contract.md) | 탈퇴 시 `withdrawn_at` 기록과 30일 이내 복구 흐름은 구현. 30일 경과 후 개인정보 삭제/익명화 자동 처리 기준은 후속 구현 필요 |
 
 ## BE 코드와 공식 기준 확인 필요
@@ -72,48 +64,6 @@ last_updated: 2026-06-24
 
 이 작업은 현재 로그인/온보딩/마이페이지 보완 범위에서는 구현하지 않고, 후속 이슈에서 처리합니다.
 
-### `WARDROBE-002` 옷장 통계
-
-요구사항 정의서에서 `WARDROBE-002`는 사용자 옷장에 등록된 보유/미보유 옷 통계 조회입니다. 옷장 전체 요약을 표시할 때는 `OWNED`와 `WISHLIST`를 모두 고려하는 것이 기준입니다.
-
-현재 BE 구현은 `/api/v1/wardrobes/users/{userId}/statistics`에서 `OWNED` 상태의 보유 옷만 계산합니다.
-
-```text
-src/main/java/com/closetnangam/be/domain/wardrobe/service/WardrobeStatisticsService.java
-- findOwnedForStatistics(userId, OwnershipStatus.OWNED)
-```
-
-현재 응답 DTO도 `totalOwnedCount`, `itemTypes`, `userStylePayloads` 중심입니다.
-
-```text
-src/main/java/com/closetnangam/be/domain/wardrobe/dto/response/WardrobeStatisticsResponse.java
-- totalOwnedCount
-- itemTypes
-- userStylePayloads
-```
-
-따라서 `totalOwnedCount`는 옷장 전체 개수가 아니라 보유 옷 개수로 사용해야 합니다. FE가 옷장 전체 등록 수 또는 미보유 옷 수를 표시해야 하는 경우 아래 중 하나가 필요합니다.
-
-- BE 통계 API 응답에 보유/미보유/전체 개수를 분리한 필드를 추가합니다.
-- FE가 보유 옷 API와 미보유 옷 API 응답을 조합해 옷장 전체 요약을 계산합니다.
-
-현재 API 구현 변경은 이 문서의 범위가 아닙니다. API 계약을 변경하거나 응답 필드를 추가하는 작업은 담당자 확인 후 별도 이슈 또는 PR로 진행합니다.
-
-### `STYLE-002` USER_STYLES.wardrobe_weight
-
-공식 기준 문서에서 `USER_STYLES.wardrobe_weight`는 사용자의 옷장에 등록된 옷 스타일 기반 점수입니다.
-
-현재 `/statistics` API의 `userStylePayloads`는 보유 옷 기준으로 계산되며, 같은 요청 안에서 `USER_STYLES.wardrobe_weight`에 동기화됩니다. 따라서 현재 구현에서는 미보유 옷의 스타일이 `wardrobe_weight`에 반영되지 않습니다.
-
-확인이 필요한 기준은 아래와 같습니다.
-
-- `wardrobe_weight`를 옷장 전체 등록 기준으로 계산할지
-- `wardrobe_weight`를 보유 옷 기준으로만 계산할지
-- 전체 옷장 요약과 스타일 가중치 산정 범위를 서로 다르게 둘지
-- GET 통계 조회 API가 `USER_STYLES.wardrobe_weight` 저장까지 수행하는 현재 구조를 유지할지
-
-현재까지의 기준 문서 표현은 옷장 등록 기준에 가깝습니다. 담당자와 논의하여 현재 코드 기준을 공식 기준으로 확정한다면 [domain/invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [database/erd.md](../database/erd.md), [api-contract.md](../api/api-contract.md)를 같은 PR에서 함께 수정합니다.
-
 ### `DEPLOY-001`~`DEPLOY-005` 배포/인프라 자동화 범위
 
 [system-architecture.md](../architecture/system-architecture.md)는 MVP와 운영 배포까지 고려한 시스템 구성을 설명합니다. 다만 자동 코드리뷰나 문서 검토 시 운영 배포 구조와 현재 자동화 수준을 구분해서 읽어야 합니다.
@@ -130,26 +80,6 @@ src/main/java/com/closetnangam/be/domain/wardrobe/dto/response/WardrobeStatistic
 자동 코드리뷰와 문서 검토 시 `system-architecture.md`만 보고 현재 구현이 누락되었다고 판단하지 않고, 이 문서의 gap 항목을 함께 확인합니다.
 
 자동 CD workflow가 구현되거나 운영 배포 방식이 변경되면 [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md), 루트 [README](../../README.md), 이 문서를 같은 PR에서 함께 갱신합니다.
-
-### `RECO-002` 취향 기반 상품 추천 응답 형식
-
-현재 서비스 기준에는 추천 상품의 가격 표시 요구사항이 없습니다. 다만 [api-contract.md](../api/api-contract.md)의 현재 응답 예시와 BE 응답 DTO에는 `price` 필드가 남아 있습니다.
-
-현재 BE 구현(`StyleProductRecommender.java`)은 아래와 같은 placeholder 및 기술적 데이터를 반환합니다.
-
-- `price`: 항상 `"0"` 반환. 현재 공식 서비스 표시 기준으로 사용하지 않음
-- `score`: `0.00` ~ `1.00` 사이의 점수를 문자열로 반환 (예: `"0.85"`)
-- `reason`: `"Style: 0.8, Weather: 1.0, Season: 1.0"` 형태의 기술적 매칭 점수 요약 반환
-- `brandName`, `category`, `itemType`, `primaryColor`, `primaryStyle`: 상품의 기본 메타데이터 정보 포함
-- `clothesId`: 피드백 매핑을 위한 내부 옷 ID 포함
-
-FE는 이 응답을 UI에 그대로 노출하기보다는, 아래와 같은 처리가 필요하거나 BE의 향후 개선을 기다려야 합니다.
-
-- `price`는 공식 표시 기준이 아니므로 노출하지 않거나 무시
-- 점수를 백분율로 환산하여 표시 (예: `score * 100`)
-- 기술적 추천 이유를 사용자에게 적절히 가공하여 표시
-
-추천 응답에서 `price` 필드를 제거할지, 후속 외부 상품 가격 연동 시 사용할지, 또는 FE 비노출 placeholder로 유지할지는 별도 이슈에서 확정합니다.
 
 ### `RECO-005` AI MD 추천 검증 범위
 
@@ -209,12 +139,9 @@ src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendati
 
 | 우선순위 | 대상 | 이유 |
 | --- | --- | --- |
-| 1 | `WARDROBE-002` 통계 범위 | FE 옷장 요약과 API 응답 필드 해석에 직접 영향 |
-| 2 | `USER_STYLES.wardrobe_weight` 산정 범위 | 사용자 취향 점수와 추천 개인화 기준에 영향 |
-| 3 | `RECO-002` 추천 응답 형식 | 공식 가격 표시 기준이 없는 상태에서 `price` placeholder를 UI 표시 데이터로 오해할 가능성 |
-| 4 | `RECO-005` AI MD 추천 검증 범위 | 현재 기능 오류가 아니라 Gemini 응답 변형과 코디 저장 롤백 경로의 후속 테스트 보강 대상 |
-| 5 | 회원탈퇴 30일 경과 후 개인정보 삭제/익명화 | 약관/개인정보 처리방침과 데이터 생명주기 기준에 영향 |
-| 6 | 배포/인프라 자동화 범위 | 운영 배포 문서/설정과 GitHub Actions 자동화 수준을 혼동할 가능성 |
+| 1 | `RECO-005` AI MD 추천 검증 범위 | 현재 기능 오류가 아니라 Gemini 응답 변형과 코디 저장 롤백 경로의 후속 테스트 보강 대상 |
+| 2 | 회원탈퇴 30일 경과 후 개인정보 삭제/익명화 | 약관/개인정보 처리방침과 데이터 생명주기 기준에 영향 |
+| 3 | 배포/인프라 자동화 범위 | 운영 배포 문서/설정과 GitHub Actions 자동화 수준을 혼동할 가능성 |
 
 ## 문서 변경 기준
 

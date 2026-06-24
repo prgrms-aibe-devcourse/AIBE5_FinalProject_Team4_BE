@@ -47,8 +47,11 @@ public class WardrobeController {
     @Operation(
             summary = "옷장 통계 조회",
             description = """
-                    보유 옷 기준 itemType(소분류) 개수와 스타일 옷장 가중치를 반환합니다.
-                    - itemTypes: itemType별 보유 개수
+                    옷장에 등록된 보유/미보유 옷 기준 통계와 스타일 옷장 가중치를 반환합니다.
+                    - totalOwnedCount: 보유 옷 개수
+                    - totalWishlistCount: 미보유 옷 개수
+                    - totalWardrobeClothesCount: 보유/미보유 전체 옷장 등록 개수
+                    - itemTypes: itemType별 옷장 등록 개수
                     - userStylePayloads: USER_STYLES.wardrobe_weight 반영용 값
                       (PRIMARY 태그 0.7, SECONDARY 태그 0.3 합산 후 0~100 정규화)
                     preference_weight, feedback_weight, combined_weight는 미구현 상태입니다.

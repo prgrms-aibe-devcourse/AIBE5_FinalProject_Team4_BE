@@ -133,13 +133,6 @@ public class FeedController {
         return ResponseEntity.ok(ApiResponse.ok(feedService.toggleLike(postId, userId)));
     }
 
-    @Operation(summary = "저장 토글", description = "FEED-005. 피드를 저장하거나 저장을 취소합니다.")
-    @PostMapping("/posts/{postId}/saves")
-    public ResponseEntity<ApiResponse<FeedInteractionResponse>> toggleSave(@PathVariable @Min(1) Long postId) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.ok(feedService.toggleSave(postId, userId)));
-    }
-
     @Operation(summary = "댓글 목록", description = "FEED-006/007. 피드 댓글과 대댓글을 조회합니다.")
     @GetMapping("/posts/{postId}/comments")
     public ResponseEntity<ApiResponse<List<FeedCommentResponse>>> getComments(@PathVariable @Min(1) Long postId) {

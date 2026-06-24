@@ -34,18 +34,6 @@ CREATE TABLE IF NOT EXISTS feed_likes (
     INDEX idx_feed_likes_post (feed_post_id)
 );
 
-CREATE TABLE IF NOT EXISTS feed_post_saves (
-    feed_post_save_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id           BIGINT NOT NULL,
-    feed_post_id      BIGINT NOT NULL,
-    saved_outfit_id   BIGINT NULL,
-    created_at        DATETIME(6) NULL,
-    updated_at        DATETIME(6) NULL,
-    UNIQUE KEY uk_feed_post_saves_user_post (user_id, feed_post_id),
-    INDEX idx_feed_post_saves_post (feed_post_id),
-    INDEX idx_feed_post_saves_saved_outfit (saved_outfit_id)
-);
-
 CREATE TABLE IF NOT EXISTS feed_comments (
     feed_comment_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
     feed_post_id       BIGINT NOT NULL,

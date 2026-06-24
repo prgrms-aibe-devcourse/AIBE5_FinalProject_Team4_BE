@@ -187,8 +187,7 @@ public class StyleProductRecommender {
 
         // 최종 점수 계산 (스타일 비중 유지하되 날씨/계절 합산)
         double totalScore = (STYLE_WEIGHT * maxStyleScore) + (WEATHER_WEIGHT * weatherScore * 0.7) + (0.12 * seasonMatchScore);
-        String reason = String.format("Style: %.1f, Weather: %.1f, Season: %.1f", maxStyleScore, weatherScore, seasonMatchScore);
-        return new ScoredRecommendation(clothes, totalScore, reason);
+        return new ScoredRecommendation(clothes, totalScore);
     }
 
     private RecommendResponse mapToRecommendResponse(ScoredRecommendation scored) {
@@ -199,9 +198,6 @@ public class StyleProductRecommender {
                 clothes.getName(),
                 clothes.getExternalProductUrl(),
                 clothes.getImageUrl(),
-                "0",
-                String.format("%.2f", scored.score()),
-                scored.reason(),
                 clothes.getBrandName(),
                 clothes.getCategory(),
                 clothes.getItemType(),
@@ -211,5 +207,5 @@ public class StyleProductRecommender {
                 clothes.getId()
         );
     }
-    private record ScoredRecommendation(Clothes clothes, double score, String reason) {}
+    private record ScoredRecommendation(Clothes clothes, double score) {}
 }

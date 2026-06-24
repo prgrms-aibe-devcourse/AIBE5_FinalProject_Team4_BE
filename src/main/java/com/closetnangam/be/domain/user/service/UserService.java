@@ -1,6 +1,5 @@
 package com.closetnangam.be.domain.user.service;
 
-import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.catalog.entity.Style;
 import com.closetnangam.be.domain.catalog.repository.StyleRepository;
@@ -220,7 +219,7 @@ public class UserService {
             preferenceMap.put(style.getId(), i == 0 ? 7 : 3);
         }
 
-        boolean hasWardrobeData = wardrobeClothesRepository.existsByUserIdAndOwnershipStatus(user.getId(), OwnershipStatus.OWNED);
+        boolean hasWardrobeData = wardrobeClothesRepository.existsActiveByUserId(user.getId());
 
         List<UserStyle> newStyles = new ArrayList<>();
         for (Style style : allStyles) {
