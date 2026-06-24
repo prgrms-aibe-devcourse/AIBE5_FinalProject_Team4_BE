@@ -451,7 +451,7 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 | POST | `/api/v1/users/{userId}/recommendations/feedback` | 추천 상품 피드백 제출 (저장/싫어요/추천 제외) |
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
 | GET | `/api/v1/ootd/{wardrobeId}?currentTemp={temp}` | 내 옷장 기반 OOTD 추천 |
-| GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 사용자 성별에 맞는 AI MD 목록 조회 |
+| GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 전체 AI MD 목록 조회 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/products` | 선택한 AI MD 기준 외부 상품 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save` | 선택한 AI MD 코디 후보 저장 |
@@ -679,7 +679,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: AI MD 목록은 JWT 사용자와 path의 `userId`가 일치해야 조회할 수 있으며, 사용자 성별에 맞는 MD만 반환합니다. 남성 사용자는 `taesik`, `junsik`, 여성 사용자는 `sesoon`, `gahyun`, `seongmi`를 선택할 수 있습니다.
+> **Note**: AI MD 목록은 JWT 사용자와 path의 `userId`가 일치해야 조회할 수 있으며, 사용자 성별과 관계없이 전체 MD를 반환합니다. 모든 사용자는 `taesik`, `junsik`, `sesoon`, `gahyun`, `seongmi`를 선택할 수 있습니다. `md.gender`는 MD 페르소나의 성별이며 추천 옷 성별 필터가 아닙니다.
 
 #### AI MD 상품 추천 응답 (AiMdProductRecommendationResponse)
 
@@ -725,7 +725,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색과 내부 `EXTERNAL_SHOPPING` 공용 후보를 함께 사용하고, 내부 후보는 선택한 MD 성별과 `UNISEX` 상품만 포함합니다. 내부 후보는 DB 태그가 있으면 `product.primaryColor`/`product.primaryStyle`에 대표 색상·대표 스타일 코드를 포함하고, 네이버 후보는 해당 값이 `null`입니다. 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 40개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 40개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 상품 카드 액션은 `candidateSource` 기준으로 분기합니다. `candidateSource=INTERNAL`이고 `clothesId`가 있으면 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`로 기존 공용 옷을 위시리스트에 연결하고, 같은 `clothesId`로 `POST /api/v1/users/{userId}/recommendations/feedback`에 저장/싫어요/추천 제외 피드백을 제출할 수 있습니다. `candidateSource=NAVER`이고 `clothesId=null`인 후보만 `POST /api/users/{userId}/wishlist-clothes` 신규 생성 플로우를 사용합니다. `link=""`이면 구매 버튼을 숨기거나 비활성화합니다. 유사 상품 추천 결과도 동일한 `candidateSource` 분기 기준을 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
+> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색과 내부 `EXTERNAL_SHOPPING` 공용 후보를 함께 사용합니다. 추천 옷 성별 기준은 선택한 MD가 아니라 사용자 프로필 성별이며, 남성 사용자는 남성/`UNISEX`, 여성 사용자는 여성/`UNISEX`, `OTHER` 사용자는 `UNISEX` 내부 후보를 포함합니다. 네이버쇼핑 검색어도 사용자 성별을 기준으로 구성합니다. 내부 후보는 DB 태그가 있으면 `product.primaryColor`/`product.primaryStyle`에 대표 색상·대표 스타일 코드를 포함하고, 네이버 후보는 해당 값이 `null`입니다. 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 40개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 40개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 상품 카드 액션은 `candidateSource` 기준으로 분기합니다. `candidateSource=INTERNAL`이고 `clothesId`가 있으면 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`로 기존 공용 옷을 위시리스트에 연결하고, 같은 `clothesId`로 `POST /api/v1/users/{userId}/recommendations/feedback`에 저장/싫어요/추천 제외 피드백을 제출할 수 있습니다. `candidateSource=NAVER`이고 `clothesId=null`인 후보만 `POST /api/users/{userId}/wishlist-clothes` 신규 생성 플로우를 사용합니다. `link=""`이면 구매 버튼을 숨기거나 비활성화합니다. 유사 상품 추천 결과도 동일한 `candidateSource` 분기 기준을 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
 
 #### AI MD 코디 추천 응답 (AiMdOutfitRecommendationResponse)
 
