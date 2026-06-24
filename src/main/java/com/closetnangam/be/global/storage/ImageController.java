@@ -42,17 +42,17 @@ public class ImageController {
     }
 
     @Operation(
-            summary = "구매내역 캡처 이미지 조회 (인증 필요)",
+            summary = "구매내역 캡처 이미지 조회 (소유자 전용)",
             description = """
-                    업로드된 구매내역 캡처 이미지를 반환합니다. 로그인이 필요합니다. \
-                    파일명은 UUID 기반이므로 URL 추측이 사실상 불가능합니다."""
+                    업로드된 구매내역 캡처 이미지를 반환합니다. 로그인이 필요하며 \
+                    본인 소유 이미지만 조회할 수 있습니다."""
     )
     @GetMapping("/purchase-captures/{userId}/{filename}")
     public ResponseEntity<byte[]> getPurchaseCaptureImage(
             @PathVariable Long userId,
             @PathVariable String filename
     ) {
-        SecurityUtils.getCurrentUserId();
+        SecurityUtils.verifyOwnership(userId);
         return serveUserImage(PURCHASE_CAPTURES_SUBDIRECTORY, userId, filename);
     }
 
