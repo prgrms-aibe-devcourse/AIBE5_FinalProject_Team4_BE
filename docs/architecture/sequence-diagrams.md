@@ -1,7 +1,7 @@
 ---
 doc_type: be_sequence_diagrams
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-19
+last_updated: 2026-06-24
 ---
 
 # 시퀀스 다이어그램
@@ -250,9 +250,9 @@ sequenceDiagram
     BE-->>FE: 피드 작성 완료
     FE->>User: 작성된 피드 표시
   else 피드 상호작용
-    User->>FE: 좋아요, 댓글, 저장 중 선택
+    User->>FE: 좋아요 또는 댓글 입력
     FE->>BE: 피드 상호작용 요청
-    BE->>DB: 좋아요, 댓글, 저장 정보 반영
+    BE->>DB: 좋아요 또는 댓글 정보 반영
     BE-->>FE: 상호작용 처리 완료
     FE->>User: 변경된 피드 상태 표시
   else 피드 삭제 또는 숨김

@@ -36,8 +36,7 @@ last_updated: 2026-06-24
 | --- | --- | --- | --- |
 | 옷장 통계 범위 | `/statistics` API가 `OWNED` 상태의 보유 옷만 계산하고 `totalOwnedCount`를 반환 | 옷장 전체 요약은 `OWNED`와 `WISHLIST`를 함께 고려 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | `USER_STYLES.wardrobe_weight` 산정 범위 | `/statistics` API 호출 시 보유 옷 기준 스타일 가중치를 계산해 `USER_STYLES.wardrobe_weight`에 동기화 | `wardrobe_weight`는 사용자의 옷장에 등록된 옷 스타일 기반 점수라는 기준을 따름 | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) |
-| `CLOTHES.season` 수정 범위와 계절 기준 | 배포 UI에서는 생성된 옷의 계절 변경이 불가로 확인됨. 다만 BE 옷 수정 API의 DTO/service는 `season`을 받을 수 있어 API 직접 호출 기준 정합성 확인이 필요함. 일부 Swagger/OpenAPI 설명은 `season`을 옷장 정보처럼 설명함 | `season`은 `CLOTHES` 공통 정보이며 옷 등록 시 1개 선택하고 생성 후 변경하지 않음 | [requirements-definition.md](../requirements/requirements-definition.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [invariants.md](../domain/invariants.md), [api-contract.md](../api/api-contract.md) |
-| 배포/인프라 목표 구조 | GitHub Actions는 테스트/빌드 CI를 수행하고, Docker Compose는 로컬 MySQL/Redis 개발 인프라를 실행. AWS 배포와 CD 자동화는 진행 예정 | 시스템 아키텍처는 AWS EC2/RDS/S3와 GitHub Actions 기반 배포까지 포함한 목표 구조 | [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) |
+| 배포/인프라 자동화 범위 | GitHub Actions는 테스트/빌드 CI를 수행. EC2/RDS/S3 운영 배포 가이드, prod compose, S3 저장소 구현은 존재하지만 GitHub Actions 기반 CD workflow는 아직 없음 | 시스템 아키텍처는 운영 배포 구조와 현재 자동화 수준을 구분 | [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md), [aws-setup.md](../deploy/aws-setup.md) |
 | 추천 응답 형식 | `RECO-002` 추천 응답 DTO에 공식 표시 기준이 아닌 `price` placeholder("0")가 남아 있고, `score`와 `reason`은 기술적 매칭 결과를 반환 | 현재 서비스는 가격 표시를 공식 요구사항으로 두지 않음. 가격 필드는 FE 표시 기준이 아니며, 점수/추천 이유 노출 기준은 별도 확정 필요 | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) |
 | AI MD 추천 검증 범위 | `RECO-005` API는 완성형 코디 검증과 스타일 가중 상품 후보 구성을 구현했지만, 외부 상품 포함 저장·저장 실패 및 다중 네이버 검색 조합 경로 테스트가 부족 | 현재 기능 오류가 아니라 후속 테스트 보강 대상. 외부 상품 혼합 코디 저장, 4개 미만 응답, 저장 실패/롤백, 다중 검색 결과 병합 경로를 서비스 테스트로 고정 | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) |
 | 룩피드 피드 저장 기능 | 현재 코드와 ERD에는 `FEED_POST_SAVES`와 `/api/v1/feed/posts/{postId}/saves` 저장 토글 API가 남아 있음 | 요구사항 정의서 기준 별도 피드 저장 기능은 제외되고 `FEED-004` 좋아요가 저장 역할을 대체 | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [erd.md](../database/erd.md) |
@@ -49,9 +48,8 @@ last_updated: 2026-06-24
 | --- | --- | --- | --- | --- |
 | `WARDROBE-002` | `GET /api/v1/wardrobes/users/{userId}/statistics` | `WardrobeStatisticsService`, `WardrobeStatisticsResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | 보유 옷 기준 통계만 반환. 옷장 전체 요약은 미보유 API 조합 또는 BE 계약 확정 필요 |
 | `STYLE-002` | `USER_STYLES.wardrobe_weight` | `WardrobeStatisticsService`, `UserStyle.syncWardrobeWeight`, `WardrobeStatisticsResponse.userStylePayloads` | [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [erd.md](../database/erd.md) | 통계 API 호출 시 보유 옷 기준 스타일 가중치를 저장. 옷장 전체 등록 기준 반영 여부 확인 필요 |
-| `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` | 옷 계절 수정 기준 | `Clothes`, `ClothesService`, `ClothesUpdateRequest`, `PhotoClothesRegistrationController`, `PurchaseCaptureRegistrationController`, `CategoryCatalogService`, `ClothesSeason` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [erd.md](../database/erd.md), [catalog.md](../domain/catalog.md), [api-contract.md](../api/api-contract.md) | `CLOTHES.season` 저장과 AI 분석 필드 반영은 완료. 배포 UI에서는 생성 후 변경 불가 확인. BE 수정 API 직접 호출 기준의 `season` 변경 가능성, 일부 OpenAPI 설명, 카탈로그 일반 응답/계절 호환 계산 기준 확인 필요 |
 | `RECO-004` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 시 `brandName != UNKNOWN` 우선 |
-| `DEPLOY-001`~`DEPLOY-005` | 배포/인프라 목표 구조 | `.github/workflows/ci.yml`, `docker-compose.yml` | [requirements-definition.md](../requirements/requirements-definition.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) | 시스템 아키텍처는 목표 구조 기준. 현재 GitHub Actions는 CI, Docker Compose는 로컬 MySQL/Redis 실행, AWS 배포/CD 자동화는 진행 예정 |
+| `DEPLOY-001`~`DEPLOY-005` | 배포/인프라 자동화 범위 | `.github/workflows/ci.yml`, `deploy/`, `S3ImageStorageService`, `docker-compose.yml` | [requirements-definition.md](../requirements/requirements-definition.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md), [aws-setup.md](../deploy/aws-setup.md) | EC2/RDS/S3 운영 배포 문서와 S3 저장소 구현은 존재. 현재 GitHub Actions는 CI 중심이며 자동 CD workflow는 후속 정리 필요 |
 | `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | 공식 서비스에 가격 표시 기준은 없으나 응답 DTO에 `price` placeholder("0")가 남아 있음. 0~1 점수 형식과 기술적 추천 이유는 사용자 노출 기준 확인 필요 |
 | `RECO-005` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 상품 후보 조회, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
 | `FEED-004`~`FEED-007` | 룩피드 반응 | `FeedController`, `FeedService`, `FeedPostSave`, `FeedPostSaveRepository` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [erd.md](../database/erd.md) | WBS 기준 별도 저장 기능은 제외됐지만 현재 코드/API/ERD에 피드 저장 기능이 남아 있어 후속 정리 필요 |
@@ -116,73 +114,22 @@ src/main/java/com/closetnangam/be/domain/wardrobe/dto/response/WardrobeStatistic
 
 현재까지의 기준 문서 표현은 옷장 등록 기준에 가깝습니다. 담당자와 논의하여 현재 코드 기준을 공식 기준으로 확정한다면 [domain/invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md), [database/erd.md](../database/erd.md), [api-contract.md](../api/api-contract.md)를 같은 PR에서 함께 수정합니다.
 
-### `WARDROBE-016`, `WARDROBE-028`, `CATALOG-001` 옷 계절 수정 기준
+### `DEPLOY-001`~`DEPLOY-005` 배포/인프라 자동화 범위
 
-ERD v2.3과 공식 기준 문서에서 `season`은 `CLOTHES.season`에 저장하는 공통 옷 정보입니다. 옷마다 계절은 1개만 부여하며, 옷 등록 시 선택한 뒤 생성된 옷의 계절은 변경하지 않습니다.
-
-최신 `develop` 기준으로 아래 항목은 공식 기준에 맞게 반영되어 있습니다.
-
-```text
-src/main/java/com/closetnangam/be/domain/clothes/entity/Clothes.java
-- private ClothesSeason season
-
-src/main/java/com/closetnangam/be/domain/clothes/entity/WardrobeClothes.java
-- season 필드 없음
-
-src/main/java/com/closetnangam/be/domain/clothes/dto/response/PhotoClothesDraftResponse.java
-src/main/java/com/closetnangam/be/domain/purchase/dto/response/PurchaseCaptureDraftResponse.java
-src/main/java/com/closetnangam/be/global/external/gemini/dto/GeminiClothingClassificationResult.java
-src/main/java/com/closetnangam/be/global/external/gemini/dto/GeminiPurchaseCaptureExtractionResult.java
-- season 필드 포함
-```
-
-배포 UI 테스트에서는 생성된 옷의 계절 변경이 불가능한 것으로 확인했습니다. 다만 BE API 코드 기준으로는 옷 수정 요청이 여전히 `season`을 받을 수 있고, 서비스에서 `CLOTHES.season`을 갱신하는 경로가 남아 있습니다.
-
-```text
-src/main/java/com/closetnangam/be/domain/clothes/dto/request/ClothesUpdateRequest.java
-- String season
-
-src/main/java/com/closetnangam/be/domain/clothes/service/ClothesService.java
-- clothes.update(..., ClothesSeason.fromCodeOrDefault(request.season()), ...)
-```
-
-현재 Swagger/OpenAPI 설명에도 `season`을 옷장 정보처럼 읽히게 하는 문구가 남아 있습니다.
-
-```text
-src/main/java/com/closetnangam/be/domain/clothes/controller/PhotoClothesRegistrationController.java
-- "옷장 전용 정보(size, season 등)"
-
-src/main/java/com/closetnangam/be/domain/purchase/controller/PurchaseCaptureRegistrationController.java
-- "옷장 정보(size, season 등)"
-```
-
-또한 `GET /api/v1/categories` 일반 응답은 계절 code 목록을 별도 필드로 제공하지 않고, 사용 가이드 `fields`/`example`에도 `season`을 포함하지 않습니다. AI 분류용 텍스트 가이드에는 `ClothesSeason` 목록이 포함되어 있습니다.
-
-추천/날씨 계절 호환 계산은 `ClothesSeason` 기준으로 통합되었습니다.
-
-따라서 현재 구현은 아래 기준과 차이가 있습니다.
-
-- 배포 UI에서는 생성 후 계절 변경이 불가능하지만, BE API 직접 호출 기준으로는 생성된 옷의 계절을 옷 수정 요청에서 변경할 수 있는 구조가 남아 있습니다.
-- 일부 Swagger/OpenAPI 설명에서 `season`을 옷장 정보처럼 설명합니다.
-- `GET /api/v1/categories` 응답은 계절 code 목록을 별도 필드로 제공하지 않습니다.
-- 추천/날씨 계절 호환 계산은 `ClothesSeason` 기준으로 수행됩니다.
-
-공식 기준을 유지한다면 후속 구현 PR에서 API 직접 호출로도 생성 후 `season`을 변경하지 못하도록 DTO/서비스 책임과 OpenAPI 설명을 함께 정리해야 합니다. 이때 카탈로그 일반 응답에서 계절 code를 내려줄지, 문서 기준 code만 사용할지 확정하고, 추천/날씨 계절 호환 계산도 `CLOTHES.season` code 기준으로 정리합니다. 반대로 현재 API 코드 기준을 공식 기준으로 확정한다면 [erd.md](../database/erd.md), [invariants.md](../domain/invariants.md), [catalog.md](../domain/catalog.md), [garment-registration.md](../features/garment-registration.md), [api-contract.md](../api/api-contract.md)를 같은 PR에서 수정합니다.
-
-### `DEPLOY-001`~`DEPLOY-005` 목표 배포 구조와 현재 로컬/CI 상태
-
-[system-architecture.md](../architecture/system-architecture.md)는 현재 로컬 구현만이 아니라 MVP와 운영 배포까지 고려한 목표 시스템 구성을 설명합니다. 따라서 AWS EC2, RDS, S3, GitHub Actions 기반 배포 흐름은 목표 구조 기준으로 읽습니다.
+[system-architecture.md](../architecture/system-architecture.md)는 MVP와 운영 배포까지 고려한 시스템 구성을 설명합니다. 다만 자동 코드리뷰나 문서 검토 시 운영 배포 구조와 현재 자동화 수준을 구분해서 읽어야 합니다.
 
 현재 BE 코드와 레포 설정 기준으로는 아래 상태입니다.
 
 - GitHub Actions는 테스트와 빌드 CI를 수행합니다.
-- EC2 자동 배포 CD workflow는 아직 구현되지 않았습니다.
 - Docker Compose는 BE 애플리케이션 실행이 아니라 로컬 MySQL/Redis 개발 인프라 실행에 사용합니다.
-- AWS S3는 운영 기준 이미지 저장소이며, `STORAGE_BACKEND=s3`(운영 기본) / `local`(로컬 기본)으로 전환 가능합니다.
+- `deploy/`, [aws-setup.md](../deploy/aws-setup.md), `application-prod.yml.example`, `docker-compose.prod.yml`에는 EC2/RDS/S3 운영 배포 기준이 정리되어 있습니다.
+- AWS S3는 운영 기준 이미지 저장소이며, `STORAGE_BACKEND=s3/local` 환경 변수로 `app.storage.backend` 값을 전환할 수 있습니다.
+- `S3ImageStorageService`와 로컬 저장소 구현은 존재합니다.
+- GitHub Actions 기반 자동 CD workflow는 아직 구현되지 않았습니다.
 
 자동 코드리뷰와 문서 검토 시 `system-architecture.md`만 보고 현재 구현이 누락되었다고 판단하지 않고, 이 문서의 gap 항목을 함께 확인합니다.
 
-AWS 배포 또는 CD workflow가 구현되면 [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md), 루트 [README](../../README.md), 이 문서를 같은 PR에서 함께 갱신합니다.
+자동 CD workflow가 구현되거나 운영 배포 방식이 변경되면 [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md), 루트 [README](../../README.md), 이 문서를 같은 PR에서 함께 갱신합니다.
 
 ### `RECO-002` 취향 기반 상품 추천 응답 형식
 
@@ -262,14 +209,12 @@ src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendati
 
 | 우선순위 | 대상 | 이유 |
 | --- | --- | --- |
-| 1 | `CLOTHES.season` 수정 범위와 계절 기준 | 배포 UI와 API 직접 호출 기준, OpenAPI 설명, 추천 계절 계산 기준에 직접 영향 |
-| 2 | `WARDROBE-002` 통계 범위 | FE 옷장 요약과 API 응답 필드 해석에 직접 영향 |
-| 3 | `USER_STYLES.wardrobe_weight` 산정 범위 | 사용자 취향 점수와 추천 개인화 기준에 영향 |
-| 4 | `DEPLOY-004` 이미지 저장 방식 | 운영 저장소 기준과 현재 로컬 저장 구현 차이에 영향 |
-| 5 | `RECO-002` 추천 응답 형식 | 공식 가격 표시 기준이 없는 상태에서 `price` placeholder를 UI 표시 데이터로 오해할 가능성 |
-| 6 | `RECO-005` AI MD 추천 검증 범위 | 현재 기능 오류가 아니라 Gemini 응답 변형과 코디 저장 롤백 경로의 후속 테스트 보강 대상 |
-| 7 | 회원탈퇴 30일 경과 후 개인정보 삭제/익명화 | 약관/개인정보 처리방침과 데이터 생명주기 기준에 영향 |
-| 8 | 배포/인프라 목표 구조와 현재 로컬/CI 상태 | AWS 배포 및 CD 구현 시 시스템 문서와 실제 BE 레포 설정 정합성에 영향 |
+| 1 | `WARDROBE-002` 통계 범위 | FE 옷장 요약과 API 응답 필드 해석에 직접 영향 |
+| 2 | `USER_STYLES.wardrobe_weight` 산정 범위 | 사용자 취향 점수와 추천 개인화 기준에 영향 |
+| 3 | `RECO-002` 추천 응답 형식 | 공식 가격 표시 기준이 없는 상태에서 `price` placeholder를 UI 표시 데이터로 오해할 가능성 |
+| 4 | `RECO-005` AI MD 추천 검증 범위 | 현재 기능 오류가 아니라 Gemini 응답 변형과 코디 저장 롤백 경로의 후속 테스트 보강 대상 |
+| 5 | 회원탈퇴 30일 경과 후 개인정보 삭제/익명화 | 약관/개인정보 처리방침과 데이터 생명주기 기준에 영향 |
+| 6 | 배포/인프라 자동화 범위 | 운영 배포 문서/설정과 GitHub Actions 자동화 수준을 혼동할 가능성 |
 
 ## 문서 변경 기준
 

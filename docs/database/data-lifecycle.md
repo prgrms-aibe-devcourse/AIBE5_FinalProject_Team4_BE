@@ -1,7 +1,7 @@
 ---
 doc_type: be_only
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-15
+last_updated: 2026-06-24
 ---
 
 # 데이터 생명주기
@@ -62,7 +62,8 @@ last_updated: 2026-06-15
 
 - 피드 게시글은 숨김 상태와 삭제 시점을 관리할 수 있습니다.
 - 댓글은 삭제 시점을 기록할 수 있습니다.
-- 좋아요, 저장, 팔로우는 사용자별 상호작용 데이터입니다.
+- 좋아요, 댓글, 대댓글, 팔로우는 사용자별 상호작용 데이터입니다.
+- 별도 피드 저장 기능은 요구사항 기준에서 제외되었으며, 현재 코드/ERD 잔존 구조는 [implementation-gaps.md](../backend/implementation-gaps.md)에서 후속 정리 대상으로 관리합니다.
 - 피드 이미지는 게시글 이미지 데이터로 관리하며, 게시글 삭제 정책과 함께 검토합니다.
 
 ## 사용자 탈퇴

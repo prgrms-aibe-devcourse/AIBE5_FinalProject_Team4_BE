@@ -261,7 +261,6 @@ public class ClothesService {
                 request.styles(),
                 request.gender()
         );
-        clothesTagHelper.validateSeasonIfPresent(request.season());
 
         clothes.update(
                 request.name(),
@@ -271,7 +270,6 @@ public class ClothesService {
                 request.category(),
                 request.itemType(),
                 ClothesGender.fromCode(request.gender()),
-                ClothesSeason.fromCodeOrDefault(request.season()),
                 request.isVerified()
         );
         clothesTagHelper.replaceColorTags(clothes, request.primaryColor(), request.secondaryColors());

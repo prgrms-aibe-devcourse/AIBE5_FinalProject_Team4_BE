@@ -65,7 +65,7 @@ public class PhotoClothesRegistrationController {
         return ResponseEntity.ok(ApiResponse.ok(photoClothesRegistrationService.getDraft(userId, photoId)));
     }
 
-    @Operation(summary = "사진 기반 옷 최종 저장", description = "사용자가 수정한 정보와 옷장 전용 정보(size, season 등)를 저장합니다.")
+    @Operation(summary = "사진 기반 옷 최종 저장", description = "사용자가 수정한 옷 공통 정보와 옷장 전용 정보(size 등)를 저장합니다.")
     @PostMapping("/{photoId}/save")
     public ResponseEntity<ApiResponse<PhotoClothesRegistrationResponse>> savePhotoClothes(
             @PathVariable Long userId,
