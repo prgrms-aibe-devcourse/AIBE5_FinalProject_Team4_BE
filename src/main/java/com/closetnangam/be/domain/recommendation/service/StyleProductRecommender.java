@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -78,7 +79,7 @@ public class StyleProductRecommender {
                 .filter(Objects::nonNull)
                 .forEach(clothes -> {
                     excludedSet.add(clothes.getId());
-                    if (clothes.getProductCode() != null) {
+                    if (!isEphemeralProductCode(clothes.getProductCode())) {
                         excludedProductCodes.add(clothes.getProductCode());
                     }
                 });
@@ -88,7 +89,7 @@ public class StyleProductRecommender {
                 .filter(RecommendationFeedback::isExcluded)
                 .forEach(feedback -> {
                     excludedSet.add(feedback.getClothes().getId());
-                    if (feedback.getClothes().getProductCode() != null) {
+                    if (!isEphemeralProductCode(feedback.getClothes().getProductCode())) {
                         excludedProductCodes.add(feedback.getClothes().getProductCode());
                     }
                 });
@@ -237,6 +238,14 @@ public class StyleProductRecommender {
                 snapshot.primaryStyleCode(),
                 clothes.getId()
         );
+    }
+
+    private static boolean isEphemeralProductCode(String productCode) {
+        if (!StringUtils.hasText(productCode)) return true;
+        String trimmed = productCode.trim();
+        return trimmed.startsWith("PHOTO-")
+                || trimmed.startsWith("PURCHASE-")
+                || "UNKNOWN".equalsIgnoreCase(trimmed);
     }
     private record ScoredRecommendation(Clothes clothes, double score, double styleScore, String reason) {}
 }
