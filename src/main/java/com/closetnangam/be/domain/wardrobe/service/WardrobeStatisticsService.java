@@ -19,22 +19,28 @@ import com.closetnangam.be.domain.user.entity.UserStyle;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class WardrobeStatisticsService {
 
+    private static final Logger log = LoggerFactory.getLogger(WardrobeStatisticsService.class);
     private static final double PRIMARY_STYLE_WEIGHT = 0.7;
     private static final double SECONDARY_STYLE_WEIGHT = 0.3;
 
@@ -51,6 +57,7 @@ public class WardrobeStatisticsService {
 
         ComputedStatistics computed = computeStatistics(userId);
         syncUserStyles(userId, computed.stylePayloads(), computed.hasWardrobeData());
+        markStatisticsSynced(userId);
 
         return new WardrobeStatisticsResponse(
                 userId,
@@ -72,6 +79,48 @@ public class WardrobeStatisticsService {
         }
         ComputedStatistics computed = computeStatistics(userId);
         syncUserStyles(userId, computed.stylePayloads(), computed.hasWardrobeData());
+        markStatisticsSynced(userId);
+    }
+
+    /**
+     * 추천 API 진입 전 옷장 통계가 최신인지 확인하고, stale이면 1회 동기화합니다.
+     *
+     * <p>배포 직후 기존 사용자(옷장 보유 + {@code statistics_synced_at} 미기록)나
+     * 동기화 누락 구간을 커버합니다. 이미 최신이면 읽기만 하고 DB write는 하지 않습니다.</p>
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void ensureSyncedForRecommendation(Long userId) {
+        Optional<Wardrobe> wardrobe = wardrobeRepository.findByUser_Id(userId);
+        if (wardrobe.isEmpty()) {
+            return;
+        }
+        if (!wardrobeClothesRepository.existsByUserIdAndOwnershipStatus(userId, OwnershipStatus.OWNED)) {
+            return;
+        }
+        if (!needsResync(userId, wardrobe.get())) {
+            return;
+        }
+        log.info("[옷장통계] 추천 진입 전 동기화. userId={}", userId);
+        ComputedStatistics computed = computeStatistics(userId);
+        syncUserStyles(userId, computed.stylePayloads(), computed.hasWardrobeData());
+        markStatisticsSynced(userId);
+    }
+
+    private boolean needsResync(Long userId, Wardrobe wardrobe) {
+        if (wardrobe.getStatisticsSyncedAt() == null) {
+            return true;
+        }
+        Optional<LocalDateTime> latestChange = wardrobeClothesRepository.findLatestUpdateAtByUserIdAndOwnershipStatus(
+                userId,
+                OwnershipStatus.OWNED
+        );
+        return latestChange.isPresent() && latestChange.get().isAfter(wardrobe.getStatisticsSyncedAt());
+    }
+
+    private void markStatisticsSynced(Long userId) {
+        wardrobeRepository.findByUser_Id(userId).ifPresent(wardrobe -> {
+            wardrobe.markStatisticsSynced(LocalDateTime.now());
+        });
     }
 
     private ComputedStatistics computeStatistics(Long userId) {

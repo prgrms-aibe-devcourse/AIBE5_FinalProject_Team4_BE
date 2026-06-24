@@ -14,6 +14,7 @@ import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.repository.WardrobeRepository;
+import com.closetnangam.be.domain.wardrobe.service.WardrobeStatisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -44,9 +45,11 @@ public class OotdRecommendationService {
     private final UserStyleRepository userStyleRepository;
     private final ClothesRepository clothesRepository;
     private final UserRepository userRepository;
+    private final WardrobeStatisticsService wardrobeStatisticsService;
 
     @Transactional(readOnly = true)
     public OotdResponse recommend(Long currentUserId, Long wardrobeId, double currentTemp) {
+        wardrobeStatisticsService.ensureSyncedForRecommendation(currentUserId);
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
