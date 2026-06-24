@@ -16,7 +16,7 @@ public interface ClothesRepository extends JpaRepository<Clothes, Long> {
 
     long countByClothesInfoSource(ClothesInfoSource clothesInfoSource);
 
-    @Query("SELECT c FROM Clothes c WHERE c.clothesInfoSource IN ('EXTERNAL_SHOPPING', 'PURCHASE_HISTORY') ORDER BY c.createdAt DESC")
+    @Query("SELECT c FROM Clothes c WHERE c.clothesInfoSource = 'EXTERNAL_SHOPPING' ORDER BY c.createdAt DESC")
     List<Clothes> findAllForRecommendation(Pageable pageable);
 
     /**
