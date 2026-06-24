@@ -72,10 +72,13 @@ public class PurchaseCaptureThumbnailService {
         }
 
         int layoutRowCount = layoutItems == null || layoutItems.isEmpty() ? items.size() : layoutItems.size();
+        // 첫 행을 기준점으로 잡고 행 간격을 일정하게 맞춰 행마다 좌표가 누적 드리프트되는 문제를 보정합니다.
+        List<GeminiThumbnailRegion> calibratedRegions = calibrateRowRegions(items);
         List<GeminiPurchaseCaptureItem> enriched = new ArrayList<>(items.size());
         for (int index = 0; index < items.size(); index++) {
             GeminiPurchaseCaptureItem item = items.get(index);
             int layoutRowIndex = resolveLayoutRowIndex(item, layoutItems, index);
+            GeminiThumbnailRegion calibratedRegion = calibratedRegions == null ? null : calibratedRegions.get(index);
             String imageUrl = resolveItemSpecificImageUrl(
                     item,
                     captureImageUrl,
@@ -84,11 +87,93 @@ public class PurchaseCaptureThumbnailService {
                     index,
                     layoutRowIndex,
                     layoutRowCount,
-                    sourceImage
+                    sourceImage,
+                    calibratedRegion
             );
             enriched.add(copyItem(item, imageUrl));
         }
         return enriched;
+    }
+
+    /**
+     * 주문 행 썸네일 좌표를 보정합니다.
+     *
+     * <p>Gemini가 반환하는 행별 bounding box는 첫 행은 정확하지만 아래로 갈수록 누적 오차가 생기는 경향이 있습니다.
+     * 첫 유효 행을 기준점(anchor)으로, 유효 행 간 간격의 중앙값을 pitch로 삼아 모든 행을 균일 간격으로 재배치합니다.
+     * x 범위와 썸네일 높이는 기준 행 값을 재사용합니다.</p>
+     *
+     * @return items와 같은 길이로 정렬된 보정 영역. 유효한 기준 행이 하나도 없으면 {@code null}(기존 추정 경로 사용).
+     */
+    private static List<GeminiThumbnailRegion> calibrateRowRegions(List<GeminiPurchaseCaptureItem> items) {
+        int n = items.size();
+        double[] tops = new double[n];
+        boolean[] valid = new boolean[n];
+        double xmin = 0;
+        double xmax = 0;
+        double height = 0;
+        int anchorIndex = -1;
+
+        for (int i = 0; i < n; i++) {
+            GeminiThumbnailRegion region = items.get(i).thumbnailRegion();
+            if (region == null || !region.isValid()) {
+                continue;
+            }
+            double top = normalizeCoordinate(region.ymin());
+            double bottom = normalizeCoordinate(region.ymax());
+            double left = normalizeCoordinate(region.xmin());
+            double right = normalizeCoordinate(region.xmax());
+            if (bottom <= top || right <= left) {
+                continue;
+            }
+            tops[i] = top;
+            valid[i] = true;
+            if (anchorIndex < 0) {
+                anchorIndex = i;
+                xmin = left;
+                xmax = right;
+                height = bottom - top;
+            }
+        }
+
+        if (anchorIndex < 0) {
+            return null;
+        }
+
+        List<Double> deltas = new ArrayList<>();
+        int previous = -1;
+        for (int i = 0; i < n; i++) {
+            if (!valid[i]) {
+                continue;
+            }
+            if (previous >= 0) {
+                double delta = (tops[i] - tops[previous]) / (i - previous);
+                if (delta > 0) {
+                    deltas.add(delta);
+                }
+            }
+            previous = i;
+        }
+
+        double pitch;
+        if (!deltas.isEmpty()) {
+            deltas.sort(Double::compareTo);
+            pitch = deltas.get(deltas.size() / 2);
+        } else {
+            // 기준 행만 유효한 경우: 썸네일 높이와 균등 분할 추정 중 작은 값으로 행 간격을 잡습니다.
+            pitch = Math.min(0.86 / n, height * 1.8);
+            if (pitch <= 0) {
+                pitch = height;
+            }
+        }
+
+        double anchorTop = tops[anchorIndex];
+        List<GeminiThumbnailRegion> calibrated = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            double top = anchorTop + pitch * (i - anchorIndex);
+            top = Math.max(0.0, Math.min(top, 1.0 - height));
+            calibrated.add(new GeminiThumbnailRegion(top, xmin, top + height, xmax));
+        }
+        return calibrated;
     }
 
     private String resolveItemSpecificImageUrl(
@@ -99,13 +184,14 @@ public class PurchaseCaptureThumbnailService {
             int itemIndex,
             int layoutRowIndex,
             int layoutRowCount,
-            BufferedImage sourceImage
+            BufferedImage sourceImage,
+            GeminiThumbnailRegion calibratedRegion
     ) {
         if (isDistinctItemImage(item.imageUrl(), captureImageUrl)) {
             return item.imageUrl().trim();
         }
 
-        GeminiThumbnailRegion region = item.thumbnailRegion();
+        GeminiThumbnailRegion region = calibratedRegion != null ? calibratedRegion : item.thumbnailRegion();
         boolean estimated = false;
         if (region == null || !region.isValid()) {
             // 단일 상품은 추정 좌표로 크롭하지 않는다 (원본 캡처 URL을 대신 사용)
