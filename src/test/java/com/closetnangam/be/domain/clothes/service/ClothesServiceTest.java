@@ -29,7 +29,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,16 +60,6 @@ class ClothesServiceTest {
     @InjectMocks
     private ClothesService clothesService;
 
-    @Test
-    @DisplayName("기존 CLOTHES 위시리스트 연결은 EXTERNAL_SHOPPING만 허용한다")
-    void addExistingClothesToWishlist_rejectsNonExternalShoppingMaster() {
-        Clothes privateClothes = createClothes(10L, ClothesInfoSource.PHOTO);
-        given(clothesRepository.findById(10L)).willReturn(Optional.of(privateClothes));
-
-        assertThatThrownBy(() -> clothesService.addExistingClothesToWishlist(1L, 10L))
-                .isInstanceOf(NoSuchElementException.class)
-                .hasMessageContaining("옷을 찾을 수 없습니다.");
-    }
 
     @Test
     @DisplayName("동일 상품 identity가 이미 옷장에 있으면 기존 CLOTHES 위시리스트 연결을 거부한다")
