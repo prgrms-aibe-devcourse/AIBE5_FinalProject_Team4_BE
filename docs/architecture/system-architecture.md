@@ -1,7 +1,7 @@
 ---
 doc_type: be_system_architecture
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-14
+last_updated: 2026-06-23
 ---
 
 # 시스템 아키텍처
@@ -30,7 +30,7 @@ last_updated: 2026-06-14
 | Domain | User, Wardrobe, Clothes, Catalog, Recommendation, Outfit, Feed | 핵심 비즈니스 기능 |
 | Data | MySQL, RDS, JPA | 서비스 데이터 저장 |
 | Image Storage | AWS S3 | 옷 이미지, 피드 이미지 저장 |
-| External API | Gemini, Naver Shopping, Weather, OAuth Provider | AI 분석, 외부 상품 검색, 날씨 보조 정보, 소셜 인증 |
+| External API | Gemini, Naver Shopping, Weather, OAuth Provider | AI 분석, 외부 상품 조회, 날씨 보조 정보, 소셜 인증 |
 | Infra | EC2, Docker Compose, GitHub Actions | 실행 환경, 로컬 인프라, CI/CD |
 
 ## 다이어그램
@@ -55,7 +55,7 @@ flowchart TB
     Purchase["Purchase Capture<br/>구매내역 캡처 분석 · draft"]
     Reco["Recommendation<br/>OOTD · 취향 · 유사 · 어울리는 옷 · AI MD"]
     Outfit["Outfit · OutfitBook<br/>코디 · 코디북"]
-    Feed["Feed<br/>룩피드 · 좋아요 · 댓글 · 저장"]
+    Feed["Feed<br/>룩피드 · 좋아요 · 댓글 · 대댓글 · 팔로우"]
   end
 
   subgraph DataLayer["Data / Storage"]
@@ -67,7 +67,7 @@ flowchart TB
   subgraph ExternalApis["External APIs"]
     OAuth["OAuth Provider<br/>Kakao · Google · Naver"]
     Gemini["Gemini API<br/>의류 분석 · 구매내역 분석 · 추천 설명"]
-    Naver["Naver Shopping API<br/>외부 상품 검색"]
+    Naver["Naver Shopping API<br/>외부 상품 조회"]
     Weather["Weather API<br/>추천 보조 날씨 정보"]
   end
 

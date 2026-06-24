@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-22
+last_updated: 2026-06-23
 ---
 
 # API 계약
@@ -106,8 +106,8 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 | GET | `/api/v1/users/profile` | 현재 로그인한 사용자 프로필 반환 (userId, nickname, onboarded, guideTour 완료 여부) |
 | GET | `/api/v1/users/profile/{userId}` | 사용자 프로필 상세 조회 |
 | GET | `/api/v1/users/nickname/check` | 닉네임 규칙 및 중복 여부 확인 |
-| PATCH | `/api/v1/users/profile` | 사용자 프로필 저장 (온보딩/내 정보/룩피드 프로필 공통). 저장 후 userId, nickname, onboarded 반환 |
-| POST | `/api/v1/users/profile/image` | 룩피드 프로필 이미지 업로드. 저장된 이미지 URL 반환 |
+| PATCH | `/api/v1/users/profile` | 사용자 프로필 저장 (온보딩/내 정보/프로필 공통). 저장 후 userId, nickname, onboarded 반환 |
+| POST | `/api/v1/users/profile/image` | 프로필 이미지 업로드. 저장된 이미지 URL 반환 |
 | POST | `/api/v1/users/onboarding` | 온보딩 완료 저장 (프로필 + 스타일 + 마케팅 동의 일괄 저장) |
 | POST | `/api/v1/users/styles` | 스타일 선호도 저장 (기존 row 보존, preference_weight만 갱신) |
 | PATCH | `/api/v1/users/guide-tour` | 페이지별 가이드 투어 완료 상태 업데이트 |
@@ -146,8 +146,8 @@ OAuth 로그인 완료 후 BE는 `app.oauth2.redirect-uri`로 리다이렉트합
 | `gender` | Y | `MALE` / `FEMALE` |
 | `regionName` | Y | 지역명 (예: 서울) |
 | `regionCode` | Y | 지역 코드 |
-| `profileImageUrl` | N | 룩피드 프로필 이미지 URL. 이미지 업로드 후 받은 URL을 저장할 때 사용하며, 생략 시 기존 값 유지 |
-| `profileBio` | N | 룩피드 프로필 소개. 생략 시 기존 값 유지 |
+| `profileImageUrl` | N | 프로필 이미지 URL. 이미지 업로드 후 받은 URL을 저장할 때 사용하며, 생략 시 기존 값 유지 |
+| `profileBio` | N | 프로필 소개. 생략 시 기존 값 유지 |
 | `externalLinkUrl` | N | 룩피드 프로필 외부 링크 URL. 생략 시 기존 값 유지 |
 
 #### PATCH /api/v1/users/profile 응답 필드
@@ -301,9 +301,9 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
   "success": true,
   "data": {
     "policyType": "terms",
-    "version": "2026.06.15",
-    "effectiveDate": "2026-06-15",
-    "lastUpdated": "2026-06-15",
+    "version": "2026.06.23",
+    "effectiveDate": "2026-06-23",
+    "lastUpdated": "2026-06-23",
     "content": "# 서비스 이용약관\n\n..."
   },
   "message": null
@@ -439,7 +439,7 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 
 | Method | Path | 설명 |
 | --- | --- | --- |
-| GET | `/api/naver/search` | 네이버쇼핑 상품 검색 |
+| GET | `/api/naver/search` | 네이버쇼핑 상품 조회 |
 | POST | `/api/v1/external/clothes/naver` | 네이버쇼핑 상품을 공통 옷 정보로 저장 |
 
 ### 추천
@@ -1087,7 +1087,8 @@ Query: `page`(default 0), `size`(default 20, max 50)
 ```
 
 - `followedByMe`: 조회자가 해당 사용자를 팔로우 중이면 `true`. 본인 프로필(`mine=true`)이면 항상 `false`
-- `profileBio`, `externalLinkUrl`: 룩피드 프로필에 공개된 소개·외부 링크
+- `profileBio`: 프로필에 공개된 소개
+- `externalLinkUrl`: 룩피드 프로필에 공개된 외부 링크
 
 #### PUT /api/v1/feed/posts/{postId}/comments/{commentId} — 댓글 수정
 

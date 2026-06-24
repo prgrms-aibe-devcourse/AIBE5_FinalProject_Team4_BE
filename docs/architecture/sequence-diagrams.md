@@ -87,7 +87,7 @@ sequenceDiagram
     BE->>AI: 구매 상품 추출 요청
     AI-->>BE: 구매 상품 후보 반환
   else 외부 상품 저장
-    FE->>BE: 외부 상품 검색 요청
+    FE->>BE: 외부 상품 조회 요청
     BE->>Shopping: 상품 후보 검색
     Shopping-->>BE: 상품 후보 반환
     BE-->>FE: 외부 상품 목록 반환

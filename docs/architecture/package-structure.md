@@ -1,7 +1,7 @@
 ---
 doc_type: be_architecture
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-03
+last_updated: 2026-06-23
 ---
 
 # 패키지 구조
@@ -42,7 +42,7 @@ domain/
 | `domain.ai` | AI 분석 상태, 의류 이미지 분석 이력, AI 분석 서비스 |
 | `domain.catalog` | 카테고리, 옷 타입, 색상, 스타일, 외부 출처 카탈로그 |
 | `domain.clothes` | 공통 옷 정보, 옷장 등록 옷, 사진 기반 등록, 미보유 옷, 옷 추천 보조 로직 |
-| `domain.feed` | 룩피드 게시글, 댓글, 좋아요, 저장, 피드 서비스 |
+| `domain.feed` | 룩피드 게시글, 댓글/대댓글, 좋아요, 팔로우, 피드 서비스 |
 | `domain.outfit` | 코디북, 코디, 코디 구성 옷 |
 | `domain.purchase` | 구매내역 캡처 업로드, AI 분석, 구매내역 기반 옷 등록 |
 | `domain.recommendation` | 유사 상품 추천, 외부 상품 추천 provider |

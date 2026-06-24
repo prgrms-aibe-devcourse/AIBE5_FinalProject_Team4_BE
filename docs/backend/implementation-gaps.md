@@ -1,7 +1,7 @@
 ---
 doc_type: be_implementation_gaps
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-22
+last_updated: 2026-06-24
 ---
 
 # BE 구현 정합성 현황
@@ -53,8 +53,8 @@ last_updated: 2026-06-22
 | `RECO-004` | `GET /api/v1/users/{userId}/clothes/{clothesId}/recommendations` | `ClothesRecommendationService` | [requirements-definition.md](../requirements/requirements-definition.md), [invariants.md](../domain/invariants.md), [recommendation-policy.md](../features/recommendation-policy.md) | 점수 내림차순 정렬. 동점 시 `brandName != UNKNOWN` 우선 |
 | `DEPLOY-001`~`DEPLOY-005` | 배포/인프라 목표 구조 | `.github/workflows/ci.yml`, `docker-compose.yml` | [requirements-definition.md](../requirements/requirements-definition.md), [system-architecture.md](../architecture/system-architecture.md), [tech-stack.md](../architecture/tech-stack.md), [project-plan.md](../planning/project-plan.md) | 시스템 아키텍처는 목표 구조 기준. 현재 GitHub Actions는 CI, Docker Compose는 로컬 MySQL/Redis 실행, AWS 배포/CD 자동화는 진행 예정 |
 | `RECO-002` | `GET /api/v1/recommendations/{wardrobeId}` | `StyleProductRecommender`, `RecommendResponse` | [requirements-definition.md](../requirements/requirements-definition.md), [api-contract.md](../api/api-contract.md), [recommendation-policy.md](../features/recommendation-policy.md) | 공식 서비스에 가격 표시 기준은 없으나 응답 DTO에 `price` placeholder("0")가 남아 있음. 0~1 점수 형식과 기술적 추천 이유는 사용자 노출 기준 확인 필요 |
-| `RECO-005` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 다중 상품 검색, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
-| `FEED-004`~`FEED-008` | 룩피드 반응/빈 상태 | `FeedController`, `FeedService`, `FeedPostSave`, `FeedPostSaveRepository` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [erd.md](../database/erd.md) | WBS 기준 별도 저장 기능은 제외됐지만 현재 코드/API/ERD에 피드 저장 기능이 남아 있어 후속 정리 필요 |
+| `RECO-005` | AI MD 추천 API | `RecommendationController`, `AiMdRecommendationService`, `AiMdPersona` | [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md) | persona 조회, 스타일 가중 상품 후보 조회, 완성형 코디 추천/저장 구현. 가중치 변환, 동일 상품 판별, 필수 카테고리 후보 필터링 테스트는 존재하며, 외부 API 다중 호출 병합과 저장 실패 경로 테스트 보강 필요 |
+| `FEED-004`~`FEED-007` | 룩피드 반응 | `FeedController`, `FeedService`, `FeedPostSave`, `FeedPostSaveRepository` | [requirements-definition.md](../requirements/requirements-definition.md), [feature-index.md](../requirements/feature-index.md), [api-contract.md](../api/api-contract.md), [erd.md](../database/erd.md) | WBS 기준 별도 저장 기능은 제외됐지만 현재 코드/API/ERD에 피드 저장 기능이 남아 있어 후속 정리 필요 |
 | 회원탈퇴 | 탈퇴 후 데이터 보존/삭제 | `UserController`, `UserService`, `User` | [data-lifecycle.md](../database/data-lifecycle.md), [legal/README.md](../legal/README.md), [api-contract.md](../api/api-contract.md) | 탈퇴 시 `withdrawn_at` 기록과 30일 이내 복구 흐름은 구현. 30일 경과 후 개인정보 삭제/익명화 자동 처리 기준은 후속 구현 필요 |
 
 ## BE 코드와 공식 기준 확인 필요
@@ -237,7 +237,7 @@ src/main/java/com/closetnangam/be/domain/recommendation/service/AiMdRecommendati
 - 저장 가능한 후보가 4개를 초과하면 앞에서부터 4개만 확정
 - 코디 프롬프트가 필수 구성, 전체 아이템 추천 사유, MD별 말투를 요구하는지 검증
 - 추천 사유 fallback과 각 persona의 내부 화법 지침이 서로 구분되는지 검증
-- 사용자 스타일 `combinedWeight`와 MD 친화도가 상품 검색 가중치에 반영되는지 검증
+- 사용자 스타일 `combinedWeight`와 MD 친화도가 상품 후보 조회 가중치에 반영되는지 검증
 - 상품명이 같고 `productId`가 다른 후보를 동일 상품으로 판별하는지 검증
 - 상품 추천 프롬프트가 스타일 빈도와 브랜드·카테고리 다양성을 요구하는지 검증
 - 상품 추천 1차 선별에서 같은 브랜드 최대 2개, 같은 카테고리 최대 4개 제한 검증
