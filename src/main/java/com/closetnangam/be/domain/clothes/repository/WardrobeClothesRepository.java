@@ -242,6 +242,14 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
     List<WardrobeClothes> findAllByWardrobeId(@Param("wardrobeId") Long wardrobeId);
 
     @Query("""
+            select distinct wc from WardrobeClothes wc
+            join fetch wc.clothes
+            where wc.wardrobe.id = :wardrobeId
+              and wc.deletedAt is null
+            """)
+    List<WardrobeClothes> findAllByWardrobeIdWithClothes(@Param("wardrobeId") Long wardrobeId);
+
+    @Query("""
             select case when count(wc) > 0 then true else false end
             from WardrobeClothes wc
             join wc.clothes c
