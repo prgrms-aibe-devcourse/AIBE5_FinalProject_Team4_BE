@@ -111,8 +111,8 @@ public class AiService {
             }
             if (finalResult != null) {
                 photo.applyAnalysisSuccess(
-                        finalResult.name(),
-                        finalResult.brandName(),
+                        sanitizeAiText(finalResult.name(), 200),
+                        sanitizeAiText(finalResult.brandName(), 100),
                         finalResult.category(),
                         finalResult.itemType(),
                         ClothesGender.fromUserGender(photo.getUser().getGender()).name(),
@@ -144,6 +144,9 @@ public class AiService {
     }
 
     private void validateClassificationResult(GeminiClothingClassificationResult result) {
+        if (result.isNotClothing()) {
+            throw new IllegalStateException("의류 이미지가 아닙니다. 옷·신발·가방 등 패션 아이템 사진을 업로드해 주세요.");
+        }
         if (!StringUtils.hasText(result.name())
                 || !StringUtils.hasText(result.category())
                 || !StringUtils.hasText(result.itemType())
@@ -171,10 +174,40 @@ public class AiService {
                 || message.contains("API 호출")
                 || message.contains("응답을 해석")
                 || message.contains("판별 결과가 충분하지 않")
-                || message.contains("유효하지 않은 분류")) {
+                || message.contains("유효하지 않은 분류")
+                || message.contains("과부하")
+                || message.contains("일시적인 오류")
+                || message.contains("사용 한도")
+                || message.contains("시간이 초과")
+                || message.contains("모델을 찾을 수 없")
+                || message.contains("이미지 크기")
+                || message.contains("이미지 형식")
+                || message.contains("이미지 해상도")
+                || message.contains("AI API 요청")
+                || message.contains("의류 이미지가 아닙니다")) {
             return message;
         }
         return "AI가 옷 이미지를 분석하지 못했습니다. 직접 입력해 주세요.";
+    }
+
+    /**
+     * AI가 반환한 자유 텍스트(name, brandName)를 저장 전 정제합니다.
+     * - HTML/스크립트 태그 제거 (XSS 방지)
+     * - 제어 문자 제거
+     * - maxLength 초과 시 잘라냄 (DB 컬럼 범위 초과 방지)
+     */
+    private static String sanitizeAiText(String text, int maxLength) {
+        if (!StringUtils.hasText(text)) {
+            return text;
+        }
+        String sanitized = text
+                .replaceAll("<[^>]*>", "")           // HTML 태그 제거
+                .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", "") // 제어 문자 제거
+                .trim();
+        if (sanitized.length() > maxLength) {
+            sanitized = sanitized.substring(0, maxLength).trim();
+        }
+        return sanitized;
     }
 
     private List<String> normalizeSecondaryColors(List<String> secondaryColors) {
