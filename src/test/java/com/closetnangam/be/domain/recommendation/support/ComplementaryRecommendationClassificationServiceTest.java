@@ -98,6 +98,7 @@ class ComplementaryRecommendationClassificationServiceTest {
                 eq("테스트 브랜드"),
                 eq("청바지")
         )).willReturn(new GeminiClothingClassificationResult(
+                true,
                 "남성 블랙 데님",
                 "테스트 브랜드",
                 "BOTTOM",
