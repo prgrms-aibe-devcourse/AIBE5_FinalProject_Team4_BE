@@ -72,12 +72,18 @@ public class PurchaseCaptureThumbnailService {
         }
 
         int layoutRowCount = layoutItems == null || layoutItems.isEmpty() ? items.size() : layoutItems.size();
+        // 각 등록 대상 상품이 화면에서 차지하는 실제 주문 행 위치(반품/취소 행 포함)를 먼저 구합니다.
+        int[] layoutRowIndices = new int[items.size()];
+        for (int index = 0; index < items.size(); index++) {
+            layoutRowIndices[index] = resolveLayoutRowIndex(items.get(index), layoutItems, index);
+        }
         // 첫 행을 기준점으로 잡고 행 간격을 일정하게 맞춰 행마다 좌표가 누적 드리프트되는 문제를 보정합니다.
-        List<GeminiThumbnailRegion> calibratedRegions = calibrateRowRegions(items);
+        // 좌표축은 필터링된 목록의 인덱스가 아니라 실제 화면 행 위치를 사용해야 반품/취소 행이 중간에 있어도 밀리지 않습니다.
+        List<GeminiThumbnailRegion> calibratedRegions = calibrateRowRegions(items, layoutRowIndices);
         List<GeminiPurchaseCaptureItem> enriched = new ArrayList<>(items.size());
         for (int index = 0; index < items.size(); index++) {
             GeminiPurchaseCaptureItem item = items.get(index);
-            int layoutRowIndex = resolveLayoutRowIndex(item, layoutItems, index);
+            int layoutRowIndex = layoutRowIndices[index];
             GeminiThumbnailRegion calibratedRegion = calibratedRegions == null ? null : calibratedRegions.get(index);
             String imageUrl = resolveItemSpecificImageUrl(
                     item,
@@ -102,9 +108,17 @@ public class PurchaseCaptureThumbnailService {
      * 첫 유효 행을 기준점(anchor)으로, 유효 행 간 간격의 중앙값을 pitch로 삼아 모든 행을 균일 간격으로 재배치합니다.
      * x 범위와 썸네일 높이는 기준 행 값을 재사용합니다.</p>
      *
-     * @return items와 같은 길이로 정렬된 보정 영역. 유효한 기준 행이 하나도 없으면 {@code null}(기존 추정 경로 사용).
+     * <p>좌표축은 등록 대상 목록의 인덱스가 아니라 {@code layoutRowIndices}(반품/취소 행을 포함한 실제 화면 행 위치)를
+     * 기준으로 한다. 중간에 등록 불가 행이 빠져 있어도 뒤 상품 좌표가 한 행씩 밀리지 않도록 하기 위함이다.
+     * 화면 행 위치를 신뢰할 수 없으면(유효 행의 행 인덱스가 단조 증가하지 않으면) 보정을 포기하고 기존 경로로 fallback한다.</p>
+     *
+     * @param layoutRowIndices items와 같은 길이의 실제 화면 행 위치 배열
+     * @return items와 같은 길이로 정렬된 보정 영역. 유효한 기준 행이 없거나 행 위치를 신뢰할 수 없으면 {@code null}(기존 추정 경로 사용).
      */
-    private static List<GeminiThumbnailRegion> calibrateRowRegions(List<GeminiPurchaseCaptureItem> items) {
+    private static List<GeminiThumbnailRegion> calibrateRowRegions(
+            List<GeminiPurchaseCaptureItem> items,
+            int[] layoutRowIndices
+    ) {
         int n = items.size();
         double[] tops = new double[n];
         boolean[] valid = new boolean[n];
@@ -139,6 +153,18 @@ public class PurchaseCaptureThumbnailService {
             return null;
         }
 
+        // 유효 행의 화면 행 위치가 단조 증가하지 않으면(행 매핑을 신뢰할 수 없으면) 보정을 포기한다.
+        int previousRow = -1;
+        for (int i = 0; i < n; i++) {
+            if (!valid[i]) {
+                continue;
+            }
+            if (layoutRowIndices[i] <= previousRow) {
+                return null;
+            }
+            previousRow = layoutRowIndices[i];
+        }
+
         List<Double> deltas = new ArrayList<>();
         int previous = -1;
         for (int i = 0; i < n; i++) {
@@ -146,7 +172,8 @@ public class PurchaseCaptureThumbnailService {
                 continue;
             }
             if (previous >= 0) {
-                double delta = (tops[i] - tops[previous]) / (i - previous);
+                int rowSpan = layoutRowIndices[i] - layoutRowIndices[previous];
+                double delta = (tops[i] - tops[previous]) / rowSpan;
                 if (delta > 0) {
                     deltas.add(delta);
                 }
@@ -159,17 +186,22 @@ public class PurchaseCaptureThumbnailService {
             deltas.sort(Double::compareTo);
             pitch = deltas.get(deltas.size() / 2);
         } else {
-            // 기준 행만 유효한 경우: 썸네일 높이와 균등 분할 추정 중 작은 값으로 행 간격을 잡습니다.
-            pitch = Math.min(0.86 / n, height * 1.8);
+            // 기준 행만 유효한 경우: 화면 전체 행 수 기준 균등 분할과 썸네일 높이 추정 중 작은 값으로 행 간격을 잡습니다.
+            int rowCount = 1;
+            for (int i = 0; i < n; i++) {
+                rowCount = Math.max(rowCount, layoutRowIndices[i] + 1);
+            }
+            pitch = Math.min(0.86 / rowCount, height * 1.8);
             if (pitch <= 0) {
                 pitch = height;
             }
         }
 
         double anchorTop = tops[anchorIndex];
+        int anchorRow = layoutRowIndices[anchorIndex];
         List<GeminiThumbnailRegion> calibrated = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
-            double top = anchorTop + pitch * (i - anchorIndex);
+            double top = anchorTop + pitch * (layoutRowIndices[i] - anchorRow);
             top = Math.max(0.0, Math.min(top, 1.0 - height));
             calibrated.add(new GeminiThumbnailRegion(top, xmin, top + height, xmax));
         }
