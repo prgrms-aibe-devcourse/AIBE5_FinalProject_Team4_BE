@@ -49,6 +49,32 @@ public class WardrobeStatisticsService {
         Wardrobe wardrobe = wardrobeRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new IllegalArgumentException("옷장을 찾을 수 없습니다."));
 
+        ComputedStatistics computed = computeStatistics(userId);
+        syncUserStyles(userId, computed.stylePayloads(), computed.hasWardrobeData());
+
+        return new WardrobeStatisticsResponse(
+                userId,
+                wardrobe.getId(),
+                computed.ownedCount(),
+                toItemTypeCounts(computed.itemTypeCounts()),
+                computed.stylePayloads()
+        );
+    }
+
+    /**
+     * 보유 옷 등록·수정·삭제 후 {@code user_styles.wardrobe_weight}를 동기화합니다.
+     * 추천 API 호출마다 실행하지 않고 옷장 데이터가 바뀔 때만 호출합니다.
+     */
+    @Transactional
+    public void syncAfterWardrobeChange(Long userId) {
+        if (wardrobeRepository.findByUser_Id(userId).isEmpty()) {
+            return;
+        }
+        ComputedStatistics computed = computeStatistics(userId);
+        syncUserStyles(userId, computed.stylePayloads(), computed.hasWardrobeData());
+    }
+
+    private ComputedStatistics computeStatistics(Long userId) {
         List<WardrobeClothes> ownedClothes = wardrobeClothesRepository.findOwnedForStatistics(
                 userId, OwnershipStatus.OWNED
         );
@@ -80,15 +106,11 @@ public class WardrobeStatisticsService {
         }
 
         List<UserStyleWardrobePayload> stylePayloads = toUserStylePayloads(styleAccumulators);
-        boolean hasWardrobeData = !ownedClothes.isEmpty();
-        syncUserStyles(userId, stylePayloads, hasWardrobeData);
-
-        return new WardrobeStatisticsResponse(
-                userId,
-                wardrobe.getId(),
+        return new ComputedStatistics(
                 ownedClothes.size(),
-                toItemTypeCounts(itemTypeCounts),
-                stylePayloads
+                itemTypeCounts,
+                stylePayloads,
+                !ownedClothes.isEmpty()
         );
     }
 
@@ -96,16 +118,13 @@ public class WardrobeStatisticsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        Map<Long, Integer> wardrobeWeights = new HashMap<>();
-        for (UserStyleWardrobePayload payload : payloads) {
-            wardrobeWeights.put(payload.styleId(), payload.wardrobeWeight());
-        }
-
         List<UserStyle> existingStyles = userStyleRepository.findAllByUserId(userId);
         Map<Long, UserStyle> existingStyleMap = new HashMap<>();
         for (UserStyle us : existingStyles) {
             existingStyleMap.put(us.getStyle().getId(), us);
         }
+
+        boolean dirty = false;
 
         // 1. 현재 옷장 통계(payloads)에 있는 스타일들 처리 (기존 데이터 업데이트 또는 신규 생성)
         for (UserStyleWardrobePayload payload : payloads) {
@@ -117,19 +136,35 @@ public class WardrobeStatisticsService {
                         .user(user)
                         .style(style)
                         .build();
+                userStyle.syncWardrobeWeight(payload.wardrobeWeight(), hasWardrobeData);
+                userStyleRepository.save(userStyle);
+                dirty = true;
+            } else if (userStyle.syncWardrobeWeightIfChanged(payload.wardrobeWeight(), hasWardrobeData)) {
+                userStyleRepository.save(userStyle);
+                dirty = true;
             }
-            userStyle.syncWardrobeWeight(payload.wardrobeWeight(), hasWardrobeData);
-            userStyleRepository.save(userStyle);
-            existingStyleMap.remove(payload.styleId()); // 처리됨 표시
+            existingStyleMap.remove(payload.styleId());
         }
 
         // 2. 현재 옷장에는 없지만 DB에는 남아있는 스타일들 처리 (wardrobeWeight = 0으로 초기화)
         for (UserStyle remainingStyle : existingStyleMap.values()) {
-            remainingStyle.syncWardrobeWeight(0, hasWardrobeData);
-            userStyleRepository.save(remainingStyle);
+            if (remainingStyle.syncWardrobeWeightIfChanged(0, hasWardrobeData)) {
+                userStyleRepository.save(remainingStyle);
+                dirty = true;
+            }
         }
 
-        userStyleRepository.flush(); // 즉시 반영하여 추천 서비스에서 최신 가중치를 읽을 수 있도록 함
+        if (dirty) {
+            userStyleRepository.flush();
+        }
+    }
+
+    private record ComputedStatistics(
+            int ownedCount,
+            Map<String, Integer> itemTypeCounts,
+            List<UserStyleWardrobePayload> stylePayloads,
+            boolean hasWardrobeData
+    ) {
     }
 
     private List<ItemTypeCount> toItemTypeCounts(Map<String, Integer> itemTypeCounts) {

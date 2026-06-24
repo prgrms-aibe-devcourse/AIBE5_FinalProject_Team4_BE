@@ -17,7 +17,6 @@ import com.closetnangam.be.domain.user.entity.UserStyle;
 import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.repository.WardrobeRepository;
-import com.closetnangam.be.domain.wardrobe.service.WardrobeStatisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -44,11 +43,9 @@ public class StyleProductRecommender {
     private final WardrobeRepository wardrobeRepository;
     private final UserStyleRepository userStyleRepository;
     private final RecommendationFeedbackRepository recommendationFeedbackRepository;
-    private final WardrobeStatisticsService wardrobeStatisticsService;
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<RecommendResponse> recommendByStyle(Long currentUserId, Long wardrobeId, double currentTemp) {
-        wardrobeStatisticsService.getStatistics(currentUserId);
         Wardrobe wardrobe = wardrobeRepository.findById(wardrobeId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 옷장입니다."));
 

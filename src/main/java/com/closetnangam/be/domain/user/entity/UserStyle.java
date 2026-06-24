@@ -79,6 +79,16 @@ public class UserStyle extends BaseEntity {
         calculateCombinedWeight(hasWardrobeData);
     }
 
+    /**
+     * @return 가중치가 실제로 바뀌었으면 {@code true} (DB save 필요)
+     */
+    public boolean syncWardrobeWeightIfChanged(int weight, boolean hasWardrobeData) {
+        int beforeWardrobeWeight = this.wardrobeWeight;
+        int beforeCombinedWeight = this.combinedWeight;
+        syncWardrobeWeight(weight, hasWardrobeData);
+        return beforeWardrobeWeight != this.wardrobeWeight || beforeCombinedWeight != this.combinedWeight;
+    }
+
     public void updateFeedbackWeight(int weight, boolean hasWardrobeData) {
         this.feedbackWeight = weight;
         calculateCombinedWeight(hasWardrobeData);

@@ -36,6 +36,8 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             join fetch wc.clothes c
             join fetch wc.wardrobe w
             join fetch w.user
+            left join fetch c.styleTags st
+            left join fetch st.style
             where w.user.id = :userId
               and wc.ownershipStatus = :ownershipStatus
               and wc.deletedAt is null
@@ -51,6 +53,8 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             join fetch wc.clothes c
             join fetch wc.wardrobe w
             join fetch w.user
+            left join fetch c.styleTags st
+            left join fetch st.style
             where w.user.id = :userId
               and wc.ownershipStatus = :ownershipStatus
               and wc.favorite = true

@@ -21,6 +21,7 @@ import com.closetnangam.be.domain.feed.repository.FeedPostRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
+import com.closetnangam.be.domain.wardrobe.service.WardrobeStatisticsService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,6 +62,9 @@ class ClothesServiceTest {
 
     @Mock
     private FeedPostRepository feedPostRepository;
+
+    @Mock
+    private WardrobeStatisticsService wardrobeStatisticsService;
 
     @InjectMocks
     private ClothesService clothesService;
