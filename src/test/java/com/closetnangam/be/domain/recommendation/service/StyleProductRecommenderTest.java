@@ -72,13 +72,13 @@ class StyleProductRecommenderTest {
         // EXTERNAL_SHOPPING 옷만 반환하고
         // PURCHASE_HISTORY 옷은 반환하지 않는지 검증
         // @Query 어노테이션의 쿼리 조건을 확인하는 방식으로 작성
-        
+
         Method method = ClothesRepository.class.getMethod("findAllForRecommendation", Pageable.class);
         Query queryAnnotation = method.getAnnotation(Query.class);
-        
+
         assertThat(queryAnnotation).isNotNull();
         String queryValue = queryAnnotation.value();
-        
+
         // EXTERNAL_SHOPPING 포함 여부 확인
         assertThat(queryValue).contains("c.clothesInfoSource = 'EXTERNAL_SHOPPING'");
         // PURCHASE_HISTORY 제외 여부 확인 (쿼리에 포함되지 않아야 함)
