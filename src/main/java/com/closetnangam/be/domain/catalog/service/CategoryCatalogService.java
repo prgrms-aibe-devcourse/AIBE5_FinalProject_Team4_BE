@@ -139,7 +139,7 @@ public class CategoryCatalogService {
         guide.append("최대 ").append(CatalogLimits.MAX_SECONDARY_COLORS).append("개.\n");
 
         guide.append("\n\n[styles]\n");
-        guide.append("스타일 코드 배열. 최소 2개, 최대 5개. 이 옷에 어울리는 스타일을 복수로 선택하세요.\n");
+        guide.append("스타일 코드 배열. 최소 1개, 최대 10개. 이 옷에 어울리는 스타일을 선택하세요.\n");
         guide.append(Arrays.stream(StyleCode.values())
                 .map(style -> style.name() + " (" + style.getLabel() + ")")
                 .collect(Collectors.joining(", ")));
