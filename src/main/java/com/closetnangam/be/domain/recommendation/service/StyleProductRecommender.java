@@ -18,11 +18,13 @@ import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.repository.WardrobeRepository;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeStatisticsService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -45,10 +47,14 @@ public class StyleProductRecommender {
     private final UserStyleRepository userStyleRepository;
     private final RecommendationFeedbackRepository recommendationFeedbackRepository;
     private final WardrobeStatisticsService wardrobeStatisticsService;
+    private final EntityManager entityManager;
 
     @Transactional
     public List<RecommendResponse> recommendByStyle(Long currentUserId, Long wardrobeId, double currentTemp) {
         wardrobeStatisticsService.getStatistics(currentUserId);
+        entityManager.flush();
+        entityManager.clear();
+
         Wardrobe wardrobe = wardrobeRepository.findById(wardrobeId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 옷장입니다."));
 
@@ -61,35 +67,43 @@ public class StyleProductRecommender {
 
         // [2] 추천 제외 목록 로드
         Set<Long> excludedSet = new HashSet<>();
+        Set<String> excludedProductCodes = new HashSet<>();
+        log.info("excludedSet size: {}", excludedSet.size());
 
         // 이미 보유한 옷 제외
-        List<WardrobeClothes> wardrobeItems = wardrobeClothesRepository.findAllByWardrobeId(wardrobeId);
+        List<WardrobeClothes> wardrobeItems = wardrobeClothesRepository.findAllByWardrobeIdWithClothes(wardrobeId);
+        wardrobeItems.forEach(wc -> log.info("wardrobeClothes: id={}, clothes={}",
+                wc.getId(), wc.getClothes() == null ? "NULL" : wc.getClothes().getId()));
         wardrobeItems.stream()
                 .map(WardrobeClothes::getClothes)
                 .filter(Objects::nonNull)
-                .map(Clothes::getId)
-                .forEach(excludedSet::add);
-
+                .forEach(clothes -> {
+                    excludedSet.add(clothes.getId());
+                    if (!isEphemeralProductCode(clothes.getProductCode())) {
+                        excludedProductCodes.add(clothes.getProductCode());
+                    }
+                });
+        log.info("wardrobeId: {}, wardrobeItems size: {}", wardrobeId, wardrobeItems.size());
         // 추천 제외(EXCLUDE) 피드백 옷 제외
         recommendationFeedbackRepository.findAllByUserId(currentUserId).stream()
                 .filter(RecommendationFeedback::isExcluded)
-                .map(feedback -> feedback.getClothes().getId())
-                .forEach(excludedSet::add);
+                .forEach(feedback -> {
+                    excludedSet.add(feedback.getClothes().getId());
+                    if (!isEphemeralProductCode(feedback.getClothes().getProductCode())) {
+                        excludedProductCodes.add(feedback.getClothes().getProductCode());
+                    }
+                });
 
         // [3] 후보군 로드
         List<Clothes> candidates = clothesRepository.findAllForRecommendation(PageRequest.of(0, CANDIDATE_LIMIT));
-
-        log.info(
-                "Style recommendation processed. userId={}, wardrobeId={}, currentTemp={}, candidatesFound={}",
-                currentUserId, wardrobeId, currentTemp, candidates.size()
-        );
-
 // [4] 점수 계산 및 필터링
         User.Gender userGender = wardrobe.getUser().getGender();
 
         List<ScoredRecommendation> scoredRecommendations = new ArrayList<>();
         for (Clothes clothes : candidates) {
-            if (clothes == null || clothes.getId() == null || excludedSet.contains(clothes.getId())) {
+            if (clothes == null || clothes.getId() == null
+                    || excludedSet.contains(clothes.getId())
+                    || (clothes.getProductCode() != null && excludedProductCodes.contains(clothes.getProductCode()))) {
                 continue;
             }
             // 성별 필터링 추가
@@ -107,6 +121,10 @@ public class StyleProductRecommender {
         Collections.shuffle(scoredRecommendations); // 먼저 섞음으로써 동점자 랜덤 효과
         scoredRecommendations.sort(Comparator.comparingDouble(ScoredRecommendation::score).reversed());
 
+        // 스타일 매칭 없는 옷 제외 (날씨/계절 점수만으로 추천 방지)
+        scoredRecommendations.removeIf(s -> s.styleScore() <= 0.0);
+
+
         // 결과 다양성 확보: 스타일 중복 최소화
         return pickDiverseResults(scoredRecommendations, MAX_RESULTS);
     }
@@ -115,8 +133,8 @@ public class StyleProductRecommender {
         List<RecommendResponse> results = new ArrayList<>();
         Map<String, Integer> styleCounts = new HashMap<>();
 
-        // 1차: 점수 순으로 보되, 특정 스타일이 과점하지 않도록 선택 (최대 40% 제한)
-        int perStyleLimit = Math.max(2, (int) (limit * 0.4));
+        // 1차: 점수 순으로 보되, 특정 스타일이 과점하지 않도록 선택 (최대 20% 제한)
+        int perStyleLimit = Math.max(1, (int) (limit * 0.2));
 
         for (ScoredRecommendation scored : scoredRecommendations) {
             if (results.size() >= limit) break;
@@ -159,16 +177,26 @@ public class StyleProductRecommender {
             // cold start — 성별 기반 기본값
             String primary = snapshot.primaryStyleCode();
             if (user.getGender() == User.Gender.FEMALE) {
-                maxStyleScore = ("CHIC".equals(primary) || "CASUAL".equals(primary)) ? 0.8 : 0.0;
+                maxStyleScore = ("CHIC".equals(primary) || "CASUAL".equals(primary)) ? 0.5 : 0.0;
             } else {
-                maxStyleScore = "CASUAL".equals(primary) ? 0.8 : 0.0;
+                maxStyleScore = ("CASUAL".equals(primary) || "STREET".equals(primary) || "SPORTY".equals(primary)) ? 0.5 : 0.0;
             }
         } else {
             // 사용자의 모든 스타일 가중치 합산 (최대 1.0)
+            String primaryStyle = snapshot.primaryStyleCode();
+            for (UserStyle userStyle : userStyles) {
+                if (userStyle.getStyle().getCode().equals(primaryStyle) && userStyle.getCombinedWeight() < 0) {
+                    return new ScoredRecommendation(clothes, 0.0, 0.0, "Style: 0.0, Weather: 0.0, Season: 0.0");
+                }
+            }
+
             for (UserStyle userStyle : userStyles) {
                 String userStyleCode = userStyle.getStyle().getCode();
+                if (userStyle.getCombinedWeight() <= 0 && userStyle.getPreferenceWeight() <= 0) continue;
+
                 // combinedWeight가 0~100 범위라고 가정 (WardrobeStatisticsService에서 100분율로 계산됨)
-                double weight = Math.min(userStyle.getCombinedWeight(), 100) / 100.0;
+                // weight를 0 이상으로 clamp
+                double weight = Math.max(0.0, Math.min(userStyle.getCombinedWeight(), 100) / 100.0);
 
                 if (candidateStyles.contains(userStyleCode)) {
                     // 해당 옷이 사용자가 선호하는 스타일을 가지고 있으면 점수 부여
@@ -188,7 +216,7 @@ public class StyleProductRecommender {
         // 최종 점수 계산 (스타일 비중 유지하되 날씨/계절 합산)
         double totalScore = (STYLE_WEIGHT * maxStyleScore) + (WEATHER_WEIGHT * weatherScore * 0.7) + (0.12 * seasonMatchScore);
         String reason = String.format("Style: %.1f, Weather: %.1f, Season: %.1f", maxStyleScore, weatherScore, seasonMatchScore);
-        return new ScoredRecommendation(clothes, totalScore, reason);
+        return new ScoredRecommendation(clothes, totalScore, maxStyleScore, reason);
     }
 
     private RecommendResponse mapToRecommendResponse(ScoredRecommendation scored) {
@@ -210,5 +238,13 @@ public class StyleProductRecommender {
                 clothes.getId()
         );
     }
-    private record ScoredRecommendation(Clothes clothes, double score, String reason) {}
+
+    private static boolean isEphemeralProductCode(String productCode) {
+        if (!StringUtils.hasText(productCode)) return true;
+        String trimmed = productCode.trim();
+        return trimmed.startsWith("PHOTO-")
+                || trimmed.startsWith("PURCHASE-")
+                || "UNKNOWN".equalsIgnoreCase(trimmed);
+    }
+    private record ScoredRecommendation(Clothes clothes, double score, double styleScore, String reason) {}
 }
