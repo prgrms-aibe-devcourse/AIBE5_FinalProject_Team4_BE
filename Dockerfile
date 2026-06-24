@@ -15,7 +15,6 @@ RUN addgroup -S app && adduser -S app -G app
 RUN mkdir -p /app/uploads && chown -R app:app /app
 
 COPY --from=builder /workspace/build/libs/*.jar app.jar
-COPY docs/legal /app/docs/legal
 
 USER app
 EXPOSE 8080
