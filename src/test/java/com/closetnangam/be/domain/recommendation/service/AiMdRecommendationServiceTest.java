@@ -29,6 +29,7 @@ import com.closetnangam.be.domain.user.entity.UserStyle;
 import com.closetnangam.be.domain.user.repository.UserStyleRepository;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.global.external.naver.dto.NaverShoppingProductResponse;
+import com.closetnangam.be.global.external.naver.service.NaverApiService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -46,7 +47,9 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -54,6 +57,41 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AiMdRecommendationServiceTest {
+
+    @Test
+    @DisplayName("AI MD 목록은 사용자 성별과 관계없이 전체 MD를 반환한다")
+    void aiMdPersonasReturnAllMdRegardlessOfUserGender() {
+        UserRepository userRepository = mock(UserRepository.class);
+        User user = mock(User.class);
+        when(user.getGender()).thenReturn(User.Gender.FEMALE);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        AiMdRecommendationService service = new AiMdRecommendationService(
+                userRepository, null, null, null, null, null, null, null, null, null, null, null, null
+        );
+
+        var result = service.getPersonas(1L);
+
+        assertThat(result)
+                .extracting("id")
+                .containsExactly("taesik", "junsik", "sesoon", "gahyun", "seongmi");
+    }
+
+    @Test
+    @DisplayName("사용자는 다른 성별의 AI MD도 선택할 수 있다")
+    void userCanSelectAiMdWithDifferentPersonaGender() {
+        User user = mock(User.class);
+        when(user.getGender()).thenReturn(User.Gender.FEMALE);
+        AiMdRecommendationService service = serviceWithUserStyleRepository(null);
+
+        AiMdPersona result = ReflectionTestUtils.invokeMethod(
+                service,
+                "resolvePersonaForUser",
+                user,
+                "taesik"
+        );
+
+        assertThat(result).isEqualTo(AiMdPersona.TAE_SIK);
+    }
 
     @Test
     @DisplayName("실제 사용자 옷장에 매핑되는 후보만 저장 가능한 코디로 확정한다")
@@ -257,12 +295,17 @@ class AiMdRecommendationServiceTest {
                 service,
                 "buildOutfitPrompt",
                 AiMdPersona.TAE_SIK,
+                User.Gender.FEMALE,
                 List.of(),
                 List.of()
         );
 
         assertThat(prompt)
                 .contains("추천 사유 화법:")
+                .contains("[추천 대상 옷 성별]")
+                .contains("여성/공용 옷")
+                .contains("MD의 성별은 말투와 스타일 취향을 정하는 페르소나")
+                .contains("사용자가 남성이면 남성/공용 옷으로, 사용자가 여성이면 여성/공용 옷으로, 그 외 성별이면 공용 옷으로 코디")
                 .contains("왜 이 코디가 나에게 어울리는지")
                 .contains("TOP(상의), BOTTOM(하의), SHOES(신발)를 각각 최소 1개")
                 .contains("wardrobeClothesIds는 비어 있어도 됩니다")
@@ -485,6 +528,7 @@ class AiMdRecommendationServiceTest {
                 service,
                 "buildProductPrompt",
                 AiMdPersona.TAE_SIK,
+                User.Gender.MALE,
                 List.of(),
                 profiles,
                 List.of()
@@ -492,6 +536,10 @@ class AiMdRecommendationServiceTest {
 
         assertThat(prompt)
                 .contains("추천 상품 40개")
+                .contains("[추천 대상 옷 성별]")
+                .contains("남성/공용 옷")
+                .contains("추천할 상품의 성별 기준은 반드시 [추천 대상 옷 성별]을 따릅니다")
+                .contains("사용자가 남성이면 남성/공용 상품으로, 사용자가 여성이면 여성/공용 상품으로, 그 외 성별이면 공용 상품으로 추천")
                 .contains("products 배열은 가능한 한 40개")
                 .contains("[사용자 스타일 가중치]")
                 .contains("source가 INTERNAL인 상품")
@@ -503,8 +551,75 @@ class AiMdRecommendationServiceTest {
     }
 
     @Test
-    @DisplayName("AI MD 상품 내부 후보는 MD 성별과 유니섹스 상품만 조회한다")
-    void aiMdProductInternalCandidatesUsePersonaGenderAndUnisex() {
+    @DisplayName("AI MD 상품 검색어는 OTHER 사용자에게 유니섹스 키워드를 포함한다")
+    void aiMdProductSearchPlansUseUnisexKeywordForOtherUser() {
+        UserStyleRepository userStyleRepository = mock(UserStyleRepository.class);
+        when(userStyleRepository.findAllByUserId(1L)).thenReturn(List.of());
+        AiMdRecommendationService service = serviceWithUserStyleRepository(userStyleRepository);
+        List<?> profiles = ReflectionTestUtils.invokeMethod(
+                service,
+                "buildStyleSearchProfiles",
+                1L,
+                AiMdPersona.TAE_SIK
+        );
+
+        List<?> searchPlans = ReflectionTestUtils.invokeMethod(
+                service,
+                "buildProductSearchPlans",
+                AiMdPersona.TAE_SIK,
+                List.of(),
+                profiles,
+                User.Gender.OTHER
+        );
+
+        assertThat(searchPlans).isNotEmpty();
+        assertThat(searchPlans)
+                .extracting(plan -> ReflectionTestUtils.getField(plan, "query"))
+                .allSatisfy(query -> assertThat(query).asString().contains("유니섹스"));
+    }
+
+    @Test
+    @DisplayName("AI MD 코디 네이버 검색어는 OTHER 사용자에게 유니섹스 키워드를 포함한다")
+    void aiMdOutfitProductSearchUsesUnisexKeywordForOtherUser() {
+        ClothesRepository clothesRepository = mock(ClothesRepository.class);
+        WardrobeClothesRepository wardrobeClothesRepository = mock(WardrobeClothesRepository.class);
+        RecommendationFeedbackRepository recommendationFeedbackRepository = mock(RecommendationFeedbackRepository.class);
+        NaverApiService naverApiService = mock(NaverApiService.class);
+        when(wardrobeClothesRepository.findOwnedClothesIdsByUserId(1L, OwnershipStatus.OWNED)).thenReturn(List.of());
+        when(wardrobeClothesRepository.findOwnedClothesIdsByUserId(1L, OwnershipStatus.WISHLIST)).thenReturn(List.of());
+        when(recommendationFeedbackRepository.findAllByUserId(1L)).thenReturn(List.of());
+        when(clothesRepository.findExternalShoppingRecommendationCandidatesByCategory(
+                anyList(), anyString(), anyList(), any(Pageable.class)
+        )).thenReturn(List.of());
+        when(naverApiService.searchShoppingProducts(anyString(), anyInt(), anyInt(), anyString())).thenReturn(List.of());
+        AiMdRecommendationService service = new AiMdRecommendationService(
+                null, wardrobeClothesRepository, null, null, null,
+                clothesRepository, recommendationFeedbackRepository,
+                null, null, naverApiService, null, null, null
+        );
+
+        ReflectionTestUtils.invokeMethod(
+                service,
+                "searchOutfitProductsByCategory",
+                1L,
+                AiMdPersona.TAE_SIK,
+                User.Gender.OTHER
+        );
+
+        ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
+        verify(naverApiService, times(4)).searchShoppingProducts(
+                queryCaptor.capture(),
+                eq(4),
+                anyInt(),
+                anyString()
+        );
+        assertThat(queryCaptor.getAllValues())
+                .allSatisfy(query -> assertThat(query).contains("유니섹스"));
+    }
+
+    @Test
+    @DisplayName("AI MD 상품 내부 후보는 사용자 성별과 유니섹스 상품만 조회한다")
+    void aiMdProductInternalCandidatesUseUserGenderAndUnisex() {
         ClothesRepository clothesRepository = mock(ClothesRepository.class);
         WardrobeClothesRepository wardrobeClothesRepository = mock(WardrobeClothesRepository.class);
         RecommendationFeedbackRepository recommendationFeedbackRepository = mock(RecommendationFeedbackRepository.class);
@@ -525,6 +640,7 @@ class AiMdRecommendationServiceTest {
                 "searchProductCandidates",
                 1L,
                 AiMdPersona.GA_HYUN,
+                User.Gender.MALE,
                 List.of(),
                 List.of(),
                 List.of()
@@ -537,7 +653,7 @@ class AiMdRecommendationServiceTest {
                 genderCaptor.capture(),
                 any(Pageable.class)
         );
-        assertThat(genderCaptor.getValue()).containsExactly(ClothesGender.FEMALE, ClothesGender.UNISEX);
+        assertThat(genderCaptor.getValue()).containsExactly(ClothesGender.MALE, ClothesGender.UNISEX);
     }
 
     @Test
@@ -597,6 +713,7 @@ class AiMdRecommendationServiceTest {
                 "searchProductCandidates",
                 1L,
                 AiMdPersona.TAE_SIK,
+                User.Gender.MALE,
                 List.of(wardrobeItem),
                 styleProfiles,
                 List.of()
