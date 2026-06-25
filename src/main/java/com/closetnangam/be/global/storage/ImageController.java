@@ -2,15 +2,25 @@ package com.closetnangam.be.global.storage;
 
 import com.closetnangam.be.global.common.util.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.URI;
 import java.util.Locale;
 
 @Tag(name = "Image", description = "이미지 서빙 API — clothes·purchase-captures: 인증 필요 / feed·profile: 공개")
@@ -25,6 +35,104 @@ public class ImageController {
     private static final String PROFILE_SUBDIRECTORY = "profile";
 
     private final ImageStorageService imageStorageService;
+    private final RestTemplate restTemplate;
+
+    private record ProxyResult(byte[] data, MediaType contentType) {}
+
+    @Operation(
+            summary = "외부 이미지 프록시",
+            description = """
+                    외부 이미지(예: pstatic.net)를 프록시하여 반환합니다. \
+                    FE의 Canvas CORS 문제를 해결하기 위해 사용합니다. \
+                    pstatic.net 도메인만 허용됩니다."""
+    )
+    @GetMapping("/proxy")
+    public ResponseEntity<byte[]> proxyImage(
+            @Parameter(description = "외부 이미지 URL", example = "https://shopping-phinf.pstatic.net/...")
+            @RequestParam String url
+    ) {
+        URI uri;
+        try {
+            uri = URI.create(url);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+
+            if (!"https".equalsIgnoreCase(scheme)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            if (host == null || (!host.equalsIgnoreCase("pstatic.net") && !host.toLowerCase(Locale.ROOT).endsWith(".pstatic.net"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            if (uri.getPort() != -1 && uri.getPort() != 443) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            if (uri.getUserInfo() != null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        long maxSize = 10 * 1024 * 1024; // 10MB
+
+        HttpHeaders headHeaders = null;
+        try {
+            // 1. HEAD 요청으로 Content-Length 사전 검사
+            headHeaders = restTemplate.headForHeaders(uri);
+            if (headHeaders.getContentLength() > maxSize) {
+                return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).build();
+            }
+        } catch (Exception e) {
+            // HEAD 실패 시 로그를 남길 수 있으나, 요구사항에 따라 조용히 넘어가고 GET 시도
+        }
+
+        try {
+            // 2. 스트리밍 방식으로 데이터 수신 및 크기 제한
+            ProxyResult result = restTemplate.execute(uri, HttpMethod.GET, null, clientResponse -> {
+                MediaType contentType = clientResponse.getHeaders().getContentType();
+                if (contentType == null) {
+                    contentType = MediaType.IMAGE_JPEG;
+                }
+                if (!contentType.getType().equalsIgnoreCase("image")) {
+                    throw new RuntimeException("Invalid content type");
+                }
+
+                try (InputStream is = clientResponse.getBody();
+                     ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+                    long totalRead = 0;
+                    while ((bytesRead = is.read(buffer)) != -1) {
+                        totalRead += bytesRead;
+                        if (totalRead > maxSize) {
+                            throw new RuntimeException("Payload too large");
+                        }
+                        os.write(buffer, 0, bytesRead);
+                    }
+                    return new ProxyResult(os.toByteArray(), contentType);
+                }
+            });
+
+            if (result != null && result.data() != null) {
+                return ResponseEntity.ok()
+                        .contentType(result.contentType())
+                        .contentLength(result.data().length)
+                        .body(result.data());
+            }
+        } catch (Exception e) {
+            if ("Payload too large".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).build();
+            }
+            if ("Invalid content type".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).build();
+            }
+        }
+
+        return ResponseEntity.notFound().build();
+    }
 
     @Operation(
             summary = "의류 사진 조회 (인증 필요)",

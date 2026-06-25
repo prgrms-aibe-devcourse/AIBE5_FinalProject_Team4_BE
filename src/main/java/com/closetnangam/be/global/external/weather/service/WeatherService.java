@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -14,6 +15,7 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class WeatherService {
@@ -27,7 +29,20 @@ public class WeatherService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private final Map<String, CachedWeather> cache = new ConcurrentHashMap<>();
+
+    private record CachedWeather(List<WeatherInfoResponse> data, LocalDateTime timestamp) {
+        boolean isExpired() {
+            return LocalDateTime.now().isAfter(timestamp.plusMinutes(10));
+        }
+    }
+
     public List<WeatherInfoResponse> getWeatherByRegion(String regionName) {
+        CachedWeather cached = cache.get(regionName);
+        if (cached != null && !cached.isExpired()) {
+            return cached.data();
+        }
+
         // 1. 텍스트(ex: "대전광역시")를 매핑된 기상청 격자 좌표로 스왑 (No-DB)
         RegionGrid grid = RegionGrid.fromString(regionName);
         int nx = grid.getNx();
@@ -53,8 +68,14 @@ public class WeatherService {
                 .build(true)
                 .toUri();
 
-        String jsonResult = restTemplate.getForObject(uri, String.class);
-        return parseWeatherData(jsonResult);
+        try {
+            String jsonResult = restTemplate.getForObject(uri, String.class);
+            List<WeatherInfoResponse> result = parseWeatherData(jsonResult);
+            cache.put(regionName, new CachedWeather(result, LocalDateTime.now()));
+            return result;
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
     }
 
     /**

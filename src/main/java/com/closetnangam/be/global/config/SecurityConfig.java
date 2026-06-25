@@ -51,6 +51,7 @@ public class SecurityConfig {
             // purchase-captures는 민감 정보이므로 인증 유지 (ImageController.getPurchaseCaptureImage 참고)
             "/api/v1/images/feed/**",
             "/api/v1/images/profile/**",
+            "/api/v1/images/proxy",
     };
 
     private final OAuth2UserService oAuth2UserService;

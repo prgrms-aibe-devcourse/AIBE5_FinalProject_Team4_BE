@@ -989,6 +989,9 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/images/purchase-captures/{userId}/{filename}` | 구매내역 캡처 이미지 조회 |
 | GET | `/api/v1/images/feed/{userId}/{filename}` | 피드 이미지 조회 |
 | GET | `/api/v1/images/profile/{userId}/{filename}` | 프로필 이미지 조회 |
+| GET | `/api/v1/images/proxy?url={url}` | 외부 이미지 프록시 (CORS 대응) |
+
+> **Note**: `/api/v1/images/proxy`는 FE에서 외부 이미지(예: 네이버 쇼핑 `pstatic.net`)를 Canvas에 그릴 때 발생하는 CORS 오류를 피하기 위해 사용합니다. `pstatic.net` 도메인만 허용하며, `https` 프로토콜만 지원합니다. 응답 크기는 10MB로 제한됩니다.
 
 ### 룩피드 (FEED-001~008)
 

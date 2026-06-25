@@ -166,23 +166,18 @@ public class OotdRecommendationService {
             List<OotdResponse.OotdCombinationResponse> candidates, int limit) {
         List<OotdResponse.OotdCombinationResponse> result = new ArrayList<>();
         Set<Long> usedTopIds = new HashSet<>();
+        Set<Long> usedBottomIds = new HashSet<>();
 
         for (OotdResponse.OotdCombinationResponse combo : candidates) {
             if (result.size() >= limit) break;
             Long topId = combo.top().clothesId();
-            if (usedTopIds.contains(topId)) continue;
+            Long bottomId = combo.bottom().clothesId();
+
+            if (usedTopIds.contains(topId) || usedBottomIds.contains(bottomId)) continue;
+
             result.add(combo);
             usedTopIds.add(topId);
-        }
-
-        // 부족하면 top 중복 허용해서 채움
-        if (result.size() < limit) {
-            for (OotdResponse.OotdCombinationResponse combo : candidates) {
-                if (result.size() >= limit) break;
-                if (!result.contains(combo)) {
-                    result.add(combo);
-                }
-            }
+            usedBottomIds.add(bottomId);
         }
 
         Collections.shuffle(result);
