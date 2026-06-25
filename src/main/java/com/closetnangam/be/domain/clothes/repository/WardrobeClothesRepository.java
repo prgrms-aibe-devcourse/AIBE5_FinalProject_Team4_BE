@@ -36,6 +36,8 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             join fetch wc.clothes c
             join fetch wc.wardrobe w
             join fetch w.user
+            left join fetch c.styleTags st
+            left join fetch st.style
             where w.user.id = :userId
               and wc.ownershipStatus = :ownershipStatus
               and wc.deletedAt is null
@@ -51,6 +53,8 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             join fetch wc.clothes c
             join fetch wc.wardrobe w
             join fetch w.user
+            left join fetch c.styleTags st
+            left join fetch st.style
             where w.user.id = :userId
               and wc.ownershipStatus = :ownershipStatus
               and wc.favorite = true
@@ -300,4 +304,12 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
             @Param("userId") Long userId,
             @Param("clothesId") Long clothesId
     );
+
+    @Query("""
+            select distinct w.user.id from WardrobeClothes wc
+            join wc.wardrobe w
+            where wc.ownershipStatus = :ownershipStatus
+              and wc.deletedAt is null
+            """)
+    List<Long> findDistinctUserIdsByOwnershipStatus(@Param("ownershipStatus") OwnershipStatus ownershipStatus);
 }
