@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.net.URI;
 import java.util.Locale;
 
@@ -70,33 +74,51 @@ public class ImageController {
             return ResponseEntity.badRequest().build();
         }
 
+        long maxSize = 10 * 1024 * 1024; // 10MB
+
         try {
-            ResponseEntity<byte[]> response = restTemplate.exchange(
-                    uri,
-                    HttpMethod.GET,
-                    null,
-                    byte[].class
-                );
+            // 1. HEAD 요청으로 Content-Length 사전 검사
+            HttpHeaders headHeaders = restTemplate.headForHeaders(uri);
+            if (headHeaders.getContentLength() > maxSize) {
+                return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).build();
+            }
 
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                MediaType contentType = response.getHeaders().getContentType();
+            // 2. 스트리밍 방식으로 데이터 수신 및 크기 제한
+            byte[] imageData = restTemplate.execute(uri, HttpMethod.GET, null, clientResponse -> {
+                MediaType contentType = clientResponse.getHeaders().getContentType();
                 if (contentType == null || !contentType.getType().equalsIgnoreCase("image")) {
-                    return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).build();
+                    throw new RuntimeException("Invalid content type");
                 }
 
-                // 응답 크기 제한 (10MB)
-                long contentLength = response.getHeaders().getContentLength();
-                if (contentLength > 10 * 1024 * 1024 || response.getBody().length > 10 * 1024 * 1024) {
-                    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).build();
+                try (InputStream is = clientResponse.getBody();
+                     ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+                    long totalRead = 0;
+                    while ((bytesRead = is.read(buffer)) != -1) {
+                        totalRead += bytesRead;
+                        if (totalRead > maxSize) {
+                            throw new RuntimeException("Payload too large");
+                        }
+                        os.write(buffer, 0, bytesRead);
+                    }
+                    return os.toByteArray();
                 }
+            });
 
+            if (imageData != null) {
                 return ResponseEntity.ok()
-                        .contentType(contentType)
-                        .contentLength(response.getBody().length)
-                        .body(response.getBody());
+                        .contentType(headHeaders.getContentType())
+                        .contentLength(imageData.length)
+                        .body(imageData);
             }
         } catch (Exception e) {
-            // 외부 이미지 로드 실패 시 404
+            if ("Payload too large".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).build();
+            }
+            if ("Invalid content type".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).build();
+            }
         }
 
         return ResponseEntity.notFound().build();
