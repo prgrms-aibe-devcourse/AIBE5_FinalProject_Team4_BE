@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 public class StyleProductRecommender {
 
     private static final int MAX_RESULTS = 20;
+    private static final int CANDIDATE_POOL_SIZE = 2000;
     private static final int CANDIDATE_LIMIT = 500;
     private static final double STYLE_WEIGHT = 0.6d;
     private static final double WEATHER_WEIGHT = 0.4d;
@@ -90,8 +91,11 @@ public class StyleProductRecommender {
                 });
 
         // [3] 후보군 로드
-        List<Clothes> candidates = clothesRepository.findAllForRecommendation(PageRequest.of(0, CANDIDATE_LIMIT));
-// [4] 점수 계산 및 필터링
+        List<Clothes> pool = clothesRepository.findAllForRecommendation(PageRequest.of(0, CANDIDATE_POOL_SIZE));
+        Collections.shuffle(pool);
+        List<Clothes> candidates = pool.subList(0, Math.min(CANDIDATE_LIMIT, pool.size()));
+
+        // [4] 점수 계산 및 필터링
         User.Gender userGender = wardrobe.getUser().getGender();
 
         List<ScoredRecommendation> scoredRecommendations = new ArrayList<>();
@@ -127,29 +131,34 @@ public class StyleProductRecommender {
     private List<RecommendResponse> pickDiverseResults(List<ScoredRecommendation> scoredRecommendations, int limit) {
         List<RecommendResponse> results = new ArrayList<>();
         Map<String, Integer> styleCounts = new HashMap<>();
+        Map<String, Integer> categoryCounts = new HashMap<>();
 
         // 1차: 점수 순으로 보되, 특정 스타일이 과점하지 않도록 선택 (최대 20% 제한)
         int perStyleLimit = Math.max(1, (int) (limit * 0.2));
+        int perCategoryLimit = Math.max(2, (int) (limit * 0.3));
 
         for (ScoredRecommendation scored : scoredRecommendations) {
             if (results.size() >= limit) break;
 
+            String category = scored.clothes().getCategory();
+            int categoryCount = categoryCounts.getOrDefault(category, 0);
+            if (categoryCount >= perCategoryLimit) continue;
+
             String style = scored.clothes().getRecommendationTagSnapshot().primaryStyleCode();
             if (style == null) style = "CASUAL";
-
             int count = styleCounts.getOrDefault(style, 0);
             if (count < perStyleLimit) {
                 results.add(mapToRecommendResponse(scored));
                 styleCounts.put(style, count + 1);
+                categoryCounts.put(category, categoryCount + 1);
             }
         }
 
-        // 2차: 부족한 개수만큼 다시 점수 순으로 채움
+        // 2차: 부족한 개수만큼 다시 점수 순으로 채움 (카테고리 제한 없이 채움)
         if (results.size() < limit) {
             Set<Long> alreadyPicked = results.stream()
                     .map(RecommendResponse::clothesId)
                     .collect(Collectors.toSet());
-
             for (ScoredRecommendation scored : scoredRecommendations) {
                 if (results.size() >= limit) break;
                 if (!alreadyPicked.contains(scored.clothes().getId())) {
