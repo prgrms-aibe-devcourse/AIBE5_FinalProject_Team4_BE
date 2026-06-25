@@ -120,8 +120,8 @@ public class AiMdRecommendationService {
     private final OutfitStyleService outfitStyleService;  // OutfitStyleRepository 대신 공통 서비스 주입
 
     public List<AiMdPersonaResponse> getPersonas(Long userId) {
-        User user = findUser(userId);
-        return AiMdPersona.responsesFor(user.getGender());
+        findUser(userId);
+        return AiMdPersona.responses();
     }
 
     @Transactional
@@ -129,12 +129,12 @@ public class AiMdRecommendationService {
         User user = findUser(userId);
         AiMdPersona persona = resolvePersonaForUser(user, mdId);
         List<WardrobeClothes> wardrobeItems = findAiMdWardrobeItems(userId);
-        List<NaverShoppingProductResponse> externalProducts = searchOutfitProductsByCategory(userId, persona);
+        List<NaverShoppingProductResponse> externalProducts = searchOutfitProductsByCategory(userId, persona, user.getGender());
         List<WardrobeClothes> promptWardrobeItems = shuffledCopy(wardrobeItems);
         List<NaverShoppingProductResponse> promptExternalProducts = shuffledCopy(externalProducts);
 
         AiMdGeminiOutfitResult aiResult = geminiService.generateJsonFromText(
-                buildOutfitPrompt(persona, promptWardrobeItems, promptExternalProducts),
+                buildOutfitPrompt(persona, user.getGender(), promptWardrobeItems, promptExternalProducts),
                 AiMdGeminiOutfitResult.class
         );
 
@@ -208,14 +208,14 @@ public class AiMdRecommendationService {
         AiMdPersona persona = resolvePersonaForUser(user, mdId);
         List<WardrobeClothes> wardrobeItems = findOwnedWardrobeItems(userId);
         List<StyleSearchProfile> styleProfiles = buildStyleSearchProfiles(userId, persona);
-        List<ProductSearchPlan> searchPlans = buildProductSearchPlans(persona, wardrobeItems, styleProfiles);
-        List<NaverShoppingProductResponse> products = searchProductCandidates(userId, persona, wardrobeItems, styleProfiles, searchPlans);
+        List<ProductSearchPlan> searchPlans = buildProductSearchPlans(persona, wardrobeItems, styleProfiles, user.getGender());
+        List<NaverShoppingProductResponse> products = searchProductCandidates(userId, persona, user.getGender(), wardrobeItems, styleProfiles, searchPlans);
         String query = searchPlans.stream()
                 .map(ProductSearchPlan::query)
                 .collect(Collectors.joining(" | "));
 
         AiMdGeminiProductResult aiResult = geminiService.generateJsonFromText(
-                buildProductPrompt(persona, wardrobeItems, styleProfiles, products),
+                buildProductPrompt(persona, user.getGender(), wardrobeItems, styleProfiles, products),
                 AiMdGeminiProductResult.class
         );
 
@@ -448,11 +448,7 @@ public class AiMdRecommendationService {
     }
 
     private AiMdPersona resolvePersonaForUser(User user, String mdId) {
-        AiMdPersona persona = AiMdPersona.fromId(mdId);
-        if (!persona.supports(user.getGender())) {
-            throw new IllegalArgumentException("사용자 성별에 맞지 않는 AI MD입니다.");
-        }
-        return persona;
+        return AiMdPersona.fromId(mdId);
     }
 
     private List<WardrobeClothes> findAiMdWardrobeItems(Long userId) {
@@ -500,8 +496,8 @@ public class AiMdRecommendationService {
                 .toList();
     }
 
-    private List<NaverShoppingProductResponse> searchOutfitProductsByCategory(Long userId, AiMdPersona persona) {
-        String genderKeyword = persona.gender() == User.Gender.MALE ? "남성" : "여성";
+    private List<NaverShoppingProductResponse> searchOutfitProductsByCategory(Long userId, AiMdPersona persona, User.Gender userGender) {
+        String genderKeyword = genderKeyword(userGender);
         String styleKeyword = randomElement(persona.styleNames());
         Map<String, NaverShoppingProductResponse> productsById = new LinkedHashMap<>();
         List<Long> excludedClothesIds = findExcludedClothesIds(userId);
@@ -513,7 +509,7 @@ public class AiMdRecommendationService {
             clothesRepository.findExternalShoppingRecommendationCandidatesByCategory(
                             excludedClothesIds,
                             expectedCategory,
-                            allowedClothesGenders(persona.gender()),
+                            allowedClothesGenders(userGender),
                             PageRequest.of(0, OUTFIT_INTERNAL_PRODUCTS_PER_CATEGORY)
                     ).stream()
                     .map(this::toInternalProductResponse)
@@ -666,9 +662,10 @@ public class AiMdRecommendationService {
     private List<ProductSearchPlan> buildProductSearchPlans(
             AiMdPersona persona,
             List<WardrobeClothes> wardrobeItems,
-            List<StyleSearchProfile> styleProfiles
+            List<StyleSearchProfile> styleProfiles,
+            User.Gender userGender
     ) {
-        String genderKeyword = persona.gender() == User.Gender.MALE ? "남성" : "여성";
+        String genderKeyword = genderKeyword(userGender);
         List<String> colorKeywords = wardrobeItems.stream()
                 .map(WardrobeClothes::getClothes)
                 .flatMap(clothes -> clothes.getSortedColorTags().stream())
@@ -724,6 +721,7 @@ public class AiMdRecommendationService {
     private List<NaverShoppingProductResponse> searchProductCandidates(
             Long userId,
             AiMdPersona persona,
+            User.Gender userGender,
             List<WardrobeClothes> wardrobeItems,
             List<StyleSearchProfile> styleProfiles,
             List<ProductSearchPlan> searchPlans
@@ -733,7 +731,7 @@ public class AiMdRecommendationService {
         Map<String, NaverShoppingProductResponse> internalCandidatesByKey = new LinkedHashMap<>();
         clothesRepository.findExternalShoppingRecommendationCandidates(
                         excludedClothesIds,
-                        allowedClothesGenders(persona.gender()),
+                        allowedClothesGenders(userGender),
                         PageRequest.of(0, INTERNAL_PRODUCT_CANDIDATE_COUNT)
                 ).stream()
                 .map(candidate -> new InternalProductCandidate(
@@ -866,6 +864,26 @@ public class AiMdRecommendationService {
         return List.of(targetGender, ClothesGender.UNISEX);
     }
 
+    private String genderKeyword(User.Gender userGender) {
+        if (userGender == User.Gender.MALE) {
+            return "남성";
+        }
+        if (userGender == User.Gender.FEMALE) {
+            return "여성";
+        }
+        return "유니섹스";
+    }
+
+    private String targetClothesGenderLabel(User.Gender userGender) {
+        if (userGender == User.Gender.MALE) {
+            return "남성/공용 옷";
+        }
+        if (userGender == User.Gender.FEMALE) {
+            return "여성/공용 옷";
+        }
+        return "공용 옷";
+    }
+
     private NaverShoppingProductResponse toInternalProductResponse(Clothes clothes) {
         String productId = StringUtils.hasText(clothes.getExternalProductId()) && !"NONE".equalsIgnoreCase(clothes.getExternalProductId())
                 ? clothes.getExternalProductId()
@@ -962,6 +980,7 @@ public class AiMdRecommendationService {
 
     private String buildOutfitPrompt(
             AiMdPersona persona,
+            User.Gender userGender,
             List<WardrobeClothes> wardrobeItems,
             List<NaverShoppingProductResponse> externalProducts
     ) {
@@ -977,6 +996,9 @@ public class AiMdRecommendationService {
                 설명: %s
                 추천 사유 화법: %s
 
+                [추천 대상 옷 성별]
+                %s
+
                 [옷장 등록 옷]
                 %s
 
@@ -985,6 +1007,8 @@ public class AiMdRecommendationService {
 
                 규칙:
                 - outfits 배열 길이는 반드시 4입니다.
+                - MD의 성별은 말투와 스타일 취향을 정하는 페르소나일 뿐입니다. 추천할 옷의 성별 기준은 반드시 [추천 대상 옷 성별]을 따릅니다.
+                - 사용자가 남성이면 남성/공용 옷으로, 사용자가 여성이면 여성/공용 옷으로, 그 외 성별이면 공용 옷으로 코디합니다.
                 - wardrobeClothesIds에는 ownershipStatus가 OWNED인 보유 옷과 WISHLIST인 미보유 관심 상품을 모두 사용할 수 있습니다.
                 - wardrobeClothesIds는 비어 있어도 됩니다. 옷장 등록 옷을 억지로 넣지 말고, 외부 상품 후보만으로 더 자연스러운 룩이 되면 externalProductIds만으로 코디를 구성하세요.
                 - 각 코디는 옷장 등록 옷과 외부 상품을 합쳐 TOP(상의), BOTTOM(하의), SHOES(신발)를 각각 최소 1개 포함해야 합니다.
@@ -1038,6 +1062,7 @@ public class AiMdRecommendationService {
                 persona.speechStyle(),
                 persona.description(),
                 persona.recommendationVoiceGuide(),
+                targetClothesGenderLabel(userGender),
                 summarizeWardrobeItems(wardrobeItems),
                 summarizeProducts(externalProducts),
                 persona.displayName(),
@@ -1123,6 +1148,7 @@ public class AiMdRecommendationService {
 
     private String buildProductPrompt(
             AiMdPersona persona,
+            User.Gender userGender,
             List<WardrobeClothes> wardrobeItems,
             List<StyleSearchProfile> styleProfiles,
             List<NaverShoppingProductResponse> products
@@ -1137,6 +1163,9 @@ public class AiMdRecommendationService {
                 말투: %s
                 설명: %s
 
+                [추천 대상 옷 성별]
+                %s
+
                 [사용자 옷장 요약]
                 %s
 
@@ -1148,6 +1177,8 @@ public class AiMdRecommendationService {
 
                 규칙:
                 - products 배열은 가능한 한 40개를 반환합니다.
+                - MD의 성별은 말투와 스타일 취향을 정하는 페르소나일 뿐입니다. 추천할 상품의 성별 기준은 반드시 [추천 대상 옷 성별]을 따릅니다.
+                - 사용자가 남성이면 남성/공용 상품으로, 사용자가 여성이면 여성/공용 상품으로, 그 외 성별이면 공용 상품으로 추천합니다.
                 - productId는 상품 후보 목록에 있는 값만 사용합니다.
                 - source가 INTERNAL인 상품은 서비스가 미리 분류해 둔 내부 상품 후보입니다. MD 스타일, 사용자 스타일 가중치, 옷장 색상과 맞는 INTERNAL 상품을 우선 추천합니다.
                 - 네이버 검색 후보는 내부 상품으로 채우기 어려운 카테고리나 분위기를 보강할 때 사용합니다. 단순히 외부 검색 상품이라는 이유만으로 INTERNAL 후보보다 우선하지 않습니다.
@@ -1171,6 +1202,7 @@ public class AiMdRecommendationService {
                 persona.styleNames(),
                 persona.speechStyle(),
                 persona.description(),
+                targetClothesGenderLabel(userGender),
                 summarizeWardrobeItems(wardrobeItems),
                 summarizeStyleProfiles(styleProfiles),
                 summarizeProducts(products)

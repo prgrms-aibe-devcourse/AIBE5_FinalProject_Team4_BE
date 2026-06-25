@@ -1,7 +1,7 @@
 ---
 doc_type: be_ai_md_api_spec
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-12
+last_updated: 2026-06-24
 ---
 
 # AI MD API 명세서
@@ -80,12 +80,13 @@ export interface ApiResponse<T> {
 GET /api/v1/users/{userId}/recommendations/ai-md/personas
 ```
 
-사용자 성별에 맞는 MD만 반환합니다.
+사용자 성별과 관계없이 전체 AI MD를 반환합니다.
 
 | 사용자 성별 | 반환 MD |
 | --- | --- |
-| `MALE` | `taesik`, `junsik` |
-| `FEMALE` | `sesoon`, `gahyun`, `seongmi` |
+| `MALE` | `taesik`, `junsik`, `sesoon`, `gahyun`, `seongmi` |
+| `FEMALE` | `taesik`, `junsik`, `sesoon`, `gahyun`, `seongmi` |
+| `OTHER` | `taesik`, `junsik`, `sesoon`, `gahyun`, `seongmi` |
 
 ### 응답 타입
 
@@ -97,12 +98,12 @@ export type AiMdId =
   | "gahyun"
   | "seongmi";
 
-export type UserGender = "MALE" | "FEMALE";
+export type AiMdPersonaGender = "MALE" | "FEMALE";
 
 export interface AiMdPersona {
   id: AiMdId;
   name: string;
-  gender: UserGender;
+  gender: AiMdPersonaGender;
   styleCodes: string[];
   styleNames: string[];
   speechStyle: string;
@@ -133,13 +134,40 @@ export interface AiMdPersona {
       "styleNames": ["미니멀", "클래식", "시크"],
       "speechStyle": "댄디한 말투",
       "description": "정돈된 실루엣과 시크한 도시 무드를 좋아하는 남자 MD"
+    },
+    {
+      "id": "sesoon",
+      "name": "세순이",
+      "gender": "FEMALE",
+      "styleCodes": ["MINIMAL", "CLASSIC", "CITYBOY"],
+      "styleNames": ["미니멀", "클래식", "시티보이"],
+      "speechStyle": "댄디한 말투",
+      "description": "깔끔한 균형과 클래식한 조합을 제안하는 여자 MD"
+    },
+    {
+      "id": "gahyun",
+      "name": "가현이",
+      "gender": "FEMALE",
+      "styleCodes": ["CHIC", "GORPCORE", "STREET"],
+      "styleNames": ["시크", "고프코어", "스트릿"],
+      "speechStyle": "성수동 느낌의 힙한 말투",
+      "description": "시크한 베이스에 고프코어와 스트릿 포인트를 섞는 여자 MD"
+    },
+    {
+      "id": "seongmi",
+      "name": "성미",
+      "gender": "FEMALE",
+      "styleCodes": ["CASUAL", "MINIMAL", "WORKWEAR"],
+      "styleNames": ["캐주얼", "미니멀", "워크웨어"],
+      "speechStyle": "과하지 않게 애교 있는 말투",
+      "description": "편안하지만 정돈된 데일리 워크웨어 감성을 제안하는 여자 MD"
     }
   ],
   "message": null
 }
 ```
 
-FE는 MD ID를 직접 성별로 필터링하지 말고 이 API가 반환한 목록을 그대로 사용합니다.
+FE는 MD ID를 직접 성별로 필터링하지 말고 이 API가 반환한 목록을 그대로 사용합니다. `gender`는 MD 페르소나의 성별이며 추천 옷 성별 필터가 아닙니다.
 
 ## 4. AI MD 코디 추천
 
@@ -152,7 +180,8 @@ Request body는 없습니다.
 ### 동작
 
 - 사용자 옷장 등록 옷(`OWNED`, `WISHLIST`)과 네이버쇼핑 후보, 내부 `EXTERNAL_SHOPPING` 공용 후보를 Gemini에 전달합니다.
-- 내부 후보는 선택한 MD 성별과 `UNISEX` 상품만 사용합니다.
+- 내부 후보와 네이버쇼핑 검색어의 옷 성별 기준은 선택한 MD가 아니라 사용자 프로필 성별입니다.
+- 남성 사용자는 남성/`UNISEX`, 여성 사용자는 여성/`UNISEX`, `OTHER` 사용자는 `UNISEX` 상품을 사용합니다.
 - 선택한 MD가 코디 후보 4개를 구성합니다.
 - 각 코디는 사용자 옷장 등록 옷 없이 외부/내부 추천 상품만으로도 구성될 수 있습니다.
 - 옷장 등록 옷과 외부 상품을 합쳐 `TOP`, `BOTTOM`, `SHOES`가 반드시 포함됩니다.
@@ -553,7 +582,8 @@ GET /api/v1/users/{userId}/recommendations/ai-md/{mdId}/products
 - 한 번의 요청에서 스타일과 상품 카테고리를 달리한 검색어 8개를 구성합니다.
 - 각 검색은 네이버쇼핑 결과 20개를 조회하며, 여러 검색 페이지 중 하나를 무작위로 사용합니다.
 - 네이버 후보와 별도로 사용자의 현재 옷장 및 추천 제외 피드백에 없는 내부 `EXTERNAL_SHOPPING` 후보를 함께 섞습니다.
-- 내부 후보는 선택한 MD 성별과 `UNISEX` 상품만 사용합니다.
+- 내부 후보와 네이버쇼핑 검색어의 옷 성별 기준은 선택한 MD가 아니라 사용자 프로필 성별입니다.
+- 남성 사용자는 남성/`UNISEX`, 여성 사용자는 여성/`UNISEX`, `OTHER` 사용자는 `UNISEX` 상품을 사용합니다.
 - 옷장 색상은 일부 검색어에만 무작위로 포함해 특정 색상에 결과가 고정되는 현상을 줄입니다.
 - 최대 160개 원본 결과에서 동일 `productId`와 정규화된 동일 상품명을 제거합니다.
 - 후보를 섞은 뒤 최대 120개를 Gemini에 전달하고 최종 40개를 선택합니다.
@@ -647,7 +677,7 @@ BE에서 AI MD 추천 상품 전용 저장 API를 추가하는 후속 작업이 
 
 | HTTP | 발생 조건 | FE 처리 권장 |
 | --- | --- | --- |
-| `400` | 존재하지 않는 MD ID, 성별에 맞지 않는 MD, 코디 필수 구성 누락, 요청 검증 실패 | 요청 상태 유지 후 `message` 표시 |
+| `400` | 존재하지 않는 MD ID, 코디 필수 구성 누락, 요청 검증 실패 | 요청 상태 유지 후 `message` 표시 |
 | `401` | JWT 없음 또는 만료 | 로그인 화면 또는 토큰 갱신 |
 | `403` | JWT 사용자와 path `userId` 불일치 | 접근 불가 안내 |
 | `404` | 사용자 등 리소스 없음 | 이전 화면 이동 또는 데이터 새로고침 |
@@ -657,7 +687,6 @@ BE에서 AI MD 추천 상품 전용 저장 API를 추가하는 후속 작업이 
 대표 오류 메시지:
 
 ```text
-사용자 성별에 맞지 않는 AI MD입니다.
 AI MD 추천을 받으려면 보유 옷을 먼저 등록해 주세요.
 AI MD가 저장 가능한 코디 4개를 구성하지 못했습니다.
 저장할 코디에는 상의, 하의, 신발이 각각 최소 1개 포함되어야 합니다.

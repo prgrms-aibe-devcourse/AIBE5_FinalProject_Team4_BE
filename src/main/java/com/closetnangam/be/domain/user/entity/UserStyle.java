@@ -95,14 +95,13 @@ public class UserStyle extends BaseEntity {
     }
 
     private void calculateCombinedWeight(boolean hasWardrobeData) {
-        // 옷장 통계가 있는 경우 (hasWardrobeData == true)
-        // 보유 옷 비율 70% + 온보딩 가중치 30% 배분 전략 적용
         if (hasWardrobeData) {
-            // (preferenceWeight * 0.3) + (wardrobeWeight * 0.7) + (feedbackWeight)
             double combined = (this.preferenceWeight * 0.3) + (this.wardrobeWeight * 0.7);
-            this.combinedWeight = (int) Math.round(combined) + this.feedbackWeight;
+            int base = (int) Math.round(combined);
+            // preferenceWeight가 있으면 최소 1 보장
+            if (this.preferenceWeight > 0 && base == 0) base = 1;
+            this.combinedWeight = base + this.feedbackWeight;
         } else {
-            // 신규 사용자(옷장 비어있음): 온보딩 가중치 100% 반영
             this.combinedWeight = this.preferenceWeight + this.feedbackWeight;
         }
     }
