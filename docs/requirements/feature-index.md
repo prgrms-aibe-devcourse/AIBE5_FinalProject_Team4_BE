@@ -48,8 +48,7 @@ last_updated: 2026-06-23
 | `SYSTEM-010` | 공통 시스템 | 마케팅 정보 수신 동의 | 선택 동의로 관리하며 온보딩/마이페이지에서 조회 및 변경 | `GET /api/v1/users/{userId}/marketing-consent`, `PATCH /api/v1/users/{userId}/marketing-consent`, `GET /api/v1/legal/marketing-consent`, `USERS.marketing_agreed`, `USERS.marketing_agreed_at`, `docs/legal/marketing-consent.md` | 온보딩, 마이페이지 |
 | `SYSTEM-011` | 공통 시스템 | 작성 중 이탈 확인 | 기본 정보 수정, 선호 스타일 수정, 프로필 이미지 변경, 룩피드 프로필 수정, 피드 작성/수정, 코디 작성/수정 등 작성 중 이탈 시 작성 내용 손실을 안내 | 공통 UI guard | 마이페이지, 피드, 코디, 작성/수정 화면 |
 | `DATA-001` | 데이터 관리 | 초기 상품 데이터 | 추천 기능 시연을 위한 DB/API 초기 데이터 준비 | 샘플 상품 데이터 | 추천 |
-| `FEED-001`~`FEED-008` | 룩피드 | 피드/반응/빈 상태 | 코디 공유, 상세, 좋아요, 댓글, 대댓글, 팔로우, 빈 상태 | `FEED_POSTS`, `FEED_POST_IMAGES`, `FEED_LIKES`, `FEED_COMMENTS`, `FEED_POST_SAVES`, `USER_FOLLOWS`, `POST /api/v1/feed/posts/{postId}/saves` | 룩피드 |
-| `OUTFIT-001` | 코디 | 코디 저장 | 룩피드·추천 등에서 코디북 저장 | `POST /api/v1/feed/posts/{postId}/saves`, `POST /api/v1/outfit-books/{bookId}/outfits` | 룩피드, 코디북 |
+| `FEED-001`~`FEED-008` | 룩피드 | 피드/반응/빈 상태 | 코디 공유, 상세, 좋아요, 댓글, 대댓글, 팔로우, 빈 상태 | `FEED_POSTS`, `FEED_POST_IMAGES`, `FEED_LIKES`, `FEED_COMMENTS`, `USER_FOLLOWS` | 룩피드 |
 
 ## ID 운영 규칙
 

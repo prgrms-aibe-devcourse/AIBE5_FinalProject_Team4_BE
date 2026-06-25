@@ -29,8 +29,7 @@ last_updated: 2026-06-25
 | 추천 피드백 | 추천된 옷에 대한 싫어요 또는 추천 제외 기록입니다. 추천 점수와 제외 정책에 사용합니다. | `RECOMMENDATION_FEEDBACKS` |
 | 코디북 | 사용자별 코디 저장 공간입니다. 사용자는 1개의 코디북을 가집니다. | `OUTFIT_BOOKS` |
 | 코디 | 여러 옷을 조합한 착장입니다. 보유 옷과 미보유 옷 모두 코디 구성에 포함될 수 있습니다. | `OUTFITS`, `OUTFIT_ITEMS` |
-| 룩피드 | 사용자가 코디를 기반으로 게시글을 올리고 반응할 수 있는 커뮤니티 기능입니다. | `FEED_POSTS`, `FEED_COMMENTS`, `FEED_LIKES`, `FEED_POST_SAVES` |
-| 피드 코디 저장 | 룩피드 게시물에 연결된 코디를 조회자의 코디북으로 복제·저장하는 기능입니다. 피드 북마크와 별개입니다. | `FEED_POST_SAVES`, `POST /api/v1/feed/posts/{postId}/saves`, `savedByMe` |
+| 룩피드 | 사용자가 코디를 기반으로 게시글을 올리고 반응할 수 있는 커뮤니티 기능입니다. | `FEED_POSTS`, `FEED_COMMENTS`, `FEED_LIKES` |
 | 외부 출처 | 외부 쇼핑몰 또는 사용자가 직접 입력한 상품 출처입니다. | `ExternalSource` |
 
 ## 주요 코드값

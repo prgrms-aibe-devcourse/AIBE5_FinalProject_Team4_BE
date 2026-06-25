@@ -4,13 +4,11 @@ import com.closetnangam.be.domain.feed.dto.request.FeedCreateRequest;
 import com.closetnangam.be.domain.feed.entity.FeedPost;
 import com.closetnangam.be.domain.feed.repository.FeedPostLikeRepository;
 import com.closetnangam.be.domain.feed.repository.FeedPostRepository;
-import com.closetnangam.be.domain.feed.repository.FeedPostSaveRepository;
 import com.closetnangam.be.domain.feed.repository.FeedCommentRepository;
 import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitBook;
 import com.closetnangam.be.domain.outfit.repository.OutfitItemRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitRepository;
-import com.closetnangam.be.domain.outfit.service.OutfitService;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
@@ -36,14 +34,12 @@ class FeedServiceTest {
     @Mock private FeedPostRepository feedPostRepository;
     @Mock private FeedCommentRepository feedCommentRepository;
     @Mock private FeedPostLikeRepository feedPostLikeRepository;
-    @Mock private FeedPostSaveRepository feedPostSaveRepository;
     @Mock private com.closetnangam.be.domain.feed.repository.UserFollowRepository userFollowRepository;
     @Mock private UserRepository userRepository;
     @Mock private OutfitRepository outfitRepository;
     @Mock private OutfitItemRepository outfitItemRepository;
     @Mock private WardrobeClothesRepository wardrobeClothesRepository;
     @Mock private LocalImageStorageService localImageStorageService;
-    @Mock private OutfitService outfitService;
 
     @InjectMocks
     private FeedService feedService;

@@ -451,7 +451,7 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 | POST | `/api/v1/users/{userId}/recommendations/feedback` | 추천 상품 피드백 제출 (저장/싫어요/추천 제외) |
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
 | GET | `/api/v1/ootd/{wardrobeId}?currentTemp={temp}` | 내 옷장 기반 OOTD 추천 |
-| GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 사용자 성별에 맞는 AI MD 목록 조회 |
+| GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 전체 AI MD 목록 조회 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/products` | 선택한 AI MD 기준 외부 상품 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save` | 선택한 AI MD 코디 후보 저장 |
@@ -679,7 +679,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: AI MD 목록은 JWT 사용자와 path의 `userId`가 일치해야 조회할 수 있으며, 사용자 성별에 맞는 MD만 반환합니다. 남성 사용자는 `taesik`, `junsik`, 여성 사용자는 `sesoon`, `gahyun`, `seongmi`를 선택할 수 있습니다.
+> **Note**: AI MD 목록은 JWT 사용자와 path의 `userId`가 일치해야 조회할 수 있으며, 사용자 성별과 관계없이 전체 MD를 반환합니다. 모든 사용자는 `taesik`, `junsik`, `sesoon`, `gahyun`, `seongmi`를 선택할 수 있습니다. `md.gender`는 MD 페르소나의 성별이며 추천 옷 성별 필터가 아닙니다.
 
 #### AI MD 상품 추천 응답 (AiMdProductRecommendationResponse)
 
@@ -995,18 +995,13 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/feed/users/{userId}/liked-posts` | 본인 좋아요한 피드 목록 (본인만 조회) |
 | POST | `/api/v1/feed/images` | 피드 이미지 업로드 (`multipart/form-data`, field: `file`) |
 | POST | `/api/v1/feed/posts/{postId}/likes` | FEED-004 좋아요 토글 |
-| POST | `/api/v1/feed/posts/{postId}/saves` | 피드 연결 코디 코디북 저장/취소 토글 (OUTFIT-001) |
 | GET | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 목록 |
 | POST | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 작성 |
 | PUT | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 수정 (작성자 본인만) |
 | DELETE | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 삭제 |
 | POST | `/api/v1/feed/users/{followeeId}/follows` | FEED-007 팔로우 토글 |
 
-> **Note — 피드 북마크 vs 코디북 저장**
->
-> - **피드 북마크**(게시물만 모아두기, 인스타 저장함 유사)는 요구사항에서 제외되었습니다. `FEED-004` 좋아요가 이 역할을 대체하며, `GET .../liked-posts`로 모아봅니다.
-> - **`POST .../saves`와 `savedByMe`는 피드 북마크가 아닙니다.** 피드에 연결된 **코디를 내 코디북에 저장**하는 `OUTFIT-001` 계열 기능입니다. 저장 시 연결 코디를 사용자 코디북으로 복제하고, 취소 시 복제본을 소프트 삭제합니다. 연결 코디(`outfit`)가 없으면 400을 반환합니다.
-> - `likedByMe`는 게시물 좋아요, `savedByMe`는 해당 피드 코디를 내 코디북에 저장했는지 여부입니다. 서로 대체 관계가 아닙니다.
+> **Note**: 요구사항 정의서 기준으로 별도 피드 저장 기능은 제공하지 않으며, `FEED-004` 좋아요가 저장 역할을 대체합니다.
 
 #### POST /api/v1/feed/posts — 피드 업로드
 
@@ -1052,7 +1047,6 @@ Query: `page`(default 0), `size`(default 20, max 50)
         "likeCount": 3,
         "commentCount": 1,
         "likedByMe": false,
-        "savedByMe": false,
         "hidden": false,
         "mine": false,
         "createdAt": "2026-06-09T12:00:00",
@@ -1069,37 +1063,6 @@ Query: `page`(default 0), `size`(default 20, max 50)
 ```
 
 > **Note**: FEED-008 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
-
-피드 목록·상세(`FeedResponse`) 공통 필드:
-
-| 필드 | 설명 |
-| --- | --- |
-| `likedByMe` | 조회자가 이 게시물에 좋아요를 눌렀는지 (`FEED-004`) |
-| `savedByMe` | 조회자가 이 피드에 연결된 코디를 내 코디북에 저장했는지 (`POST .../saves`) |
-
-#### POST /api/v1/feed/posts/{postId}/saves — 피드 코디 코디북 저장 토글
-
-요청 본문 없음. JWT 인증 필요.
-
-응답 (`FeedInteractionResponse`):
-
-```json
-{
-  "success": true,
-  "data": {
-    "active": true,
-    "count": 12
-  }
-}
-```
-
-| 필드 | 설명 |
-| --- | --- |
-| `active` | 토글 후 저장 상태. `true`면 저장됨, `false`면 저장 취소됨 |
-| `count` | 해당 피드에 대한 저장 토글 누적 횟수(저장 사용자 수) |
-
-- 연결 코디가 없는 피드는 `"연결된 코디가 없어 저장할 수 없습니다."` (400)
-- 작성자 본인 코디를 저장하는 경우 원본 코디를 재사용하고, 타인 코디는 `cloneOutfitToUserBook`으로 복제합니다.
 
 #### GET /api/v1/feed/users/{userId}/profile — 룩피드 공개 프로필
 
