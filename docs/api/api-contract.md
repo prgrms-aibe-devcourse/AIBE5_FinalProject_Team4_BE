@@ -1075,6 +1075,10 @@ Query: `page`(default 0), `size`(default 20, max 50)
 ```
 
 > **Note**: FEED-008 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
+>
+> `FeedAuthor.followedByMe`(`author.followedByMe`)는 조회자가 작성자를 팔로우 중이면 `true`, 팔로우 중이 아니면 `false`입니다. **본인 게시물(`mine=true`) 또는 비로그인 조회**처럼 팔로우 상태를 계산하지 않는 경우 **`null`**일 수 있습니다. (`FeedAuthorResponse.followedByMe`는 `Boolean`; `FeedService.toFeedResponse`는 `authorFollowedByMe`를 `null`로 시작한 뒤 조회자가 있고 본인 게시물이 아닐 때만 값을 채웁니다.)
+>
+> 위 규칙은 **`GET /api/v1/feed/posts` 목록**, **`GET /api/v1/feed/posts/{postId}` 상세**, **`GET /api/v1/feed/users/{userId}/posts`** 등 `FeedPost` 응답의 `author`에 공통 적용됩니다. 예시 JSON의 `"followedByMe": false`는 타인 게시물을 로그인 사용자가 조회하고 팔로우하지 않은 경우를 나타냅니다. FE는 `null`을 `false`로 단순 치환하지 말고, 팔로우 버튼 표시 여부 등 UI 분기에 사용해야 합니다.
 
 #### GET /api/v1/feed/users/{userId}/profile — 룩피드 공개 프로필
 
