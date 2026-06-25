@@ -67,7 +67,7 @@ public class PurchaseCaptureRegistrationController {
 
     @Operation(
             summary = "구매내역 기반 옷 최종 저장",
-            description = "사용자가 수정한 정보와 외부 출처(externalSource), 옷장 정보(size, season 등)를 저장합니다."
+            description = "사용자가 수정한 옷 공통 정보, 외부 출처(externalSource), 옷장 전용 정보(size 등)를 저장합니다."
     )
     @PostMapping("/{captureId}/save")
     public ResponseEntity<ApiResponse<PurchaseCaptureRegistrationResponse>> savePurchaseCaptureClothes(

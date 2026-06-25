@@ -19,4 +19,6 @@ public interface UserStyleRepository extends JpaRepository<UserStyle, Long> {
     List<UserStyle> findAllByUserId(@Param("userId") Long userId);
 
     Optional<UserStyle> findByUserIdAndStyleId(Long userId, Long styleId);
+
+    void deleteAllByUserId(Long userId);
 }

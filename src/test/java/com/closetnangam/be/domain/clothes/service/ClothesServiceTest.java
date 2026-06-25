@@ -204,7 +204,6 @@ class ClothesServiceTest {
                 java.util.List.of("GRAY"),
                 java.util.List.of("STREET"),
                 "XL",
-                "WINTER",
                 true
         );
 

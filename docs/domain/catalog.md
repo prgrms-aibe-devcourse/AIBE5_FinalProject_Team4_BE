@@ -1,12 +1,12 @@
 ---
 doc_type: shared
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-10
+last_updated: 2026-06-25
 ---
 
 # 카탈로그 사용 가이드
 
-이 문서는 옷 등록, 추천, 필터, 색상 표시에서 사용하는 공용 카탈로그 기준입니다. FE/BE 모두 이 문서의 `code` 값을 기준으로 연동합니다. 단, 옷 대상 성별(`gender`)은 사용자 화면 표시/필터 대상이 아니라 내부 분류/추천용 code입니다.
+이 문서는 옷 등록, 추천, 필터, 색상 표시에서 사용하는 공용 카탈로그 기준입니다. FE/BE 모두 이 문서의 `code` 값을 기준으로 연동합니다. 옷 대상 성별(`gender`)은 옷 등록/수정 또는 등록 초안 확인 화면에서 사용자가 선택·확정할 수 있는 code이며, 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않습니다.
 
 ## 문서 위치 기준
 
@@ -30,7 +30,7 @@ last_updated: 2026-06-10
 
 - DB/API 저장값은 영문 `code`를 사용합니다.
 - 화면 표시에는 한글 `name` 또는 `label`을 사용합니다.
-- `gender`는 사용자 화면 표시 대상이 아니며, 내부 분류/추천과 저장 요청에 사용하는 code입니다.
+- `gender`는 옷 등록/수정 또는 등록 초안 확인 화면에서 사용자가 선택·확정할 수 있으며, 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않습니다.
 - `season`은 옷 등록 시 1개 선택하며, 생성된 옷의 계절은 변경하지 않습니다.
 - 색상 HEX 값은 UI 표시용이며 DB 저장값으로 사용하지 않습니다.
 - `itemType`은 선택한 `category` 하위 코드만 사용할 수 있습니다.
@@ -269,8 +269,8 @@ AI 응답 규칙:
 
 - `category`, `itemType`, `season`, `gender`, `primaryColor`, `secondaryColors`, `styles`는 이 문서의 code 목록만 사용합니다.
 - `season`은 `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON` 중 하나입니다. 옷 등록 저장 요청에서 선택·확정하며 생성된 옷의 계절은 변경하지 않습니다.
-- `gender`는 `MALE`, `FEMALE`, `UNISEX` 중 하나입니다. 사용자 화면에 표시하지 않고, 모델·상품명·옷 종류 기반 내부 분류/추천용 code로 사용합니다. 불확실하면 `UNISEX`를 사용합니다.
-- 사진·구매내역 등록 draft의 `gender` 기본값은 AI 추정이 아니라 **로그인 사용자 프로필 성별**(`MALE`/`FEMALE`, `OTHER`→`UNISEX`)입니다. FE는 사용자 화면에 표시하지 않더라도 저장 요청에는 해당 code를 포함합니다.
+- `gender`는 `MALE`, `FEMALE`, `UNISEX` 중 하나입니다. 모델·상품명·옷 종류 기반 분류/추천용 code로 사용하며, 옷 등록/수정 또는 등록 초안 확인 화면에서 사용자가 선택·확정할 수 있습니다. 불확실하면 `UNISEX`를 사용합니다.
+- 사진·구매내역 등록 draft의 `gender` 기본값은 AI 추정 또는 사용자 프로필 성별(`MALE`/`FEMALE`, `OTHER`→`UNISEX`)을 참고할 수 있습니다. FE는 최종 저장 전 사용자가 확인·수정한 code를 저장 요청에 포함합니다.
 - `itemType`은 선택한 `category` 하위 코드여야 합니다.
 - `secondaryColors`가 없으면 빈 배열 `[]`을 사용합니다.
 - `suggestedExternalSource`가 불확실하면 `null`을 사용합니다.

@@ -150,7 +150,6 @@ public class Clothes extends BaseEntity {
             String category,
             String itemType,
             ClothesGender gender,
-            ClothesSeason season,
             Boolean isVerified
     ) {
         this.name = name;
@@ -160,7 +159,6 @@ public class Clothes extends BaseEntity {
         this.category = category;
         this.itemType = itemType;
         this.gender = gender != null ? gender : ClothesGender.UNISEX;
-        this.season = season != null ? season : ClothesSeason.ALL_SEASON;
         this.isVerified = isVerified;
     }
 

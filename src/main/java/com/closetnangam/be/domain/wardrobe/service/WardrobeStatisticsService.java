@@ -60,6 +60,8 @@ public class WardrobeStatisticsService {
                 userId,
                 wardrobe.getId(),
                 computed.ownedCount(),
+                computed.wishlistCount(),
+                computed.totalWardrobeClothesCount(),
                 toItemTypeCounts(computed.itemTypeCounts()),
                 computed.stylePayloads()
         );
@@ -129,9 +131,20 @@ public class WardrobeStatisticsService {
         List<WardrobeClothes> ownedClothes = wardrobeClothesRepository.findOwnedForStatistics(
                 userId, OwnershipStatus.OWNED
         );
+        List<WardrobeClothes> activeWardrobeClothes = wardrobeClothesRepository.findAllActiveByUserIdAndOwnershipStatuses(
+                userId,
+                List.of(OwnershipStatus.OWNED, OwnershipStatus.WISHLIST)
+        );
 
         Map<String, Integer> itemTypeCounts = new HashMap<>();
         Map<Long, StyleAccumulator> styleAccumulators = new LinkedHashMap<>();
+        int wishlistCount = 0;
+
+        for (WardrobeClothes wardrobeClothes : activeWardrobeClothes) {
+            if (OwnershipStatus.WISHLIST.equals(wardrobeClothes.getOwnershipStatus())) {
+                wishlistCount++;
+            }
+        }
 
         for (WardrobeClothes wardrobeClothes : ownedClothes) {
             Clothes clothes = wardrobeClothes.getClothes();
@@ -159,6 +172,8 @@ public class WardrobeStatisticsService {
         List<UserStyleWardrobePayload> stylePayloads = toUserStylePayloads(styleAccumulators);
         return new ComputedStatistics(
                 ownedClothes.size(),
+                wishlistCount,
+                activeWardrobeClothes.size(),
                 itemTypeCounts,
                 stylePayloads,
                 !ownedClothes.isEmpty()
@@ -212,6 +227,8 @@ public class WardrobeStatisticsService {
 
     private record ComputedStatistics(
             int ownedCount,
+            int wishlistCount,
+            int totalWardrobeClothesCount,
             Map<String, Integer> itemTypeCounts,
             List<UserStyleWardrobePayload> stylePayloads,
             boolean hasWardrobeData

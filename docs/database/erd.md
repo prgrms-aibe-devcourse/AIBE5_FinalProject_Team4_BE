@@ -1,7 +1,7 @@
 ---
 doc_type: be_database
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-23
+last_updated: 2026-06-25
 erd_version: v2.3
 ---
 
@@ -36,7 +36,6 @@ erd_version: v2.3
 | 룩피드 | `FEED_POST_IMAGES` | 피드 게시글 이미지 |
 | 룩피드 | `FEED_COMMENTS` | 피드 댓글과 대댓글 |
 | 룩피드 | `FEED_LIKES` | 피드 좋아요 |
-| 룩피드 | `FEED_POST_SAVES` | 피드 저장 잔존 구조. 요구사항 기준에서는 `FEED-004` 좋아요가 저장 역할을 대체하며 후속 정리 대상 |
 | 룩피드 | `USER_FOLLOWS` | 사용자 팔로우 관계 |
 
 ## 핵심 관계
@@ -67,7 +66,7 @@ erd_version: v2.3
 | `product_code` | 상품 품번 |
 | `image_url` | 대표 이미지 URL |
 | `category` | 옷 카테고리 코드 |
-| `gender` | 옷 대상 성별 코드: `MALE`, `FEMALE`, `UNISEX`. 사용자 화면 표시 대상이 아닌 내부 분류/추천용 값 |
+| `gender` | 옷 대상 성별 코드: `MALE`, `FEMALE`, `UNISEX`. 등록/수정 또는 초안 확인 화면에서 선택·확정할 수 있으며 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않음 |
 | `season` | 옷 자체의 대상 계절 code: `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON`. 옷 등록 시 1개 선택하며 생성 후 변경하지 않음 |
 | `item_type` | 카테고리 하위 옷 타입 코드 |
 | `clothes_info_source` | 옷 정보 출처: `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |
@@ -158,7 +157,8 @@ erd_version: v2.3
 | `USERS` | `User` | `profile_bio`, `external_link_url`, `guide_tour_completed_*` 매핑 완료 |
 | `SOCIAL_ACCOUNTS` | `SocialAccount` | `created_at` + `last_login_at`만 매핑 |
 | `USER_EXTERNAL_LINKS` | `UserExternalLink` | 엔티티·Repository만. **마이페이지 CRUD API는 후속 (USER-002)** |
-| `FEED_*`, `USER_FOLLOWS` | 미구현 | 엔티티 셸 또는 없음. 룩피드 도메인 후속 |
+| `FEED_POSTS`, `FEED_POST_IMAGES`, `FEED_COMMENTS`, `FEED_LIKES` | `FeedPost`, `FeedPostImage`, `FeedComment`, `FeedPostLike` | 룩피드 게시글, 이미지, 댓글/대댓글, 좋아요 구현 |
+| `USER_FOLLOWS` | `UserFollow` | 사용자 팔로우 구현 |
 | `RECOMMENDATION_FEEDBACKS` | `RecommendationFeedback` | saved/disliked/excluded 피드백 구현 완료 |
 
 ## 데이터 보존 기준

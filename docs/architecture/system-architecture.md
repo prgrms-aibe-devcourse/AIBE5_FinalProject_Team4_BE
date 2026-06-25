@@ -1,7 +1,7 @@
 ---
 doc_type: be_system_architecture
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-23
+last_updated: 2026-06-24
 ---
 
 # 시스템 아키텍처
@@ -31,7 +31,7 @@ last_updated: 2026-06-23
 | Data | MySQL, RDS, JPA | 서비스 데이터 저장 |
 | Image Storage | AWS S3 | 옷 이미지, 피드 이미지 저장 |
 | External API | Gemini, Naver Shopping, Weather, OAuth Provider | AI 분석, 외부 상품 조회, 날씨 보조 정보, 소셜 인증 |
-| Infra | EC2, Docker Compose, GitHub Actions | 실행 환경, 로컬 인프라, CI/CD |
+| Infra | EC2, Docker Compose, GitHub Actions | 실행 환경, 로컬 인프라, CI |
 
 ## 다이어그램
 
@@ -74,7 +74,7 @@ flowchart TB
   subgraph Infra["DevOps / Infra"]
     EC2["AWS EC2<br/>Backend 실행"]
     Compose["Docker Compose<br/>로컬/배포 실행 보조"]
-    Actions["GitHub Actions<br/>CI/CD"]
+    Actions["GitHub Actions<br/>CI"]
   end
 
   FE --> REST
@@ -109,8 +109,6 @@ flowchart TB
 
   EC2 --> REST
   Compose --> REST
-  Actions --> EC2
-
   classDef client fill:#4338ca,stroke:#a5b4fc,color:#fff;
   classDef api fill:#047857,stroke:#6ee7b7,color:#fff;
   classDef domain fill:#065f46,stroke:#34d399,color:#fff;

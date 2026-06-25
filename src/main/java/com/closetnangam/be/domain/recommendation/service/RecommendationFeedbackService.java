@@ -2,7 +2,6 @@ package com.closetnangam.be.domain.recommendation.service;
 
 import com.closetnangam.be.domain.clothes.entity.Clothes;
 import com.closetnangam.be.domain.clothes.entity.ClothesStyleTag;
-import com.closetnangam.be.domain.clothes.enums.OwnershipStatus;
 import com.closetnangam.be.domain.clothes.enums.StyleRole;
 import com.closetnangam.be.domain.clothes.repository.ClothesRepository;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
@@ -87,7 +86,7 @@ public class RecommendationFeedbackService {
 
     private void updateUserStyleWeights(User user, Clothes clothes, int delta) {
         List<ClothesStyleTag> styleTags = clothes.getSortedStyleTags();
-        boolean hasWardrobeData = wardrobeClothesRepository.existsByUserIdAndOwnershipStatus(user.getId(), OwnershipStatus.OWNED);
+        boolean hasWardrobeData = wardrobeClothesRepository.existsActiveByUserId(user.getId());
 
         for (ClothesStyleTag tag : styleTags) {
             UserStyle userStyle = userStyleRepository.findByUserIdAndStyleId(user.getId(), tag.getStyle().getId())

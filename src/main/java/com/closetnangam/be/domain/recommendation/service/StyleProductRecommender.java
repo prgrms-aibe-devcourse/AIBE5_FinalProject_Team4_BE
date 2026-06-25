@@ -222,7 +222,6 @@ public class StyleProductRecommender {
                 clothes.getName(),
                 clothes.getExternalProductUrl(),
                 clothes.getImageUrl(),
-                "0",
                 String.format("%.2f", scored.score()),
                 scored.reason(),
                 clothes.getBrandName(),

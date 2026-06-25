@@ -22,7 +22,6 @@ public record ClothesUpdateRequest(
         @Size(max = CatalogLimits.MAX_SECONDARY_COLORS) List<@NotBlank String> secondaryColors,
         @NotEmpty @Size(max = CatalogLimits.MAX_STYLES) List<@NotBlank String> styles,
         @NotBlank @Size(max = 50) String size,
-        @Size(max = 50) String season,
         @NotNull Boolean isVerified
 ) {
 }

@@ -133,21 +133,14 @@ public class FeedController {
         return ResponseEntity.ok(ApiResponse.ok(feedService.toggleLike(postId, userId)));
     }
 
-    @Operation(summary = "저장 토글", description = "FEED-005. 피드를 저장하거나 저장을 취소합니다.")
-    @PostMapping("/posts/{postId}/saves")
-    public ResponseEntity<ApiResponse<FeedInteractionResponse>> toggleSave(@PathVariable @Min(1) Long postId) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.ok(feedService.toggleSave(postId, userId)));
-    }
-
-    @Operation(summary = "댓글 목록", description = "FEED-006/007. 피드 댓글과 대댓글을 조회합니다.")
+    @Operation(summary = "댓글 목록", description = "FEED-005/006. 피드 댓글과 대댓글을 조회합니다.")
     @GetMapping("/posts/{postId}/comments")
     public ResponseEntity<ApiResponse<List<FeedCommentResponse>>> getComments(@PathVariable @Min(1) Long postId) {
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.ok(feedService.getComments(postId, userId)));
     }
 
-    @Operation(summary = "댓글 작성", description = "FEED-006/007. 피드 댓글 또는 대댓글을 작성합니다.")
+    @Operation(summary = "댓글 작성", description = "FEED-005/006. 피드 댓글 또는 대댓글을 작성합니다.")
     @PostMapping("/posts/{postId}/comments")
     public ResponseEntity<ApiResponse<FeedCommentResponse>> createComment(
             @PathVariable @Min(1) Long postId,
@@ -180,7 +173,7 @@ public class FeedController {
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
-    @Operation(summary = "팔로우 토글", description = "FEED-008. 다른 사용자를 팔로우하거나 취소합니다.")
+    @Operation(summary = "팔로우 토글", description = "FEED-007. 다른 사용자를 팔로우하거나 취소합니다.")
     @PostMapping("/users/{followeeId}/follows")
     public ResponseEntity<ApiResponse<FeedInteractionResponse>> toggleFollow(@PathVariable @Min(1) Long followeeId) {
         Long followerId = SecurityUtils.getCurrentUserId();

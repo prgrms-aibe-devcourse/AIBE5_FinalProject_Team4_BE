@@ -1,7 +1,7 @@
 ---
 doc_type: shared_with_be_details
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-10
+last_updated: 2026-06-25
 ---
 
 # 옷 등록 플로우 가이드
@@ -27,7 +27,7 @@ last_updated: 2026-06-10
 
 | 데이터 | 저장 위치 | 설명 |
 | --- | --- | --- |
-| 상품명, 브랜드, 품번, 이미지, 카테고리, 타입, 계절, 대상 성별 code | `CLOTHES` | 옷 자체의 공통 정보. 계절은 등록 시 1개 선택하고 생성 후 변경하지 않으며, 대상 성별 code는 사용자 화면에 노출하지 않음 |
+| 상품명, 브랜드, 품번, 이미지, 카테고리, 타입, 계절, 대상 성별 code | `CLOTHES` | 옷 자체의 공통 정보. 계절은 등록 시 1개 선택하고 생성 후 변경하지 않으며, 대상 성별 code는 등록/수정 또는 초안 확인 화면에서 선택·확정할 수 있음 |
 | 옷 정보 출처 | `CLOTHES.clothes_info_source` | `PHOTO`, `PURCHASE_HISTORY`, `EXTERNAL_SHOPPING` |
 | 보유/미보유 | `WARDROBE_CLOTHES.ownership_status` | `OWNED`, `WISHLIST` |
 | 사용자별 사이즈, 즐겨찾기 | `WARDROBE_CLOTHES` | 사용자 옷장 기준 정보 |
@@ -185,8 +185,9 @@ last_updated: 2026-06-10
 - 업로드 중, 분석 중, 분석 실패, 초안 확인, 저장 완료 상태를 구분합니다.
 - 분석 결과는 최종 저장 전까지 사용자가 수정할 수 있어야 합니다. 단, `season`은 저장 시점에 확정되는 공통 옷 정보이므로 생성 후 옷 수정 대상에 포함하지 않습니다.
 - 카테고리, 아이템 타입, 계절, 색상, 스타일은 화면 입력/표시와 저장 요청에 사용하며 [카탈로그 사용 가이드](../domain/catalog.md)의 code 값을 사용합니다.
-- 대상 성별(`gender`)은 사용자 화면에 표시하거나 사용자가 직접 수정하는 값이 아니라, 내부 분류/추천용 code로 저장 요청에 포함합니다.
-- 사진·구매내역 등록 draft/analyze의 `gender` 기본값은 사용자 프로필 성별이며, FE는 별도 표시 없이 저장 요청에 포함합니다.
+- 대상 성별(`gender`)은 옷 등록/수정 또는 등록 초안 확인 화면에서 사용자가 선택·확정할 수 있으며, 저장 요청에 code로 포함합니다.
+- 사진·구매내역 등록 draft/analyze의 `gender` 기본값은 AI 추정 또는 사용자 프로필 성별을 참고할 수 있으며, FE는 최종 저장 전 사용자가 확인·수정한 code를 저장 요청에 포함합니다.
+- 대상 성별(`gender`)은 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않습니다.
 - 구매내역 캡처 분석에서 일부 값이 불확실할 수 있으므로 수동 보정 UI가 필요합니다.
 - AI가 카탈로그 code가 아닌 값을 반환하면 `analysisStatus=FAILED`로 처리하고, 유효한 code만 `SUCCESS` 초안으로 내려갑니다.
 - 외부 쇼핑몰 상품 저장은 보유 옷 등록과 미보유 저장을 구분해야 합니다.
@@ -195,7 +196,7 @@ last_updated: 2026-06-10
 
 - 사용자별 리소스는 인증 사용자와 요청 `userId` 일치를 확인합니다.
 - `CLOTHES`에는 계절을 포함한 공통 옷 정보를 저장하고, `WARDROBE_CLOTHES`에는 사용자별 상태를 저장합니다.
-- `season`은 `CLOTHES.season` 기준으로 저장하며 생성 후 변경하지 않습니다. 현재 코드가 옷 수정 요청에서 `CLOTHES.season`을 변경할 수 있으면 [implementation-gaps.md](../backend/implementation-gaps.md)에서 정합성을 확인합니다.
+- `season`은 `CLOTHES.season` 기준으로 저장하며 생성 후 변경하지 않습니다. 옷 수정 요청은 생성된 공통 옷의 계절을 변경하지 않습니다.
 - 추천 상품을 `POST .../wishlist-clothes/{clothesId}`로 연결할 때는 `EXTERNAL_SHOPPING` 공용 마스터 또는 **공개 피드에 노출된 `PHOTO`** 옷만 허용합니다. `PURCHASE_HISTORY` 및 공개 피드에 없는 PHOTO 옷은 차단합니다. 피드 노출 여부는 `feed_posts → outfits → outfit_items → clothes` 체인으로 확인하며 DB 컬럼 추가 없이 기존 테이블을 활용합니다.
 - 공용/공유 옷(`EXTERNAL_SHOPPING`, 공개 피드 `PHOTO`)을 보유 옷으로 전환할 때는 원본 `CLOTHES` 행을 변경하지 않고 사용자 전용 `PURCHASE_HISTORY` 행을 복제해 연결합니다. 이로써 원 작성자의 피드·코디 데이터가 오염되지 않습니다.
 - 추천·위시리스트 연결 시 사용자 활성 보유/미보유 옷과 `externalProductId` 또는 브랜드·상품명·카테고리·타입·대표색상 identity가 같으면 원본 외부 상품도 중복으로 처리합니다.

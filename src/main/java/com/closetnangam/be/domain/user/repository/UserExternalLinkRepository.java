@@ -8,4 +8,6 @@ import java.util.List;
 public interface UserExternalLinkRepository extends JpaRepository<UserExternalLink, Long> {
 
     List<UserExternalLink> findAllByUserIdOrderBySortOrderAsc(Long userId);
+
+    void deleteAllByUserId(Long userId);
 }
