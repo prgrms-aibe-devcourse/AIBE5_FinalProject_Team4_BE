@@ -137,6 +137,12 @@ public class PurchaseCaptureAiService {
             } catch (IllegalStateException exception) {
                 log.warn("[구매내역AI] 추출 결과 저장 실패. userId={}, captureId={}: {}", userId, captureId, exception.getMessage());
                 capture.applyAnalysisFailure(resolveAnalysisFailureMessage(exception), toRawJson(finalResult));
+            } catch (Exception exception) {
+                log.error("[구매내역AI] 추출 결과 저장 중 예기치 않은 오류. userId={}, captureId={}", userId, captureId, exception);
+                capture.applyAnalysisFailure(
+                        "AI 분석 중 예기치 않은 오류가 발생했습니다. 직접 입력해 주세요.",
+                        toRawJson(finalResult)
+                );
             }
             return PurchaseCaptureDraftSupport.toAnalyzeResponse(capture, objectMapper);
         });

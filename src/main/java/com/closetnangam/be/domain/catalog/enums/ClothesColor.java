@@ -3,6 +3,9 @@ package com.closetnangam.be.domain.catalog.enums;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.util.Locale;
+import java.util.Map;
+
 @Getter
 @RequiredArgsConstructor
 public enum ClothesColor {
@@ -24,9 +27,52 @@ public enum ClothesColor {
     private final String label;
     private final String hex;
 
+    /** AI·외부 연동에서 자주 쓰이지만 카탈로그 enum에 없는 색상 코드 별칭 */
+    private static final Map<String, String> CATALOG_ALIASES = Map.ofEntries(
+            Map.entry("BLUE", "LIGHT_BLUE"),
+            Map.entry("SKY_BLUE", "LIGHT_BLUE"),
+            Map.entry("SKYBLUE", "LIGHT_BLUE"),
+            Map.entry("LIGHTBLUE", "LIGHT_BLUE"),
+            Map.entry("PASTEL_BLUE", "LIGHT_BLUE"),
+            Map.entry("DENIM", "LIGHT_BLUE"),
+            Map.entry("DARK_BLUE", "NAVY"),
+            Map.entry("DEEP_BLUE", "NAVY"),
+            Map.entry("DARKBLUE", "NAVY"),
+            Map.entry("MIDNIGHT", "NAVY"),
+            Map.entry("INDIGO", "NAVY")
+    );
+
     // 기존 유지
     public static ClothesColor fromCode(String code) {
         return ClothesColor.valueOf(code);
+    }
+
+    /**
+     * AI 추출·외부 입력 색상 코드를 카탈로그 enum name으로 정규화합니다.
+     *
+     * @return 매칭되는 카탈로그 코드, 없으면 {@code null}
+     */
+    public static String normalizeCatalogCode(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        String normalized = code.trim().toUpperCase(Locale.ROOT).replace(" ", "_");
+        for (ClothesColor color : values()) {
+            if (color.name().equals(normalized)) {
+                return color.name();
+            }
+        }
+        String alias = CATALOG_ALIASES.get(normalized);
+        if (alias != null) {
+            return alias;
+        }
+        String trimmed = code.trim();
+        for (ClothesColor color : values()) {
+            if (color.getLabel().equals(trimmed)) {
+                return color.name();
+            }
+        }
+        return null;
     }
 
     // 표시용 fallback 추가
