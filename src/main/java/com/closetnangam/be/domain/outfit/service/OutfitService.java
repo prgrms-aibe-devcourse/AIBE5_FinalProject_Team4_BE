@@ -134,6 +134,75 @@ public class OutfitService {
         outfit.softDelete();
     }
 
+    /**
+     * 피드 등에서 다른 사용자 코디를 내 코디북으로 복제한다.
+     * 본인 코디면 그대로 반환하고, 저장 가능한 아이템이 없으면 예외를 던진다.
+     */
+    @Transactional
+    public Outfit cloneOutfitToUserBook(Outfit source, Long userId) {
+        if (source.getOutfitBook().getUser().getId().equals(userId)) {
+            return source;
+        }
+
+        OutfitBook book = outfitBookRepository.findByUser_Id(userId)
+                .orElseGet(() -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+                    return outfitBookRepository.save(OutfitBook.create(user));
+                });
+
+        List<OutfitItem> sourceItems = outfitItemRepository.findAllByOutfit_OutfitId(source.getOutfitId());
+        List<OutfitItemRequest> resolvableItems = resolveSavableItems(sourceItems, userId);
+
+        if (resolvableItems.isEmpty() && !sourceItems.isEmpty()) {
+            throw new IllegalArgumentException("내 옷장에서 저장할 수 있는 옷이 없습니다.");
+        }
+
+        Outfit clone = outfitRepository.save(Outfit.builder()
+                .outfitBook(book)
+                .title(StringUtils.hasText(source.getTitle()) ? source.getTitle() : "저장한 코디")
+                .description(StringUtils.hasText(source.getDescription()) ? source.getDescription() : "")
+                .thumbnailUrl(StringUtils.hasText(source.getThumbnailUrl()) ? source.getThumbnailUrl() : "")
+                .situation(StringUtils.hasText(source.getSituation()) ? source.getSituation() : "DAILY")
+                .season(StringUtils.hasText(source.getSeason()) ? source.getSeason() : "ALL")
+                .favorite(false)
+                .build());
+
+        if (!resolvableItems.isEmpty()) {
+            List<OutfitItem> savedItems = saveOutfitItems(clone, userId, resolvableItems);
+            outfitStyleService.saveOutfitStyles(clone, savedItems);
+        }
+        return clone;
+    }
+
+    private List<OutfitItemRequest> resolveSavableItems(List<OutfitItem> sourceItems, Long userId) {
+        if (sourceItems.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> clothesIds = sourceItems.stream()
+                .map(item -> item.getClothes().getId())
+                .distinct()
+                .toList();
+
+        Set<Long> ownedClothesIds = wardrobeClothesRepository
+                .findAllByClothesIdsAndUserId(clothesIds, userId).stream()
+                .map(item -> item.getClothes().getId())
+                .collect(Collectors.toSet());
+
+        List<OutfitItemRequest> resolved = new ArrayList<>();
+        for (OutfitItem item : sourceItems) {
+            Clothes clothes = item.getClothes();
+            Long clothesId = clothes.getId();
+
+            if (ownedClothesIds.contains(clothesId)
+                    || clothes.getClothesInfoSource() == ClothesInfoSource.EXTERNAL_SHOPPING) {
+                resolved.add(new OutfitItemRequest(clothesId, item.getItemRole(), item.getLayerOrder()));
+            }
+        }
+        return resolved;
+    }
+
     private List<OutfitItem> saveOutfitItems(Outfit outfit, Long userId, List<OutfitItemRequest> itemRequests) {
         List<Long> clothesIds = itemRequests.stream()
                 .map(OutfitItemRequest::getClothesId)
