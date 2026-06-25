@@ -15,6 +15,7 @@ public record FeedResponse(
         long likeCount,
         long commentCount,
         boolean likedByMe,
+        boolean savedByMe,
         boolean hidden,
         boolean mine,
         LocalDateTime createdAt,
@@ -27,6 +28,7 @@ public record FeedResponse(
             long likeCount,
             long commentCount,
             boolean likedByMe,
+            boolean savedByMe,
             Boolean authorFollowedByMe,
             Long viewerUserId
     ) {
@@ -39,6 +41,7 @@ public record FeedResponse(
                 likeCount,
                 commentCount,
                 likedByMe,
+                savedByMe,
                 post.isHidden(),
                 viewerUserId != null && viewerUserId.equals(post.getAuthor().getId()),
                 post.getCreatedAt(),

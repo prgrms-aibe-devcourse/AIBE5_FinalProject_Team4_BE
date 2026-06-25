@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-25
+last_updated: 2026-06-23
 ---
 
 # API 계약
@@ -327,18 +327,6 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 | POST | `/api/v1/wardrobes/users/{userId}` | 사용자 옷장 생성 |
 | GET | `/api/v1/wardrobes/users/{userId}/statistics` | 사용자 옷장 통계 조회 |
 
-#### 옷장 통계 응답
-
-`GET /api/v1/wardrobes/users/{userId}/statistics`는 사용자의 옷장에 등록된 보유/미보유 옷 전체를 기준으로 집계합니다.
-
-| 필드 | 설명 |
-| --- | --- |
-| `totalOwnedCount` | 보유 옷 개수 |
-| `totalWishlistCount` | 미보유 옷 개수 |
-| `totalWardrobeClothesCount` | 보유/미보유 전체 옷장 등록 개수 |
-| `itemTypes` | `itemType`별 옷장 등록 개수 |
-| `userStylePayloads` | `USER_STYLES.wardrobe_weight` 반영용 스타일 가중치 |
-
 ### 옷
 
 | Method | Path | 설명 |
@@ -362,12 +350,12 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 | `category` | Y | 대분류 code (`TOP`, `BOTTOM`, `OUTER`, `SHOES`) |
 | `itemType` | Y | 소분류 code. 선택한 `category` 하위 값 |
 | `season` | N | 옷 자체의 대상 계절 code (`SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON`). 생략 시 `ALL_SEASON`으로 저장하며, 최종 저장 후 변경하지 않음 |
-| `gender` | Y | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 등록/수정 또는 초안 확인 화면에서 선택·확정 가능 |
+| `gender` | Y | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 사용자 화면 표시 대상 아님 |
 | `primaryColor` | Y | 대표 색상 code |
 | `secondaryColors` | N | 보조 색상 code 배열 |
 | `styles` | Y | 스타일 code 배열 (최소 1개) |
 
-허용 code 목록은 [카탈로그 사용 가이드](../domain/catalog.md)를 따릅니다. 저장 요청 시 validation이 적용됩니다. `gender`는 옷 분류/추천과 저장 요청에 사용하는 code이며, 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않습니다.
+허용 code 목록은 [카탈로그 사용 가이드](../domain/catalog.md)를 따릅니다. 저장 요청 시 validation이 적용됩니다. `gender`는 사용자에게 노출하지 않고 옷 분류/추천과 저장 요청에 사용하는 내부 code입니다.
 
 #### 옷 수정 기준
 
@@ -375,7 +363,7 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 
 #### 옷 조회 응답 (`ClothesResponse`)
 
-옷 목록/상세/저장 성공 응답에는 분류 필드와 함께 `season`, `gender`가 포함됩니다. `season`은 `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON` code이고, `gender`는 `MALE`, `FEMALE`, `UNISEX` enum code입니다. FE는 `gender`를 등록/수정 또는 초안 확인 화면에서 선택·확정할 수 있으며, 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않습니다.
+옷 목록/상세/저장 성공 응답에는 분류 필드와 함께 `season`, `gender`가 포함됩니다. `season`은 `SPRING`, `SUMMER`, `FALL`, `WINTER`, `ALL_SEASON` code이고, `gender`는 `MALE`, `FEMALE`, `UNISEX` enum code입니다. FE는 `gender`를 사용자 화면에 표시하지 않고 내부 분류/추천 처리 기준으로만 사용합니다.
 
 ```json
 {
@@ -432,7 +420,7 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/save` | 구매내역 기반 옷 저장 (`itemIndex` 선택, 생략 시 0) |
 | POST | `/api/v1/users/{userId}/clothes/purchase-captures/{captureId}/items/{itemIndex}/skip` | 구매내역 캡처 상품 건너뛰기 |
 
-단일 상품 draft/analyze 응답은 `name`, `category`, `itemType`, `season`, `gender` 등 flat 필드와 `items[0]` 모두에 분류 값을 포함합니다. 복수 상품 시 flat 분류 필드는 `null`이며 `items[]`(`itemIndex`, `season`, `gender`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 사용합니다. `season`은 옷 등록 시 확정되는 공통 옷 정보이고, `gender`는 등록 초안 확인 화면에서 선택·확정할 수 있는 code입니다.
+단일 상품 draft/analyze 응답은 `name`, `category`, `itemType`, `season`, `gender` 등 flat 필드와 `items[0]` 모두에 분류 값을 포함합니다. 복수 상품 시 flat 분류 필드는 `null`이며 `items[]`(`itemIndex`, `season`, `gender`, `imageUrl`, `status`), `pendingItemCount`, `captureCompleted`를 사용합니다. `season`은 옷 등록 시 확정되는 공통 옷 정보이고, `gender`는 사용자에게 노출하지 않는 내부 code입니다.
 
 #### 구매내역 저장 요청 (`PurchaseCaptureSaveRequest`)
 
@@ -463,7 +451,7 @@ GET /api/v1/users/profile 응답 필드와 동일합니다.
 | POST | `/api/v1/users/{userId}/recommendations/feedback` | 추천 상품 피드백 제출 (저장/싫어요/추천 제외) |
 | GET | `/api/v1/recommendations/{wardrobeId}?currentTemp={temp}` | 취향 기반 상품 추천 |
 | GET | `/api/v1/ootd/{wardrobeId}?currentTemp={temp}` | 내 옷장 기반 OOTD 추천 |
-| GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 전체 AI MD 목록 조회 |
+| GET | `/api/v1/users/{userId}/recommendations/ai-md/personas` | 사용자 성별에 맞는 AI MD 목록 조회 |
 | GET | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/products` | 선택한 AI MD 기준 외부 상품 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits` | 선택한 AI MD 기준 코디 후보 추천 |
 | POST | `/api/v1/users/{userId}/recommendations/ai-md/{mdId}/outfits/save` | 선택한 AI MD 코디 후보 저장 |
@@ -503,7 +491,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | `primaryColor`, `primaryColorDisplay`, `secondaryColors` | 색상 |
 | `styleCodes` | 스타일 code 배열 |
 | `season` | `CLOTHES.season` code. 옷 등록 시 확정하며 `WARDROBE_CLOTHES`에는 저장하지 않음 |
-| `gender` | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 등록/수정 또는 초안 확인 화면에서 선택·확정 가능 |
+| `gender` | 옷 대상 성별 code (`MALE`, `FEMALE`, `UNISEX`). 사용자 화면 표시 대상 아님 |
 | `compatibilityScore` | 어울림 점수 (0~100, 내림차순 정렬) |
 
 ```json
@@ -555,7 +543,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 점수는 색상(35%)·스타일(30%)·itemType(20%)·시즌(15%) 가중 합산입니다. 동점(`compatibilityScore` 동일) 후보는 `brandName`이 `UNKNOWN`이 아닌 상품을 먼저 노출합니다. FE는 사용자 프로필 성별에 맞지 않는 `gender` 후보를 내부적으로 제외할 수 있지만, 해당 값을 목록/추천 카드의 일반 표시명이나 필터 UI로는 사용하지 않습니다.
+> **Note**: 점수는 색상(35%)·스타일(30%)·itemType(20%)·시즌(15%) 가중 합산입니다. 동점(`compatibilityScore` 동일) 후보는 `brandName`이 `UNKNOWN`이 아닌 상품을 먼저 노출합니다. FE는 사용자 프로필 성별에 맞지 않는 `gender` 후보를 내부적으로 제외할 수 있지만, 해당 값을 사용자 화면에 표시하지 않습니다.
 
 #### 취향 기반 상품 추천 응답 (RecommendResponse)
 
@@ -567,8 +555,9 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "title": "상품명",
       "link": "https://...",
       "imageUrl": "https://...",
-      "score": "0.92",
-      "reason": "Style: 0.8, Weather: 0.9, Season: 1.0",
+      "price": "0",
+      "score": "0.95",
+      "reason": "Style: 0.9, Weather: 1.0, Season: 0.8",
       "brandName": "브랜드명",
       "category": "카테고리",
       "itemType": "아이템 타입",
@@ -585,6 +574,8 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
   "message": null
 }
 ```
+
+> **Note**: 현재 서비스는 추천 상품 가격 표시를 공식 기준으로 두지 않습니다. `price`는 응답 DTO에 남아 있는 placeholder("0")이므로 FE 표시 기준으로 사용하지 않습니다. `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
 
 #### OOTD 추천 응답 (OotdResponse)
 
@@ -688,7 +679,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: AI MD 목록은 JWT 사용자와 path의 `userId`가 일치해야 조회할 수 있으며, 사용자 성별과 관계없이 전체 MD를 반환합니다. 모든 사용자는 `taesik`, `junsik`, `sesoon`, `gahyun`, `seongmi`를 선택할 수 있습니다. `md.gender`는 MD 페르소나의 성별이며 추천 옷 성별 필터가 아닙니다.
+> **Note**: AI MD 목록은 JWT 사용자와 path의 `userId`가 일치해야 조회할 수 있으며, 사용자 성별에 맞는 MD만 반환합니다. 남성 사용자는 `taesik`, `junsik`, 여성 사용자는 `sesoon`, `gahyun`, `seongmi`를 선택할 수 있습니다.
 
 #### AI MD 상품 추천 응답 (AiMdProductRecommendationResponse)
 
@@ -734,7 +725,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색과 내부 `EXTERNAL_SHOPPING` 공용 후보를 함께 사용합니다. 추천 옷 성별 기준은 선택한 MD가 아니라 사용자 프로필 성별이며, 남성 사용자는 남성/`UNISEX`, 여성 사용자는 여성/`UNISEX`, `OTHER` 사용자는 `UNISEX` 내부 후보를 포함합니다. 네이버쇼핑 검색어도 사용자 성별을 기준으로 구성합니다. 내부 후보는 DB 태그가 있으면 `product.primaryColor`/`product.primaryStyle`에 대표 색상·대표 스타일 코드를 포함하고, 네이버 후보는 해당 값이 `null`입니다. 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 40개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 40개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 상품 카드 액션은 `candidateSource` 기준으로 분기합니다. `candidateSource=INTERNAL`이고 `clothesId`가 있으면 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`로 기존 공용 옷을 위시리스트에 연결하고, 같은 `clothesId`로 `POST /api/v1/users/{userId}/recommendations/feedback`에 저장/싫어요/추천 제외 피드백을 제출할 수 있습니다. `candidateSource=NAVER`이고 `clothesId=null`인 후보만 `POST /api/users/{userId}/wishlist-clothes` 신규 생성 플로우를 사용합니다. `link=""`이면 구매 버튼을 숨기거나 비활성화합니다. 유사 상품 추천 결과도 동일한 `candidateSource` 분기 기준을 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
+> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색과 내부 `EXTERNAL_SHOPPING` 공용 후보를 함께 사용하고, 내부 후보는 선택한 MD 성별과 `UNISEX` 상품만 포함합니다. 내부 후보는 DB 태그가 있으면 `product.primaryColor`/`product.primaryStyle`에 대표 색상·대표 스타일 코드를 포함하고, 네이버 후보는 해당 값이 `null`입니다. 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 40개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 40개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 상품 카드 액션은 `candidateSource` 기준으로 분기합니다. `candidateSource=INTERNAL`이고 `clothesId`가 있으면 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`로 기존 공용 옷을 위시리스트에 연결하고, 같은 `clothesId`로 `POST /api/v1/users/{userId}/recommendations/feedback`에 저장/싫어요/추천 제외 피드백을 제출할 수 있습니다. `candidateSource=NAVER`이고 `clothesId=null`인 후보만 `POST /api/users/{userId}/wishlist-clothes` 신규 생성 플로우를 사용합니다. `link=""`이면 구매 버튼을 숨기거나 비활성화합니다. 유사 상품 추천 결과도 동일한 `candidateSource` 분기 기준을 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
 
 #### AI MD 코디 추천 응답 (AiMdOutfitRecommendationResponse)
 
@@ -989,9 +980,6 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/images/purchase-captures/{userId}/{filename}` | 구매내역 캡처 이미지 조회 |
 | GET | `/api/v1/images/feed/{userId}/{filename}` | 피드 이미지 조회 |
 | GET | `/api/v1/images/profile/{userId}/{filename}` | 프로필 이미지 조회 |
-| GET | `/api/v1/images/proxy?url={url}` | 외부 이미지 프록시 (CORS 대응) |
-
-> **Note**: `/api/v1/images/proxy`는 FE에서 외부 이미지(예: 네이버 쇼핑 `pstatic.net`)를 Canvas에 그릴 때 발생하는 CORS 오류를 피하기 위해 사용합니다. `pstatic.net` 도메인만 허용하며, `https` 프로토콜만 지원합니다. 응답 크기는 10MB로 제한됩니다.
 
 ### 룩피드 (FEED-001~008)
 
@@ -1007,13 +995,18 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/feed/users/{userId}/liked-posts` | 본인 좋아요한 피드 목록 (본인만 조회) |
 | POST | `/api/v1/feed/images` | 피드 이미지 업로드 (`multipart/form-data`, field: `file`) |
 | POST | `/api/v1/feed/posts/{postId}/likes` | FEED-004 좋아요 토글 |
+| POST | `/api/v1/feed/posts/{postId}/saves` | 피드 연결 코디 코디북 저장/취소 토글 (OUTFIT-001) |
 | GET | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 목록 |
 | POST | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 작성 |
 | PUT | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 수정 (작성자 본인만) |
 | DELETE | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 삭제 |
 | POST | `/api/v1/feed/users/{followeeId}/follows` | FEED-007 팔로우 토글 |
 
-> **Note**: 요구사항 정의서 기준으로 별도 피드 저장 기능은 제공하지 않으며, `FEED-004` 좋아요가 저장 역할을 대체합니다.
+> **Note — 피드 북마크 vs 코디북 저장**
+>
+> - **피드 북마크**(게시물만 모아두기, 인스타 저장함 유사)는 요구사항에서 제외되었습니다. `FEED-004` 좋아요가 이 역할을 대체하며, `GET .../liked-posts`로 모아봅니다.
+> - **`POST .../saves`와 `savedByMe`는 피드 북마크가 아닙니다.** 피드에 연결된 **코디를 내 코디북에 저장**하는 `OUTFIT-001` 계열 기능입니다. 저장 시 연결 코디를 사용자 코디북으로 복제하고, 취소 시 복제본을 소프트 삭제합니다. 연결 코디(`outfit`)가 없으면 400을 반환합니다.
+> - `likedByMe`는 게시물 좋아요, `savedByMe`는 해당 피드 코디를 내 코디북에 저장했는지 여부입니다. 서로 대체 관계가 아닙니다.
 
 #### POST /api/v1/feed/posts — 피드 업로드
 
@@ -1059,6 +1052,7 @@ Query: `page`(default 0), `size`(default 20, max 50)
         "likeCount": 3,
         "commentCount": 1,
         "likedByMe": false,
+        "savedByMe": false,
         "hidden": false,
         "mine": false,
         "createdAt": "2026-06-09T12:00:00",
@@ -1075,7 +1069,37 @@ Query: `page`(default 0), `size`(default 20, max 50)
 ```
 
 > **Note**: FEED-008 빈 상태는 BE가 빈 `content` 배열을 반환하면 FE에서 안내 UI를 표시합니다.
-> `FeedAuthor.followedByMe`는 조회자가 작성자를 팔로우 중이면 `true`, 팔로우 중이 아니면 `false`입니다. 본인 게시물 또는 비로그인 조회처럼 팔로우 상태를 계산하지 않는 경우 `null`일 수 있습니다.
+
+피드 목록·상세(`FeedResponse`) 공통 필드:
+
+| 필드 | 설명 |
+| --- | --- |
+| `likedByMe` | 조회자가 이 게시물에 좋아요를 눌렀는지 (`FEED-004`) |
+| `savedByMe` | 조회자가 이 피드에 연결된 코디를 내 코디북에 저장했는지 (`POST .../saves`) |
+
+#### POST /api/v1/feed/posts/{postId}/saves — 피드 코디 코디북 저장 토글
+
+요청 본문 없음. JWT 인증 필요.
+
+응답 (`FeedInteractionResponse`):
+
+```json
+{
+  "success": true,
+  "data": {
+    "active": true,
+    "count": 12
+  }
+}
+```
+
+| 필드 | 설명 |
+| --- | --- |
+| `active` | 토글 후 저장 상태. `true`면 저장됨, `false`면 저장 취소됨 |
+| `count` | 해당 피드에 대한 저장 토글 누적 횟수(저장 사용자 수) |
+
+- 연결 코디가 없는 피드는 `"연결된 코디가 없어 저장할 수 없습니다."` (400)
+- 작성자 본인 코디를 저장하는 경우 원본 코디를 재사용하고, 타인 코디는 `cloneOutfitToUserBook`으로 복제합니다.
 
 #### GET /api/v1/feed/users/{userId}/profile — 룩피드 공개 프로필
 
@@ -1097,7 +1121,7 @@ Query: `page`(default 0), `size`(default 20, max 50)
 }
 ```
 
-- `followedByMe`: 조회자가 해당 사용자를 팔로우 중이면 `true`, 팔로우 중이 아니면 `false`. 현재 BE 응답은 본인 프로필(`mine=true`) 또는 비로그인 조회처럼 팔로우 대상이 아니거나 조회자가 없는 경우도 `false`로 반환함
+- `followedByMe`: 조회자가 해당 사용자를 팔로우 중이면 `true`. 본인 프로필(`mine=true`)이면 항상 `false`
 - `profileBio`: 프로필에 공개된 소개
 - `externalLinkUrl`: 룩피드 프로필에 공개된 외부 링크
 
