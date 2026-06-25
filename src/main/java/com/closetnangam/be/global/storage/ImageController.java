@@ -2,15 +2,21 @@ package com.closetnangam.be.global.storage;
 
 import com.closetnangam.be.global.common.util.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.util.Locale;
 
 @Tag(name = "Image", description = "이미지 서빙 API — clothes·purchase-captures: 인증 필요 / feed·profile: 공개")
@@ -25,6 +31,44 @@ public class ImageController {
     private static final String PROFILE_SUBDIRECTORY = "profile";
 
     private final ImageStorageService imageStorageService;
+    private final RestTemplate restTemplate;
+
+    @Operation(
+            summary = "외부 이미지 프록시",
+            description = """
+                    외부 이미지(예: pstatic.net)를 프록시하여 반환합니다. \
+                    FE의 Canvas CORS 문제를 해결하기 위해 사용합니다. \
+                    pstatic.net 도메인만 허용됩니다."""
+    )
+    @GetMapping("/proxy")
+    public ResponseEntity<byte[]> proxyImage(
+            @Parameter(description = "외부 이미지 URL", example = "https://shopping-phinf.pstatic.net/...")
+            @RequestParam String url
+    ) {
+        if (!url.contains("pstatic.net")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        try {
+            ResponseEntity<byte[]> response = restTemplate.exchange(
+                    URI.create(url),
+                    HttpMethod.GET,
+                    null,
+                    byte[].class
+                );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return ResponseEntity.ok()
+                        .contentType(response.getHeaders().getContentType())
+                        .contentLength(response.getHeaders().getContentLength())
+                        .body(response.getBody());
+            }
+        } catch (Exception e) {
+            // 외부 이미지 로드 실패 시 404
+        }
+
+        return ResponseEntity.notFound().build();
+    }
 
     @Operation(
             summary = "의류 사진 조회 (인증 필요)",
