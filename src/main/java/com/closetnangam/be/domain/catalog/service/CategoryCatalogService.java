@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -218,29 +219,47 @@ public class CategoryCatalogService {
         return ClothesSeason.fromCodeOrDefault(seasonCode);
     }
 
-    public void validateColorCode(String colorCode) {
-        ClothesColor.fromCode(colorCode);
+    public String resolveColorCode(String colorCode) {
+        String resolved = ClothesColor.normalizeCatalogCode(colorCode);
+        if (resolved == null) {
+            throw new IllegalArgumentException("유효하지 않은 색상 코드입니다: " + colorCode);
+        }
+        return resolved;
     }
 
-    public void validateClothesColors(String primaryColor, List<String> secondaryColors) {
-        validateColorCode(primaryColor);
+    public void validateColorCode(String colorCode) {
+        resolveColorCode(colorCode);
+    }
+
+    public record ResolvedClothesColors(String primaryColor, List<String> secondaryColors) {
+    }
+
+    public ResolvedClothesColors resolveClothesColors(String primaryColor, List<String> secondaryColors) {
+        String normalizedPrimary = resolveColorCode(primaryColor);
         if (secondaryColors == null || secondaryColors.isEmpty()) {
-            return;
+            return new ResolvedClothesColors(normalizedPrimary, List.of());
         }
         if (secondaryColors.size() > CatalogLimits.MAX_SECONDARY_COLORS) {
             throw new IllegalArgumentException(
                     "보조 색상은 최대 " + CatalogLimits.MAX_SECONDARY_COLORS + "개까지 선택할 수 있습니다.");
         }
         Set<String> seen = new HashSet<>();
+        List<String> normalizedSecondary = new ArrayList<>(secondaryColors.size());
         for (String secondaryColor : secondaryColors) {
-            validateColorCode(secondaryColor);
-            if (primaryColor.equals(secondaryColor)) {
+            String normalizedSecondaryColor = resolveColorCode(secondaryColor);
+            if (normalizedPrimary.equals(normalizedSecondaryColor)) {
                 throw new IllegalArgumentException("주 색상과 보조 색상은 같을 수 없습니다.");
             }
-            if (!seen.add(secondaryColor)) {
+            if (!seen.add(normalizedSecondaryColor)) {
                 throw new IllegalArgumentException("보조 색상에 중복된 값이 있습니다: " + secondaryColor);
             }
+            normalizedSecondary.add(normalizedSecondaryColor);
         }
+        return new ResolvedClothesColors(normalizedPrimary, List.copyOf(normalizedSecondary));
+    }
+
+    public void validateClothesColors(String primaryColor, List<String> secondaryColors) {
+        resolveClothesColors(primaryColor, secondaryColors);
     }
 
     public void validateStyleCodes(List<String> styleCodes) {

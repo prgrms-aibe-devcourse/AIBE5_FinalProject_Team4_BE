@@ -318,6 +318,33 @@ class PurchaseCaptureDraftSupportTest {
     }
 
     @Test
+    void normalizeExtractionItems_mapsBlueAliasToLightBlue() {
+        GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(
+                "데님 팬츠", "BRAND", "BOTTOM", "DENIM", "BLUE", List.of(), List.of("CASUAL"), "UNISEX", "ALL_SEASON", "32", "MUSINSA",
+                null, null, "구매 확정"
+        );
+
+        List<GeminiPurchaseCaptureItem> normalized = PurchaseCaptureDraftSupport.normalizeExtractionItems(List.of(item));
+
+        assertThat(normalized).hasSize(1);
+        assertThat(normalized.get(0).primaryColor()).isEqualTo("LIGHT_BLUE");
+    }
+
+    @Test
+    void validateExtractionItemCatalogCodes_acceptsNormalizedBlueAlias() {
+        CategoryCatalogService catalogService = new CategoryCatalogService(mock(StyleRepository.class));
+        GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(
+                "데님 팬츠", "BRAND", "BOTTOM", "DENIM", "BLUE", List.of(), List.of("CASUAL"), "UNISEX", "ALL_SEASON", "32", "MUSINSA",
+                null, null, "구매 확정"
+        );
+
+        PurchaseCaptureDraftSupport.validateExtractionItemCatalogCodes(
+                PurchaseCaptureDraftSupport.normalizeExtractionItems(List.of(item)),
+                catalogService
+        );
+    }
+
+    @Test
     void validateExtractionItemCatalogCodes_rejectsInvalidCategory() {
         CategoryCatalogService catalogService = new CategoryCatalogService(mock(StyleRepository.class));
         GeminiPurchaseCaptureItem item = new GeminiPurchaseCaptureItem(

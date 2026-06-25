@@ -49,4 +49,17 @@ public interface OutfitRepository extends JpaRepository<Outfit, Long> {
               and o.deletedAt is null
             """)
     Optional<Outfit> findActiveByOutfitId(@Param("outfitId") Long outfitId);
+
+    @Query("""
+            select o
+            from Outfit o
+            join o.outfitBook ob
+            where ob.user.id = :userId
+              and o.deletedAt is null
+              and o.description = :sourceMarker
+            """)
+    Optional<Outfit> findActiveFeedSaveClone(
+            @Param("userId") Long userId,
+            @Param("sourceMarker") String sourceMarker
+    );
 }

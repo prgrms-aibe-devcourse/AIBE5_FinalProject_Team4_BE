@@ -9,6 +9,7 @@ import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitBook;
 import com.closetnangam.be.domain.outfit.repository.OutfitItemRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitRepository;
+import com.closetnangam.be.domain.outfit.service.OutfitService;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
@@ -40,6 +41,7 @@ class FeedServiceTest {
     @Mock private OutfitItemRepository outfitItemRepository;
     @Mock private WardrobeClothesRepository wardrobeClothesRepository;
     @Mock private LocalImageStorageService localImageStorageService;
+    @Mock private OutfitService outfitService;
 
     @InjectMocks
     private FeedService feedService;
@@ -67,6 +69,7 @@ class FeedServiceTest {
         given(feedPostLikeRepository.countByFeedPost_Id(100L)).willReturn(0L);
         given(feedCommentRepository.countByFeedPost_IdAndDeletedAtIsNull(100L)).willReturn(0L);
         given(outfitItemRepository.findAllByOutfit_OutfitId(10L)).willReturn(List.of());
+        given(outfitService.isFeedOutfitSavedByUser(outfit, 1L)).willReturn(true);
 
         var response = feedService.createPost(1L, new FeedCreateRequest(
                 10L,

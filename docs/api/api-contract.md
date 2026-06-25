@@ -1007,13 +1007,19 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/feed/users/{userId}/liked-posts` | 본인 좋아요한 피드 목록 (본인만 조회) |
 | POST | `/api/v1/feed/images` | 피드 이미지 업로드 (`multipart/form-data`, field: `file`) |
 | POST | `/api/v1/feed/posts/{postId}/likes` | FEED-004 좋아요 토글 |
+| POST | `/api/v1/feed/posts/{postId}/saves` | 피드 연결 코디 코디북 저장/취소 토글 (OUTFIT-001) |
 | GET | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 목록 |
 | POST | `/api/v1/feed/posts/{postId}/comments` | FEED-005/006 댓글·대댓글 작성 |
 | PUT | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 수정 (작성자 본인만) |
 | DELETE | `/api/v1/feed/posts/{postId}/comments/{commentId}` | 댓글 삭제 |
 | POST | `/api/v1/feed/users/{followeeId}/follows` | FEED-007 팔로우 토글 |
 
-> **Note**: 요구사항 정의서 기준으로 별도 피드 저장 기능은 제공하지 않으며, `FEED-004` 좋아요가 저장 역할을 대체합니다.
+> **Note — 피드 북마크 vs 코디북 저장**
+>
+> - **피드 북마크**(게시물만 모아두기)는 요구사항에서 제외되었습니다. `FEED-004` 좋아요가 이 역할을 대체하며, `GET .../liked-posts`로 모아봅니다.
+> - **`POST .../saves`와 `savedByMe`는 피드 북마크가 아닙니다.** 피드에 연결된 **코디를 내 코디북에 저장**하는 `OUTFIT-001` 계열 기능입니다. 저장 시 연결 코디를 사용자 코디북 `OUTFITS`/`OUTFIT_ITEMS`로 복제하고, 취소 시 복제본을 소프트 삭제합니다. 별도 `feed_post_saves` 테이블 없이 기존 `OUTFITS.description`의 `feed-save-source:{sourceOutfitId}:` 마커(끝 구분자 `:` 포함, equality 조회)로 저장 여부를 추적합니다.
+> - 복제 저장에 포함 가능한 옷: 내 옷장 보유 옷, `EXTERNAL_SHOPPING`, **공개 피드에 노출된 `PHOTO`** 옷. `PURCHASE_HISTORY` 및 비공개 PHOTO는 제외합니다.
+> - `likedByMe`는 게시물 좋아요, `savedByMe`는 해당 피드 코디를 내 코디북에 저장했는지 여부입니다.
 
 #### POST /api/v1/feed/posts — 피드 업로드
 
@@ -1059,6 +1065,7 @@ Query: `page`(default 0), `size`(default 20, max 50)
         "likeCount": 3,
         "commentCount": 1,
         "likedByMe": false,
+        "savedByMe": false,
         "hidden": false,
         "mine": false,
         "createdAt": "2026-06-09T12:00:00",
@@ -1079,6 +1086,37 @@ Query: `page`(default 0), `size`(default 20, max 50)
 > `FeedAuthor.followedByMe`(`author.followedByMe`)는 조회자가 작성자를 팔로우 중이면 `true`, 팔로우 중이 아니면 `false`입니다. **본인 게시물(`mine=true`) 또는 비로그인 조회**처럼 팔로우 상태를 계산하지 않는 경우 **`null`**일 수 있습니다. (`FeedAuthorResponse.followedByMe`는 `Boolean`; `FeedService.toFeedResponse`는 `authorFollowedByMe`를 `null`로 시작한 뒤 조회자가 있고 본인 게시물이 아닐 때만 값을 채웁니다.)
 >
 > 위 규칙은 **`GET /api/v1/feed/posts` 목록**, **`GET /api/v1/feed/posts/{postId}` 상세**, **`GET /api/v1/feed/users/{userId}/posts`** 등 `FeedPost` 응답의 `author`에 공통 적용됩니다. 예시 JSON의 `"followedByMe": false`는 타인 게시물을 로그인 사용자가 조회하고 팔로우하지 않은 경우를 나타냅니다. FE는 `null`을 `false`로 단순 치환하지 말고, 팔로우 버튼 표시 여부 등 UI 분기에 사용해야 합니다.
+
+피드 목록·상세(`FeedResponse`) 공통 필드:
+
+| 필드 | 설명 |
+| --- | --- |
+| `likedByMe` | 조회자가 이 게시물에 좋아요를 눌렀는지 (`FEED-004`) |
+| `savedByMe` | 조회자가 이 피드에 연결된 코디를 내 코디북에 저장했는지 (`POST .../saves`) |
+
+#### POST /api/v1/feed/posts/{postId}/saves — 피드 코디 코디북 저장 토글
+
+요청 본문 없음. JWT 인증 필요.
+
+응답 (`FeedInteractionResponse`):
+
+```json
+{
+  "success": true,
+  "data": {
+    "active": true,
+    "count": 0
+  }
+}
+```
+
+| 필드 | 설명 |
+| --- | --- |
+| `active` | 토글 후 저장 상태. `true`면 저장됨, `false`면 저장 취소됨 |
+| `count` | 현재 미사용(0). 저장 사용자 수 집계 테이블 없음 |
+
+- 연결 코디가 없는 피드는 `"연결된 코디가 없어 저장할 수 없습니다."` (400)
+- 저장 가능한 옷이 없으면 `"저장할 수 있는 옷이 없습니다."` (400)
 
 #### GET /api/v1/feed/users/{userId}/profile — 룩피드 공개 프로필
 

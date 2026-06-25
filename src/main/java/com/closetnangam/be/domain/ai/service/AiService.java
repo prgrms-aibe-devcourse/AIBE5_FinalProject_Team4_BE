@@ -110,6 +110,10 @@ public class AiService {
                 return toAnalyzeResponse(photo);
             }
             if (finalResult != null) {
+                CategoryCatalogService.ResolvedClothesColors resolvedColors = categoryCatalogService.resolveClothesColors(
+                        finalResult.primaryColor(),
+                        normalizeSecondaryColors(finalResult.secondaryColors())
+                );
                 photo.applyAnalysisSuccess(
                         sanitizeAiText(finalResult.name(), 200),
                         sanitizeAiText(finalResult.brandName(), 100),
@@ -117,8 +121,8 @@ public class AiService {
                         finalResult.itemType(),
                         ClothesGender.fromUserGender(photo.getUser().getGender()).name(),
                         categoryCatalogService.resolveSeasonOrDefault(finalResult.season()).name(),
-                        finalResult.primaryColor(),
-                        toColorsJson(finalResult.secondaryColors()),
+                        resolvedColors.primaryColor(),
+                        toColorsJson(resolvedColors.secondaryColors()),
                         toStylesJson(finalResult.styles()),
                         toRawJson(finalResult)
                 );

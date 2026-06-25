@@ -1,6 +1,7 @@
 package com.closetnangam.be.domain.purchase.support;
 
 import com.closetnangam.be.domain.ai.enums.AiAnalysisStatus;
+import com.closetnangam.be.domain.catalog.enums.ClothesColor;
 import com.closetnangam.be.domain.catalog.service.CategoryCatalogService;
 import com.closetnangam.be.domain.clothes.enums.ClothesGender;
 import com.closetnangam.be.domain.clothes.enums.ClothesSeason;
@@ -135,8 +136,8 @@ public final class PurchaseCaptureDraftSupport {
                     StringUtils.hasText(item.brandName()) ? item.brandName() : "UNKNOWN",
                     item.category(),
                     item.itemType(),
-                    item.primaryColor(),
-                    normalizeSecondaryColors(item.secondaryColors()),
+                    normalizeColorCode(item.primaryColor()),
+                    normalizeSecondaryColorCodes(item.secondaryColors()),
                     styles,
                     resolveGenderOrDefault(item.gender()),
                     resolveSeasonOrDefault(item.season()),
@@ -509,6 +510,20 @@ public final class PurchaseCaptureDraftSupport {
 
     private static List<String> normalizeSecondaryColors(List<String> secondaryColors) {
         return secondaryColors == null ? Collections.emptyList() : secondaryColors;
+    }
+
+    private static List<String> normalizeSecondaryColorCodes(List<String> secondaryColors) {
+        return normalizeSecondaryColors(secondaryColors).stream()
+                .map(PurchaseCaptureDraftSupport::normalizeColorCode)
+                .toList();
+    }
+
+    private static String normalizeColorCode(String colorCode) {
+        if (!StringUtils.hasText(colorCode)) {
+            return colorCode;
+        }
+        String resolved = ClothesColor.normalizeCatalogCode(colorCode);
+        return resolved != null ? resolved : colorCode.trim().toUpperCase(Locale.ROOT).replace(" ", "_");
     }
 
     private static String normalizeExternalSourceCode(String suggestedExternalSource) {
