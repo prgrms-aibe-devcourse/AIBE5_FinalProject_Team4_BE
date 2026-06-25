@@ -45,22 +45,54 @@ public class ImageController {
             @Parameter(description = "외부 이미지 URL", example = "https://shopping-phinf.pstatic.net/...")
             @RequestParam String url
     ) {
-        if (!url.contains("pstatic.net")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        URI uri;
+        try {
+            uri = URI.create(url);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+
+            if (!"https".equalsIgnoreCase(scheme)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            if (host == null || (!host.equalsIgnoreCase("pstatic.net") && !host.toLowerCase(Locale.ROOT).endsWith(".pstatic.net"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            if (uri.getPort() != -1 && uri.getPort() != 443) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            if (uri.getUserInfo() != null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
         }
 
         try {
             ResponseEntity<byte[]> response = restTemplate.exchange(
-                    URI.create(url),
+                    uri,
                     HttpMethod.GET,
                     null,
                     byte[].class
                 );
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                MediaType contentType = response.getHeaders().getContentType();
+                if (contentType == null || !contentType.getType().equalsIgnoreCase("image")) {
+                    return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).build();
+                }
+
+                // 응답 크기 제한 (10MB)
+                long contentLength = response.getHeaders().getContentLength();
+                if (contentLength > 10 * 1024 * 1024 || response.getBody().length > 10 * 1024 * 1024) {
+                    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).build();
+                }
+
                 return ResponseEntity.ok()
-                        .contentType(response.getHeaders().getContentType())
-                        .contentLength(response.getHeaders().getContentLength())
+                        .contentType(contentType)
+                        .contentLength(response.getBody().length)
                         .body(response.getBody());
             }
         } catch (Exception e) {
