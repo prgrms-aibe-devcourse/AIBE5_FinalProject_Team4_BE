@@ -140,7 +140,7 @@ class StyleProductRecommenderTest {
         Clothes clothes = mock(Clothes.class);
         lenient().when(clothes.getId()).thenReturn(id);
         lenient().when(clothes.getCategory()).thenReturn(category);
-        
+
         ClothesTagSnapshot snapshot = mock(ClothesTagSnapshot.class);
         lenient().when(snapshot.primaryStyleCode()).thenReturn(style);
         lenient().when(clothes.getRecommendationTagSnapshot()).thenReturn(snapshot);

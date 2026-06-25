@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 public class StyleProductRecommender {
 
     private static final int MAX_RESULTS = 20;
+    private static final int CANDIDATE_POOL_SIZE = 2000;
     private static final int CANDIDATE_LIMIT = 500;
     private static final double STYLE_WEIGHT = 0.6d;
     private static final double WEATHER_WEIGHT = 0.4d;
@@ -90,8 +91,11 @@ public class StyleProductRecommender {
                 });
 
         // [3] 후보군 로드
-        List<Clothes> candidates = clothesRepository.findAllForRecommendation(PageRequest.of(0, CANDIDATE_LIMIT));
-// [4] 점수 계산 및 필터링
+        List<Clothes> pool = clothesRepository.findAllForRecommendation(PageRequest.of(0, CANDIDATE_POOL_SIZE));
+        Collections.shuffle(pool);
+        List<Clothes> candidates = pool.subList(0, Math.min(CANDIDATE_LIMIT, pool.size()));
+
+        // [4] 점수 계산 및 필터링
         User.Gender userGender = wardrobe.getUser().getGender();
 
         List<ScoredRecommendation> scoredRecommendations = new ArrayList<>();
@@ -142,7 +146,6 @@ public class StyleProductRecommender {
 
             String style = scored.clothes().getRecommendationTagSnapshot().primaryStyleCode();
             if (style == null) style = "CASUAL";
-
             int count = styleCounts.getOrDefault(style, 0);
             if (count < perStyleLimit) {
                 results.add(mapToRecommendResponse(scored));
