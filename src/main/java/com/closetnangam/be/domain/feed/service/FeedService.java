@@ -24,6 +24,7 @@ import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitItem;
 import com.closetnangam.be.domain.outfit.repository.OutfitItemRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitRepository;
+import com.closetnangam.be.domain.outfit.service.OutfitService;
 import com.closetnangam.be.domain.clothes.entity.WardrobeClothes;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.user.entity.User;
@@ -64,6 +65,7 @@ public class FeedService {
     private final OutfitItemRepository outfitItemRepository;
     private final WardrobeClothesRepository wardrobeClothesRepository;
     private final ImageStorageService localImageStorageService;
+    private final OutfitService outfitService;
 
     @Transactional
     public FeedResponse createPost(Long userId, FeedCreateRequest request) {
@@ -183,6 +185,21 @@ public class FeedService {
     }
 
     @Transactional
+    public FeedInteractionResponse toggleSave(Long postId, Long userId) {
+        FeedPost post = findVisiblePost(postId, userId);
+
+        if (post.getOutfit() == null) {
+            throw new IllegalArgumentException("연결된 코디가 없어 저장할 수 없습니다.");
+        }
+
+        Outfit sourceOutfit = outfitRepository.findActiveByOutfitId(post.getOutfit().getOutfitId())
+                .orElseThrow(() -> new EntityNotFoundException("코디를 찾을 수 없습니다."));
+
+        boolean active = outfitService.toggleFeedOutfitSave(sourceOutfit, userId);
+        return new FeedInteractionResponse(active, 0);
+    }
+
+    @Transactional
     public FeedCommentResponse createComment(Long postId, Long userId, FeedCommentRequest request) {
         FeedPost post = findVisiblePost(postId, userId);
         User author = findUser(userId);
@@ -288,6 +305,9 @@ public class FeedService {
         long commentCount = feedCommentRepository.countByFeedPost_IdAndDeletedAtIsNull(post.getId());
         boolean likedByMe = viewerUserId != null
                 && feedPostLikeRepository.findByUser_IdAndFeedPost_Id(viewerUserId, post.getId()).isPresent();
+        boolean savedByMe = viewerUserId != null
+                && post.getOutfit() != null
+                && outfitService.isFeedOutfitSavedByUser(post.getOutfit(), viewerUserId);
 
         OutfitResponse outfitResponse = null;
         if (post.getOutfit() != null) {
@@ -309,6 +329,7 @@ public class FeedService {
                 likeCount,
                 commentCount,
                 likedByMe,
+                savedByMe,
                 authorFollowedByMe,
                 viewerUserId
         );
