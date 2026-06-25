@@ -22,6 +22,7 @@ import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
+import com.closetnangam.be.domain.wardrobe.service.WardrobeStatisticsService;
 import com.closetnangam.be.global.storage.ImageStorageService;
 import com.closetnangam.be.global.storage.StoredImage;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -49,6 +50,7 @@ public class PhotoClothesRegistrationService {
     private final UserRepository userRepository;
     private final ImageStorageService imageStorageService;
     private final ObjectMapper objectMapper;
+    private final WardrobeStatisticsService wardrobeStatisticsService;
 
     @Transactional
     public PhotoUploadResponse uploadPhoto(Long userId, MultipartFile file) {
@@ -147,6 +149,7 @@ public class PhotoClothesRegistrationService {
                 .build());
 
         photo.markSaved(savedClothes.getId(), wardrobeClothes.getId());
+        wardrobeStatisticsService.syncAfterWardrobeChange(userId);
 
         return new PhotoClothesRegistrationResponse(
                 wardrobeClothes.getId(),

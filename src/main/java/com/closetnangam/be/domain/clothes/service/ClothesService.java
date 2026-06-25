@@ -20,6 +20,7 @@ import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.feed.repository.FeedPostRepository;
 import com.closetnangam.be.domain.wardrobe.entity.Wardrobe;
 import com.closetnangam.be.domain.wardrobe.service.WardrobeService;
+import com.closetnangam.be.domain.wardrobe.service.WardrobeStatisticsService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +44,7 @@ public class ClothesService {
     private final WardrobeExclusionMatcher wardrobeExclusionMatcher;
     private final WardrobeService wardrobeService;
     private final FeedPostRepository feedPostRepository;
+    private final WardrobeStatisticsService wardrobeStatisticsService;
 
     public List<ClothesResponse> getOwnedClothes(Long userId) {
         return wardrobeClothesRepository.findAllByUserIdAndOwnershipStatus(userId, OwnershipStatus.OWNED).stream()
@@ -116,6 +118,7 @@ public class ClothesService {
                 .userImageUrl(request.imageUrl())
                 .build());
 
+        wardrobeStatisticsService.syncAfterWardrobeChange(userId);
         return ClothesResponse.from(savedClothes, wardrobeClothes);
     }
 
@@ -247,6 +250,7 @@ public class ClothesService {
                 ownedRegistrationSource
         );
 
+        wardrobeStatisticsService.syncAfterWardrobeChange(userId);
         return ClothesResponse.from(ownedClothes, wardrobeClothes);
     }
 
@@ -290,6 +294,7 @@ public class ClothesService {
                 request.imageUrl()
         );
 
+        wardrobeStatisticsService.syncAfterWardrobeChange(userId);
         return ClothesResponse.from(clothes, wardrobeClothes);
     }
 
@@ -308,6 +313,7 @@ public class ClothesService {
     public void deleteClothes(Long userId, Long clothesId) {
         WardrobeClothes wardrobeClothes = getOwnedWardrobeClothes(userId, clothesId);
         wardrobeClothes.softDelete();
+        wardrobeStatisticsService.syncAfterWardrobeChange(userId);
     }
 
     /** 소유권 확인: 해당 옷이 요청 사용자의 옷장에 없으면 404 */
