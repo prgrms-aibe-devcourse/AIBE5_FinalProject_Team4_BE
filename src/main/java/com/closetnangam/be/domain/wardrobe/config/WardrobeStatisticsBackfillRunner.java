@@ -16,8 +16,8 @@ import java.util.List;
 /**
  * 배포 직후 기존 보유 옷 사용자의 {@code user_styles.wardrobe_weight}를 백필합니다.
  *
- * <p>{@code statistics_synced_at}이 null이거나 옷장 변경 이후 동기화가 누락된 사용자만
- * {@link WardrobeStatisticsService#ensureSyncedForRecommendation(Long)}로 처리합니다.</p>
+ * <p>저장된 {@code user_styles.wardrobe_weight}와 옷장에서 계산한 기대값을 비교해
+ * stale 사용자만 {@link WardrobeStatisticsService#ensureSyncedForRecommendation(Long)}로 처리합니다.</p>
  */
 @Component
 @Profile("!test")

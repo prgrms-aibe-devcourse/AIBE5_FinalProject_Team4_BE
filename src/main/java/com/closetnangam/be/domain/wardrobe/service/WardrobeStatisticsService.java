@@ -26,14 +26,12 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -57,7 +55,6 @@ public class WardrobeStatisticsService {
 
         ComputedStatistics computed = computeStatistics(userId);
         syncUserStyles(userId, computed.stylePayloads(), computed.hasWardrobeData());
-        markStatisticsSynced(userId);
 
         return new WardrobeStatisticsResponse(
                 userId,
@@ -79,48 +76,53 @@ public class WardrobeStatisticsService {
         }
         ComputedStatistics computed = computeStatistics(userId);
         syncUserStyles(userId, computed.stylePayloads(), computed.hasWardrobeData());
-        markStatisticsSynced(userId);
     }
 
     /**
-     * 추천 API 진입 전 옷장 통계가 최신인지 확인하고, stale이면 1회 동기화합니다.
+     * 추천 API 진입 전 저장된 {@code user_styles} 가중치가 옷장 통계와 일치하는지 확인하고,
+     * stale이면 1회 동기화합니다.
      *
-     * <p>배포 직후 기존 사용자(옷장 보유 + {@code statistics_synced_at} 미기록)나
-     * 동기화 누락 구간을 커버합니다. 이미 최신이면 읽기만 하고 DB write는 하지 않습니다.</p>
+     * <p>별도 DB 컬럼 없이 현재 옷장에서 계산한 기대값과 저장값을 비교합니다.
+     * 배포 직후 기존 사용자(wardrobe_weight 미반영)도 이 경로에서 커버됩니다.</p>
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void ensureSyncedForRecommendation(Long userId) {
-        Optional<Wardrobe> wardrobe = wardrobeRepository.findByUser_Id(userId);
-        if (wardrobe.isEmpty()) {
+        if (wardrobeRepository.findByUser_Id(userId).isEmpty()) {
             return;
         }
         if (!wardrobeClothesRepository.existsByUserIdAndOwnershipStatus(userId, OwnershipStatus.OWNED)) {
             return;
         }
-        if (!needsResync(userId, wardrobe.get())) {
+        ComputedStatistics computed = computeStatistics(userId);
+        if (!isStoredWeightsStale(userId, computed)) {
             return;
         }
         log.info("[옷장통계] 추천 진입 전 동기화. userId={}", userId);
-        ComputedStatistics computed = computeStatistics(userId);
         syncUserStyles(userId, computed.stylePayloads(), computed.hasWardrobeData());
-        markStatisticsSynced(userId);
     }
 
-    private boolean needsResync(Long userId, Wardrobe wardrobe) {
-        if (wardrobe.getStatisticsSyncedAt() == null) {
-            return true;
+    private boolean isStoredWeightsStale(Long userId, ComputedStatistics computed) {
+        List<UserStyle> existingStyles = userStyleRepository.findAllByUserId(userId);
+        Map<Long, UserStyle> existingStyleMap = new HashMap<>();
+        for (UserStyle userStyle : existingStyles) {
+            existingStyleMap.put(userStyle.getStyle().getId(), userStyle);
         }
-        Optional<LocalDateTime> latestChange = wardrobeClothesRepository.findLatestUpdateAtByUserIdAndOwnershipStatus(
-                userId,
-                OwnershipStatus.OWNED
-        );
-        return latestChange.isPresent() && latestChange.get().isAfter(wardrobe.getStatisticsSyncedAt());
-    }
 
-    private void markStatisticsSynced(Long userId) {
-        wardrobeRepository.findByUser_Id(userId).ifPresent(wardrobe -> {
-            wardrobe.markStatisticsSynced(LocalDateTime.now());
-        });
+        boolean hasWardrobeData = computed.hasWardrobeData();
+        for (UserStyleWardrobePayload payload : computed.stylePayloads()) {
+            UserStyle stored = existingStyleMap.get(payload.styleId());
+            if (stored == null || !stored.isInSyncWithWardrobeWeight(payload.wardrobeWeight(), hasWardrobeData)) {
+                return true;
+            }
+            existingStyleMap.remove(payload.styleId());
+        }
+
+        for (UserStyle remainingStyle : existingStyleMap.values()) {
+            if (!remainingStyle.isInSyncWithWardrobeWeight(0, hasWardrobeData)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ComputedStatistics computeStatistics(Long userId) {

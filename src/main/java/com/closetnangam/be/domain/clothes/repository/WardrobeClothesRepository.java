@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -304,18 +303,6 @@ public interface WardrobeClothesRepository extends JpaRepository<WardrobeClothes
     Optional<WardrobeClothes> findActiveByUserIdAndClothesId(
             @Param("userId") Long userId,
             @Param("clothesId") Long clothesId
-    );
-
-    @Query("""
-            select max(wc.updatedAt) from WardrobeClothes wc
-            join wc.wardrobe w
-            where w.user.id = :userId
-              and wc.ownershipStatus = :ownershipStatus
-              and wc.deletedAt is null
-            """)
-    Optional<LocalDateTime> findLatestUpdateAtByUserIdAndOwnershipStatus(
-            @Param("userId") Long userId,
-            @Param("ownershipStatus") OwnershipStatus ownershipStatus
     );
 
     @Query("""

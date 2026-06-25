@@ -79,6 +79,19 @@ public class UserStyle extends BaseEntity {
         calculateCombinedWeight(hasWardrobeData);
     }
 
+    /** 저장된 wardrobe/combined weight가 기대값과 일치하는지 확인합니다(동기화 필요 여부 판단용). */
+    public boolean isInSyncWithWardrobeWeight(int expectedWeight, boolean hasWardrobeData) {
+        if (!Integer.valueOf(expectedWeight).equals(this.wardrobeWeight)) {
+            return false;
+        }
+        return this.combinedWeight == expectedCombinedWeight(
+                this.preferenceWeight,
+                expectedWeight,
+                this.feedbackWeight,
+                hasWardrobeData
+        );
+    }
+
     /**
      * @return 가중치가 실제로 바뀌었으면 {@code true} (DB save 필요)
      */
@@ -95,14 +108,28 @@ public class UserStyle extends BaseEntity {
     }
 
     private void calculateCombinedWeight(boolean hasWardrobeData) {
+        this.combinedWeight = expectedCombinedWeight(
+                this.preferenceWeight,
+                this.wardrobeWeight,
+                this.feedbackWeight,
+                hasWardrobeData
+        );
+    }
+
+    private static int expectedCombinedWeight(
+            int preferenceWeight,
+            int wardrobeWeight,
+            int feedbackWeight,
+            boolean hasWardrobeData
+    ) {
         if (hasWardrobeData) {
-            double combined = (this.preferenceWeight * 0.3) + (this.wardrobeWeight * 0.7);
+            double combined = (preferenceWeight * 0.3) + (wardrobeWeight * 0.7);
             int base = (int) Math.round(combined);
-            // preferenceWeight가 있으면 최소 1 보장
-            if (this.preferenceWeight > 0 && base == 0) base = 1;
-            this.combinedWeight = base + this.feedbackWeight;
-        } else {
-            this.combinedWeight = this.preferenceWeight + this.feedbackWeight;
+            if (preferenceWeight > 0 && base == 0) {
+                base = 1;
+            }
+            return base + feedbackWeight;
         }
+        return preferenceWeight + feedbackWeight;
     }
 }
