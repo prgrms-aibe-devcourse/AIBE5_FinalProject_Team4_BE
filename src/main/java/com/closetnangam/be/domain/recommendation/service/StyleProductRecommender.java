@@ -127,12 +127,18 @@ public class StyleProductRecommender {
     private List<RecommendResponse> pickDiverseResults(List<ScoredRecommendation> scoredRecommendations, int limit) {
         List<RecommendResponse> results = new ArrayList<>();
         Map<String, Integer> styleCounts = new HashMap<>();
+        Map<String, Integer> categoryCounts = new HashMap<>();
 
         // 1차: 점수 순으로 보되, 특정 스타일이 과점하지 않도록 선택 (최대 20% 제한)
         int perStyleLimit = Math.max(1, (int) (limit * 0.2));
+        int perCategoryLimit = Math.max(2, (int) (limit * 0.3));
 
         for (ScoredRecommendation scored : scoredRecommendations) {
             if (results.size() >= limit) break;
+
+            String category = scored.clothes().getCategory();
+            int categoryCount = categoryCounts.getOrDefault(category, 0);
+            if (categoryCount >= perCategoryLimit) continue;
 
             String style = scored.clothes().getRecommendationTagSnapshot().primaryStyleCode();
             if (style == null) style = "CASUAL";
@@ -141,10 +147,11 @@ public class StyleProductRecommender {
             if (count < perStyleLimit) {
                 results.add(mapToRecommendResponse(scored));
                 styleCounts.put(style, count + 1);
+                categoryCounts.put(category, categoryCount + 1);
             }
         }
 
-        // 2차: 부족한 개수만큼 다시 점수 순으로 채움
+        // 2차: 부족한 개수만큼 다시 점수 순으로 채움 (카테고리 제한은 유지)
         if (results.size() < limit) {
             Set<Long> alreadyPicked = results.stream()
                     .map(RecommendResponse::clothesId)
@@ -153,7 +160,12 @@ public class StyleProductRecommender {
             for (ScoredRecommendation scored : scoredRecommendations) {
                 if (results.size() >= limit) break;
                 if (!alreadyPicked.contains(scored.clothes().getId())) {
+                    String category = scored.clothes().getCategory();
+                    int categoryCount = categoryCounts.getOrDefault(category, 0);
+                    if (categoryCount >= perCategoryLimit) continue;
+
                     results.add(mapToRecommendResponse(scored));
+                    categoryCounts.put(category, categoryCount + 1);
                 }
             }
         }
