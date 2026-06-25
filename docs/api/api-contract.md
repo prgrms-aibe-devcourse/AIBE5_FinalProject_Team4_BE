@@ -1,7 +1,7 @@
 ---
 doc_type: be_api_contract
 source_of_truth: AIBE5_FinalProject_Team4_BE
-last_updated: 2026-06-23
+last_updated: 2026-06-25
 ---
 
 # API 계약
@@ -567,9 +567,8 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
       "title": "상품명",
       "link": "https://...",
       "imageUrl": "https://...",
-      "price": "0",
-      "score": "0.95",
-      "reason": "Style: 0.9, Weather: 1.0, Season: 0.8",
+      "score": "0.92",
+      "reason": "Style: 0.8, Weather: 0.9, Season: 1.0",
       "brandName": "브랜드명",
       "category": "카테고리",
       "itemType": "아이템 타입",
@@ -586,8 +585,6 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
   "message": null
 }
 ```
-
-> **Note**: 현재 서비스는 추천 상품 가격 표시를 공식 기준으로 두지 않습니다. `price`는 응답 DTO에 남아 있는 placeholder("0")이므로 FE 표시 기준으로 사용하지 않습니다. `score`는 0.0~1.0 사이의 문자열, `reason`은 기술적 매칭 결과입니다. 상세 내용은 [implementation-gaps.md](../backend/implementation-gaps.md)를 참고하세요.
 
 #### OOTD 추천 응답 (OotdResponse)
 
@@ -737,7 +734,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 }
 ```
 
-> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색과 내부 `EXTERNAL_SHOPPING` 공용 후보를 함께 사용하고, 내부 후보는 선택한 MD 성별과 `UNISEX` 상품만 포함합니다. 내부 후보는 DB 태그가 있으면 `product.primaryColor`/`product.primaryStyle`에 대표 색상·대표 스타일 코드를 포함하고, 네이버 후보는 해당 값이 `null`입니다. 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 40개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 40개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 상품 카드 액션은 `candidateSource` 기준으로 분기합니다. `candidateSource=INTERNAL`이고 `clothesId`가 있으면 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`로 기존 공용 옷을 위시리스트에 연결하고, 같은 `clothesId`로 `POST /api/v1/users/{userId}/recommendations/feedback`에 저장/싫어요/추천 제외 피드백을 제출할 수 있습니다. `candidateSource=NAVER`이고 `clothesId=null`인 후보만 `POST /api/users/{userId}/wishlist-clothes` 신규 생성 플로우를 사용합니다. `link=""`이면 구매 버튼을 숨기거나 비활성화합니다. 유사 상품 추천 결과도 동일한 `candidateSource` 분기 기준을 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
+> **Note**: 상품 추천은 `USER_STYLES.combined_weight`가 높은 스타일을 더 자주, 낮은 양수 스타일을 더 낮은 빈도로 반영합니다. 스타일·카테고리·색상·검색 페이지를 달리한 네이버쇼핑 검색과 내부 `EXTERNAL_SHOPPING` 공용 후보를 함께 사용합니다. 추천 옷 성별 기준은 선택한 MD가 아니라 사용자 프로필 성별이며, 남성 사용자는 남성/`UNISEX`, 여성 사용자는 여성/`UNISEX`, `OTHER` 사용자는 `UNISEX` 내부 후보를 포함합니다. 네이버쇼핑 검색어도 사용자 성별을 기준으로 구성합니다. 내부 후보는 DB 태그가 있으면 `product.primaryColor`/`product.primaryStyle`에 대표 색상·대표 스타일 코드를 포함하고, 네이버 후보는 해당 값이 `null`입니다. 동일 상품을 제거한 후보 중 Gemini가 브랜드와 카테고리가 한쪽에 치우치지 않도록 최대 40개 상품과 추천 이유를 선별합니다. 서버의 1차 선별에서도 같은 브랜드는 최대 2개, 같은 카테고리는 최대 4개로 제한합니다. 검색 후보가 치우쳐 40개를 채울 수 없을 때만 중복 상품 제외 조건을 유지한 채 이 제한을 완화합니다. 재추천 시 검색 조합과 후보 순서는 달라질 수 있습니다. `query`는 실제로 사용한 여러 검색어를 ` | `로 연결한 디버깅 값입니다. 이 단계에서는 저장하지 않습니다. 상품 카드 액션은 `candidateSource` 기준으로 분기합니다. `candidateSource=INTERNAL`이고 `clothesId`가 있으면 `POST /api/users/{userId}/wishlist-clothes/{clothesId}`로 기존 공용 옷을 위시리스트에 연결하고, 같은 `clothesId`로 `POST /api/v1/users/{userId}/recommendations/feedback`에 저장/싫어요/추천 제외 피드백을 제출할 수 있습니다. `candidateSource=NAVER`이고 `clothesId=null`인 후보만 `POST /api/users/{userId}/wishlist-clothes` 신규 생성 플로우를 사용합니다. `link=""`이면 구매 버튼을 숨기거나 비활성화합니다. 유사 상품 추천 결과도 동일한 `candidateSource` 분기 기준을 사용합니다. 보유 옷이 없으면 `409` 응답과 함께 등록 안내 메시지를 반환합니다.
 
 #### AI MD 코디 추천 응답 (AiMdOutfitRecommendationResponse)
 
@@ -992,6 +989,9 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 | GET | `/api/v1/images/purchase-captures/{userId}/{filename}` | 구매내역 캡처 이미지 조회 |
 | GET | `/api/v1/images/feed/{userId}/{filename}` | 피드 이미지 조회 |
 | GET | `/api/v1/images/profile/{userId}/{filename}` | 프로필 이미지 조회 |
+| GET | `/api/v1/images/proxy?url={url}` | 외부 이미지 프록시 (CORS 대응) |
+
+> **Note**: `/api/v1/images/proxy`는 FE에서 외부 이미지(예: 네이버 쇼핑 `pstatic.net`)를 Canvas에 그릴 때 발생하는 CORS 오류를 피하기 위해 사용합니다. `pstatic.net` 도메인만 허용하며, `https` 프로토콜만 지원합니다. 응답 크기는 10MB로 제한됩니다.
 
 ### 룩피드 (FEED-001~008)
 
