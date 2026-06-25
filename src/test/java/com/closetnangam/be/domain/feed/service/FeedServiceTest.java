@@ -9,7 +9,6 @@ import com.closetnangam.be.domain.outfit.entity.Outfit;
 import com.closetnangam.be.domain.outfit.entity.OutfitBook;
 import com.closetnangam.be.domain.outfit.repository.OutfitItemRepository;
 import com.closetnangam.be.domain.outfit.repository.OutfitRepository;
-import com.closetnangam.be.domain.outfit.service.OutfitService;
 import com.closetnangam.be.domain.clothes.repository.WardrobeClothesRepository;
 import com.closetnangam.be.domain.user.entity.User;
 import com.closetnangam.be.domain.user.repository.UserRepository;
@@ -41,7 +40,6 @@ class FeedServiceTest {
     @Mock private OutfitItemRepository outfitItemRepository;
     @Mock private WardrobeClothesRepository wardrobeClothesRepository;
     @Mock private LocalImageStorageService localImageStorageService;
-    @Mock private OutfitService outfitService;
 
     @InjectMocks
     private FeedService feedService;
