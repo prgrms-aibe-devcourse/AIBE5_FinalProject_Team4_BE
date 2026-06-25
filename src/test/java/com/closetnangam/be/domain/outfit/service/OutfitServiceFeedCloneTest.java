@@ -29,7 +29,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -92,7 +94,7 @@ class OutfitServiceFeedCloneTest {
         org.springframework.test.util.ReflectionTestUtils.setField(source, "outfitId", 50L);
 
         OutfitBook saverBook = mock(OutfitBook.class);
-        given(outfitRepository.findActiveFeedSaveClone(2L, "feed-save-source:50")).willReturn(Optional.empty());
+        given(outfitRepository.findActiveFeedSaveClone(2L, "feed-save-source:50:")).willReturn(Optional.empty());
         given(outfitBookRepository.findByUser_Id(2L)).willReturn(Optional.of(saverBook));
         given(outfitItemRepository.findAllByOutfit_OutfitId(50L)).willReturn(List.of());
         given(outfitRepository.save(any(Outfit.class))).willAnswer(invocation -> invocation.getArgument(0));
@@ -101,7 +103,53 @@ class OutfitServiceFeedCloneTest {
 
         ArgumentCaptor<Outfit> outfitCaptor = ArgumentCaptor.forClass(Outfit.class);
         verify(outfitRepository).save(outfitCaptor.capture());
-        assertThat(outfitCaptor.getValue().getDescription()).isEqualTo("feed-save-source:50");
+        assertThat(outfitCaptor.getValue().getDescription()).isEqualTo("feed-save-source:50:");
+    }
+
+    @Test
+    @DisplayName("feed-save-source 마커는 원본 코디 ID별로 prefix 충돌 없이 구분된다")
+    void feedSaveSourceMarker_distinguishesNestedNumericIds() throws Exception {
+        Method method = OutfitService.class.getDeclaredMethod("feedSaveSourceMarker", Long.class);
+        method.setAccessible(true);
+
+        String markerFor5 = (String) method.invoke(outfitService, 5L);
+        String markerFor50 = (String) method.invoke(outfitService, 50L);
+        String markerFor500 = (String) method.invoke(outfitService, 500L);
+
+        assertThat(markerFor5).isEqualTo("feed-save-source:5:");
+        assertThat(markerFor50).isEqualTo("feed-save-source:50:");
+        assertThat(markerFor500).isEqualTo("feed-save-source:500:");
+        assertThat(markerFor50).doesNotStartWith(markerFor5);
+        assertThat(markerFor500).doesNotStartWith(markerFor5);
+        assertThat(markerFor500).doesNotStartWith(markerFor50);
+    }
+
+    @Test
+    @DisplayName("저장 여부 확인 시 원본 코디 5번은 50번 저장본과 prefix 충돌하지 않는다")
+    void isFeedOutfitSavedByUser_queriesExactMarkerForSourceOutfitId() {
+        User owner = mock(User.class);
+        given(owner.getId()).willReturn(1L);
+
+        OutfitBook ownerBook = mock(OutfitBook.class);
+        given(ownerBook.getUser()).willReturn(owner);
+
+        Outfit source = Outfit.builder()
+                .outfitBook(ownerBook)
+                .title("피드 코디")
+                .description("원본")
+                .thumbnailUrl("")
+                .situation("DAILY")
+                .season("ALL")
+                .favorite(false)
+                .build();
+        org.springframework.test.util.ReflectionTestUtils.setField(source, "outfitId", 5L);
+
+        given(outfitRepository.findActiveFeedSaveClone(2L, "feed-save-source:5:")).willReturn(Optional.empty());
+
+        assertThat(outfitService.isFeedOutfitSavedByUser(source, 2L)).isFalse();
+
+        verify(outfitRepository).findActiveFeedSaveClone(eq(2L), eq("feed-save-source:5:"));
+        verify(outfitRepository, never()).findActiveFeedSaveClone(eq(2L), eq("feed-save-source:50:"));
     }
 
     @Test
@@ -125,7 +173,7 @@ class OutfitServiceFeedCloneTest {
         org.springframework.test.util.ReflectionTestUtils.setField(source, "outfitId", 50L);
 
         Outfit existingClone = mock(Outfit.class);
-        given(outfitRepository.findActiveFeedSaveClone(2L, "feed-save-source:50"))
+        given(outfitRepository.findActiveFeedSaveClone(2L, "feed-save-source:50:"))
                 .willReturn(Optional.of(existingClone));
 
         assertThat(outfitService.toggleFeedOutfitSave(source, 2L)).isFalse();

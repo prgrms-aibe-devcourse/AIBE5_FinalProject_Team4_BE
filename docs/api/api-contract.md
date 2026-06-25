@@ -1017,7 +1017,7 @@ JWT 사용자와 path의 `userId`가 일치해야 합니다. `clothesId`는 해�
 > **Note — 피드 북마크 vs 코디북 저장**
 >
 > - **피드 북마크**(게시물만 모아두기)는 요구사항에서 제외되었습니다. `FEED-004` 좋아요가 이 역할을 대체하며, `GET .../liked-posts`로 모아봅니다.
-> - **`POST .../saves`와 `savedByMe`는 피드 북마크가 아닙니다.** 피드에 연결된 **코디를 내 코디북에 저장**하는 `OUTFIT-001` 계열 기능입니다. 저장 시 연결 코디를 사용자 코디북 `OUTFITS`/`OUTFIT_ITEMS`로 복제하고, 취소 시 복제본을 소프트 삭제합니다. 별도 `feed_post_saves` 테이블 없이 기존 `OUTFITS.description`의 `feed-save-source:{sourceOutfitId}` 마커로 저장 여부를 추적합니다.
+> - **`POST .../saves`와 `savedByMe`는 피드 북마크가 아닙니다.** 피드에 연결된 **코디를 내 코디북에 저장**하는 `OUTFIT-001` 계열 기능입니다. 저장 시 연결 코디를 사용자 코디북 `OUTFITS`/`OUTFIT_ITEMS`로 복제하고, 취소 시 복제본을 소프트 삭제합니다. 별도 `feed_post_saves` 테이블 없이 기존 `OUTFITS.description`의 `feed-save-source:{sourceOutfitId}:` 마커(끝 구분자 `:` 포함, equality 조회)로 저장 여부를 추적합니다.
 > - 복제 저장에 포함 가능한 옷: 내 옷장 보유 옷, `EXTERNAL_SHOPPING`, **공개 피드에 노출된 `PHOTO`** 옷. `PURCHASE_HISTORY` 및 비공개 PHOTO는 제외합니다.
 > - `likedByMe`는 게시물 좋아요, `savedByMe`는 해당 피드 코디를 내 코디북에 저장했는지 여부입니다.
 

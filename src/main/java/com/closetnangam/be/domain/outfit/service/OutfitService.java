@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 public class OutfitService {
 
     static final String FEED_SAVE_SOURCE_PREFIX = "feed-save-source:";
+    static final String FEED_SAVE_SOURCE_SUFFIX = ":";
 
     private final OutfitBookRepository outfitBookRepository;
     private final OutfitRepository outfitRepository;
@@ -212,7 +213,7 @@ public class OutfitService {
     }
 
     private String feedSaveSourceMarker(Long sourceOutfitId) {
-        return FEED_SAVE_SOURCE_PREFIX + sourceOutfitId;
+        return FEED_SAVE_SOURCE_PREFIX + sourceOutfitId + FEED_SAVE_SOURCE_SUFFIX;
     }
 
     private List<OutfitItemRequest> resolveSavableItems(List<OutfitItem> sourceItems, Long userId) {

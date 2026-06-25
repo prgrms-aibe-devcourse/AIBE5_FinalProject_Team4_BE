@@ -56,7 +56,7 @@ public interface OutfitRepository extends JpaRepository<Outfit, Long> {
             join o.outfitBook ob
             where ob.user.id = :userId
               and o.deletedAt is null
-              and o.description like concat(:sourceMarker, '%')
+              and o.description = :sourceMarker
             """)
     Optional<Outfit> findActiveFeedSaveClone(
             @Param("userId") Long userId,
