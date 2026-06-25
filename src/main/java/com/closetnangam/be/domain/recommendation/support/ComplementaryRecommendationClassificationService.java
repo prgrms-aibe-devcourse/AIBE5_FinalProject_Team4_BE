@@ -127,11 +127,16 @@ public class ComplementaryRecommendationClassificationService {
             String brandName,
             String productTitle
     ) {
+        CategoryCatalogService.ResolvedClothesColors resolvedColors = categoryCatalogService.resolveClothesColors(
+                result.primaryColor(),
+                normalizeSecondaryColors(result.secondaryColors())
+        );
+
         List<ClothingColorDto> colors = new ArrayList<>();
-        colors.add(new ClothingColorDto(result.primaryColor(), ColorRole.PRIMARY, (byte) 0));
+        colors.add(new ClothingColorDto(resolvedColors.primaryColor(), ColorRole.PRIMARY, (byte) 0));
 
         byte secondaryOrder = 1;
-        for (String secondaryColor : normalizeSecondaryColors(result.secondaryColors())) {
+        for (String secondaryColor : resolvedColors.secondaryColors()) {
             colors.add(new ClothingColorDto(secondaryColor, ColorRole.SECONDARY, secondaryOrder++));
         }
 

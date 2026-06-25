@@ -111,6 +111,8 @@ class ComplementaryRecommendationClassificationServiceTest {
         ));
         given(categoryCatalogService.resolveGenderOrDefault("MALE")).willReturn(ClothesGender.MALE);
         given(categoryCatalogService.resolveSeasonOrDefault("ALL_SEASON")).willReturn(ClothesSeason.ALL_SEASON);
+        given(categoryCatalogService.resolveClothesColors("BLACK", List.of()))
+                .willReturn(new CategoryCatalogService.ResolvedClothesColors("BLACK", List.of()));
 
         Style casual = Style.from(StyleCode.CASUAL);
         ReflectionTestUtils.setField(casual, "id", 1L);
@@ -127,16 +129,48 @@ class ComplementaryRecommendationClassificationServiceTest {
         assertThat(result.get().gender()).isEqualTo("MALE");
         assertThat(result.get().season()).isEqualTo("ALL_SEASON");
         assertThat(result.get().colors()).hasSize(1);
+        assertThat(result.get().colors().getFirst().colorCode()).isEqualTo("BLACK");
         assertThat(result.get().styles()).hasSize(2);
         verify(categoryCatalogService).validateCategoryAndItemType("BOTTOM", "DENIM");
         verify(categoryCatalogService).validateClothesColors("BLACK", List.of());
+        verify(categoryCatalogService).resolveClothesColors("BLACK", List.of());
         verify(categoryCatalogService).validateStyleCodes(List.of("CASUAL", "STREET"));
         verify(categoryCatalogService).validateGenderCode("MALE");
         verify(categoryCatalogService).validateSeasonCode("ALL_SEASON");
     }
 
     @Test
-    @DisplayName("AI 분류가 비활성화되면 Gemini를 호출하지 않는다")
+    @DisplayName("batch 분류 결과는 alias 색상을 catalog code로 정규화해 반환한다")
+    void resolveBatchClassification_normalizesColorAliases() {
+        GeminiClothingClassificationResult result = new GeminiClothingClassificationResult(
+                true,
+                "데님 팬츠",
+                "브랜드",
+                "BOTTOM",
+                "DENIM",
+                "BLUE",
+                List.of("INDIGO"),
+                List.of("CASUAL"),
+                "UNISEX",
+                "ALL_SEASON"
+        );
+
+        Style casual = Style.from(StyleCode.CASUAL);
+        ReflectionTestUtils.setField(casual, "id", 1L);
+        given(styleRepository.findByCodeIn(List.of("CASUAL"))).willReturn(List.of(casual));
+        given(categoryCatalogService.resolveGenderOrDefault("UNISEX")).willReturn(ClothesGender.UNISEX);
+        given(categoryCatalogService.resolveSeasonOrDefault("ALL_SEASON")).willReturn(ClothesSeason.ALL_SEASON);
+        given(categoryCatalogService.resolveClothesColors("BLUE", List.of("INDIGO")))
+                .willReturn(new CategoryCatalogService.ResolvedClothesColors("LIGHT_BLUE", List.of("NAVY")));
+
+        Optional<ComplementaryRecommendationClassificationService.ResolvedClassification> resolved =
+                classificationService.resolveBatchClassification(result);
+
+        assertThat(resolved).isPresent();
+        assertThat(resolved.get().colors()).extracting("colorCode").containsExactly("LIGHT_BLUE", "NAVY");
+    }
+
+    @Test
     void classifyWithGeminiSkipsWhenDisabled() {
         ReflectionTestUtils.setField(classificationService, "aiClassificationEnabled", false);
 

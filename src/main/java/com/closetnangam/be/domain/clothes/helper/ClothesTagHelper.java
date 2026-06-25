@@ -56,17 +56,22 @@ public class ClothesTagHelper {
     }
 
     public void applyColorTags(Clothes clothes, String primaryColor, List<String> secondaryColors) {
-        buildColorTags(clothes, primaryColor, secondaryColors).forEach(clothes::addColorTag);
+        CategoryCatalogService.ResolvedClothesColors resolved =
+                categoryCatalogService.resolveClothesColors(primaryColor, secondaryColors);
+        buildColorTags(clothes, resolved.primaryColor(), resolved.secondaryColors())
+                .forEach(clothes::addColorTag);
     }
 
     public void replaceColorTags(Clothes clothes, String primaryColor, List<String> secondaryColors) {
-        List<String> normalizedSecondary = secondaryColors != null ? secondaryColors : List.of();
-        if (hasSameColorTags(clothes, primaryColor, normalizedSecondary)) {
+        CategoryCatalogService.ResolvedClothesColors resolved =
+                categoryCatalogService.resolveClothesColors(primaryColor, secondaryColors);
+        if (hasSameColorTags(clothes, resolved.primaryColor(), resolved.secondaryColors())) {
             return;
         }
         clothes.replaceColorTags(Collections.emptyList());
         entityManager.flush();
-        applyColorTags(clothes, primaryColor, normalizedSecondary);
+        buildColorTags(clothes, resolved.primaryColor(), resolved.secondaryColors())
+                .forEach(clothes::addColorTag);
     }
 
     public void applyStyleTags(Clothes clothes, List<String> styleCodes) {
