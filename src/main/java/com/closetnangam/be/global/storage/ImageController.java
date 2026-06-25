@@ -37,6 +37,8 @@ public class ImageController {
     private final ImageStorageService imageStorageService;
     private final RestTemplate restTemplate;
 
+    private record ProxyResult(byte[] data, MediaType contentType) {}
+
     @Operation(
             summary = "외부 이미지 프록시",
             description = """
@@ -76,17 +78,25 @@ public class ImageController {
 
         long maxSize = 10 * 1024 * 1024; // 10MB
 
+        HttpHeaders headHeaders = null;
         try {
             // 1. HEAD 요청으로 Content-Length 사전 검사
-            HttpHeaders headHeaders = restTemplate.headForHeaders(uri);
+            headHeaders = restTemplate.headForHeaders(uri);
             if (headHeaders.getContentLength() > maxSize) {
                 return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).build();
             }
+        } catch (Exception e) {
+            // HEAD 실패 시 로그를 남길 수 있으나, 요구사항에 따라 조용히 넘어가고 GET 시도
+        }
 
+        try {
             // 2. 스트리밍 방식으로 데이터 수신 및 크기 제한
-            byte[] imageData = restTemplate.execute(uri, HttpMethod.GET, null, clientResponse -> {
+            ProxyResult result = restTemplate.execute(uri, HttpMethod.GET, null, clientResponse -> {
                 MediaType contentType = clientResponse.getHeaders().getContentType();
-                if (contentType == null || !contentType.getType().equalsIgnoreCase("image")) {
+                if (contentType == null) {
+                    contentType = MediaType.IMAGE_JPEG;
+                }
+                if (!contentType.getType().equalsIgnoreCase("image")) {
                     throw new RuntimeException("Invalid content type");
                 }
 
@@ -102,15 +112,15 @@ public class ImageController {
                         }
                         os.write(buffer, 0, bytesRead);
                     }
-                    return os.toByteArray();
+                    return new ProxyResult(os.toByteArray(), contentType);
                 }
             });
 
-            if (imageData != null) {
+            if (result != null && result.data() != null) {
                 return ResponseEntity.ok()
-                        .contentType(headHeaders.getContentType())
-                        .contentLength(imageData.length)
-                        .body(imageData);
+                        .contentType(result.contentType())
+                        .contentLength(result.data().length)
+                        .body(result.data());
             }
         } catch (Exception e) {
             if ("Payload too large".equals(e.getMessage())) {
