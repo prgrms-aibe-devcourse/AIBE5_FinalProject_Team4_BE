@@ -151,21 +151,15 @@ public class StyleProductRecommender {
             }
         }
 
-        // 2차: 부족한 개수만큼 다시 점수 순으로 채움 (카테고리 제한은 유지)
+        // 2차: 부족한 개수만큼 다시 점수 순으로 채움 (카테고리 제한 없이 채움)
         if (results.size() < limit) {
             Set<Long> alreadyPicked = results.stream()
                     .map(RecommendResponse::clothesId)
                     .collect(Collectors.toSet());
-
             for (ScoredRecommendation scored : scoredRecommendations) {
                 if (results.size() >= limit) break;
                 if (!alreadyPicked.contains(scored.clothes().getId())) {
-                    String category = scored.clothes().getCategory();
-                    int categoryCount = categoryCounts.getOrDefault(category, 0);
-                    if (categoryCount >= perCategoryLimit) continue;
-
                     results.add(mapToRecommendResponse(scored));
-                    categoryCounts.put(category, categoryCount + 1);
                 }
             }
         }
