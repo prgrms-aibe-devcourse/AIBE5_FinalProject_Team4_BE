@@ -48,7 +48,8 @@ public class SecurityConfig {
             // 피드 게시물 사진·프로필 이미지는 명시적 공개 콘텐츠이므로 비로그인 접근을 허용한다.
             // clothes 이미지는 개인 옷장 사진을 포함하므로 인증을 유지한다.
             // FE는 피드에서 타인의 clothes 이미지를 로드할 때 인증 fetch(blob 변환)를 사용해야 한다.
-            // purchase-captures는 민감 정보이므로 인증 유지 (ImageController.getPurchaseCaptureImage 참고)
+            // purchase-captures는 기본 소유자 전용이나, 공개 피드 코디에 포함된 옷 이미지는
+            // ImageController에서 로그인 사용자 조회를 허용한다 (인증 유지).
             "/api/v1/images/feed/**",
             "/api/v1/images/profile/**",
             "/api/v1/images/proxy",
