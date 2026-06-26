@@ -1,6 +1,8 @@
 package com.closetnangam.be.global.storage;
 
+import com.closetnangam.be.domain.feed.repository.FeedPostRepository;
 import com.closetnangam.be.global.common.util.SecurityUtils;
+import org.springframework.security.access.AccessDeniedException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +38,7 @@ public class ImageController {
 
     private final ImageStorageService imageStorageService;
     private final RestTemplate restTemplate;
+    private final FeedPostRepository feedPostRepository;
 
     private record ProxyResult(byte[] data, MediaType contentType) {}
 
@@ -150,17 +153,18 @@ public class ImageController {
     }
 
     @Operation(
-            summary = "구매내역 캡처 이미지 조회 (소유자 전용)",
+            summary = "구매내역 캡처 이미지 조회 (인증 필요)",
             description = """
-                    업로드된 구매내역 캡처 이미지를 반환합니다. 로그인이 필요하며 \
-                    본인 소유 이미지만 조회할 수 있습니다."""
+                    업로드된 구매내역 캡처 이미지를 반환합니다. 로그인이 필요합니다. \
+                    본인 소유 이미지는 항상 조회 가능하며, 공개 피드 코디에 포함된 옷의 \
+                    구매내역 이미지는 다른 로그인 사용자도 조회할 수 있습니다."""
     )
     @GetMapping("/purchase-captures/{userId}/{filename}")
     public ResponseEntity<byte[]> getPurchaseCaptureImage(
             @PathVariable Long userId,
             @PathVariable String filename
     ) {
-        SecurityUtils.verifyOwnership(userId);
+        verifyPurchaseCaptureViewAccess(userId, filename);
         return serveUserImage(PURCHASE_CAPTURES_SUBDIRECTORY, userId, filename);
     }
 
@@ -190,6 +194,17 @@ public class ImageController {
             @PathVariable String filename
     ) {
         return serveUserImage(PROFILE_SUBDIRECTORY, userId, filename);
+    }
+
+    private void verifyPurchaseCaptureViewAccess(Long ownerUserId, String filename) {
+        Long viewerUserId = SecurityUtils.getCurrentUserId();
+        if (viewerUserId.equals(ownerUserId)) {
+            return;
+        }
+        String urlPattern = "%/purchase-captures/" + ownerUserId + "/" + filename;
+        if (!feedPostRepository.existsPublicFeedByPurchaseCaptureImageUrl(ownerUserId, urlPattern)) {
+            throw new AccessDeniedException("다른 사용자의 구매내역 이미지에 접근할 수 없습니다.");
+        }
     }
 
     private ResponseEntity<byte[]> serveUserImage(String subdirectory, Long userId, String filename) {
